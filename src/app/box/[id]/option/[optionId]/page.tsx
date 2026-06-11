@@ -38,7 +38,9 @@ export default async function OptionDetailPage({
       boxId={boxId}
       round={box.current_round}
       isOwner={myParticipant.role === 'owner'}
+      isAuthor={option.created_by === user.id}
       canVote={canVote}
+      currentUserId={user.id}
     />
   )
 }

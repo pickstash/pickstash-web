@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useUpdateBoxTitle, useUpdateBoxDeadline, useCloseBox } from '@/hooks/use-boxes'
+import { useUpdateBoxTitle, useUpdateBoxDeadline, useCloseBox, useStartShowdown } from '@/hooks/use-boxes'
+import { useToggleFavorite } from '@/hooks/use-favorites'
 import { DeadlineBottomSheet } from '@/components/deadline-bottom-sheet'
 import { OptionsSection } from '@/components/options-section'
 import { getBoxStatus, isDoneStatus } from '@/lib/domain/box-status'
@@ -15,17 +16,22 @@ interface BoxDetailClientProps {
   isOwner: boolean
   currentUserId: string
   initialOptions: Option[]
+  initialIsFavorite: boolean
 }
 
-export function BoxDetailClient({ box: initialBox, isOwner, initialOptions }: BoxDetailClientProps) {
+export function BoxDetailClient({ box: initialBox, isOwner, initialOptions, initialIsFavorite }: BoxDetailClientProps) {
   const [box, setBox] = useState(initialBox)
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleInput, setTitleInput] = useState(box.title)
   const [deadlineSheetOpen, setDeadlineSheetOpen] = useState(false)
+  const [showdownSheetOpen, setShowdownSheetOpen] = useState(false)
+  const [isFavorite, setIsFavorite] = useState(initialIsFavorite)
 
   const updateTitle = useUpdateBoxTitle(box.id)
   const updateDeadline = useUpdateBoxDeadline(box.id)
   const closeBox = useCloseBox(box.id)
+  const startShowdown = useStartShowdown(box.id)
+  const toggleFavorite = useToggleFavorite(box.id)
 
   const status = getBoxStatus(box)
   const isDone = isDoneStatus(status)
@@ -54,6 +60,23 @@ export function BoxDetailClient({ box: initialBox, isOwner, initialOptions }: Bo
     })
   }
 
+  function handleShowdownConfirm(date: Date) {
+    const deadline_at = date.toISOString()
+    startShowdown.mutate(deadline_at, {
+      onSuccess: () => {
+        setBox(prev => ({ ...prev, current_round: prev.current_round + 1, deadline_at }))
+        setShowdownSheetOpen(false)
+      },
+    })
+  }
+
+  function handleToggleFavorite() {
+    setIsFavorite(prev => !prev)
+    toggleFavorite.mutate(isFavorite, {
+      onError: () => setIsFavorite(prev => !prev),
+    })
+  }
+
   return (
     <main className="min-h-screen bg-gray-50 flex flex-col">
       <header className="bg-white px-5 pt-12 pb-4 border-b border-gray-100 flex items-center gap-3">
@@ -63,6 +86,9 @@ export function BoxDetailClient({ box: initialBox, isOwner, initialOptions }: Bo
           </svg>
         </Link>
         <h1 className="flex-1 text-base font-semibold text-gray-900 truncate">{box.title}</h1>
+        <button onClick={handleToggleFavorite} className="text-xl shrink-0 active:scale-90 transition-transform">
+          {isFavorite ? '★' : '☆'}
+        </button>
       </header>
 
       <div className="flex-1 px-5 py-5 space-y-4">
@@ -70,7 +96,7 @@ export function BoxDetailClient({ box: initialBox, isOwner, initialOptions }: Bo
         <div className="bg-white rounded-2xl p-5 space-y-3">
           {status === 'SHOWDOWN' && (
             <span className="inline-block text-xs font-medium bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full">
-              결판 중
+              결판 중 (라운드 {box.current_round})
             </span>
           )}
 
@@ -85,11 +111,7 @@ export function BoxDetailClient({ box: initialBox, isOwner, initialOptions }: Bo
                 autoFocus
                 className="flex-1 border-b border-gray-300 text-base font-semibold py-1 focus:outline-none"
               />
-              <button
-                onClick={handleSaveTitle}
-                disabled={updateTitle.isPending}
-                className="text-sm text-blue-500 font-medium shrink-0"
-              >
+              <button onClick={handleSaveTitle} disabled={updateTitle.isPending} className="text-sm text-blue-500 font-medium shrink-0">
                 저장
               </button>
             </div>
@@ -97,10 +119,7 @@ export function BoxDetailClient({ box: initialBox, isOwner, initialOptions }: Bo
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-base font-semibold text-gray-900">{box.title}</h2>
               {isOwner && !isDone && (
-                <button
-                  onClick={() => { setEditingTitle(true); setTitleInput(box.title) }}
-                  className="text-xs text-gray-400 shrink-0"
-                >
+                <button onClick={() => { setEditingTitle(true); setTitleInput(box.title) }} className="text-xs text-gray-400 shrink-0">
                   수정하기
                 </button>
               )}
@@ -121,12 +140,7 @@ export function BoxDetailClient({ box: initialBox, isOwner, initialOptions }: Bo
             <div className="flex items-center gap-2">
               <span className="text-gray-700">{formatKoreanDateTime(box.deadline_at)}</span>
               {isOwner && !isDone && (
-                <button
-                  onClick={() => setDeadlineSheetOpen(true)}
-                  className="text-xs text-blue-500"
-                >
-                  변경
-                </button>
+                <button onClick={() => setDeadlineSheetOpen(true)} className="text-xs text-blue-500">변경</button>
               )}
             </div>
           </div>
@@ -139,9 +153,7 @@ export function BoxDetailClient({ box: initialBox, isOwner, initialOptions }: Bo
               <span className="text-sm text-gray-400">참여 인원</span>
               <span className="text-sm font-semibold text-gray-900">{box.box_participants.length}명</span>
             </div>
-            <Link href={`/box/${box.id}/invite`} className="text-xs text-blue-500">
-              + 친구초대
-            </Link>
+            <Link href={`/box/${box.id}/invite`} className="text-xs text-blue-500">+ 친구초대</Link>
           </div>
           <div className="mt-3 flex gap-2 flex-wrap">
             {box.box_participants.map(p => (
@@ -181,13 +193,17 @@ export function BoxDetailClient({ box: initialBox, isOwner, initialOptions }: Bo
         )}
         {isOwner && !isDone && (
           <button
-            onClick={() => {
-              if (!closeBox.isPending) {
-                closeBox.mutate(undefined, {
-                  onSuccess: () => setBox(prev => ({ ...prev, closed_at: new Date().toISOString() })),
-                })
-              }
-            }}
+            onClick={() => setShowdownSheetOpen(true)}
+            className="w-full border border-orange-200 text-orange-500 py-3.5 rounded-xl text-sm font-medium active:bg-orange-50"
+          >
+            끝장전 시작하기
+          </button>
+        )}
+        {isOwner && !isDone && (
+          <button
+            onClick={() => closeBox.mutate(undefined, {
+              onSuccess: () => setBox(prev => ({ ...prev, closed_at: new Date().toISOString() })),
+            })}
             disabled={closeBox.isPending}
             className="w-full bg-gray-900 text-white py-4 rounded-xl text-sm font-semibold disabled:opacity-50"
           >
@@ -206,6 +222,11 @@ export function BoxDetailClient({ box: initialBox, isOwner, initialOptions }: Bo
         defaultValue={new Date(box.deadline_at)}
         onClose={() => setDeadlineSheetOpen(false)}
         onConfirm={handleDeadlineConfirm}
+      />
+      <DeadlineBottomSheet
+        open={showdownSheetOpen}
+        onClose={() => setShowdownSheetOpen(false)}
+        onConfirm={handleShowdownConfirm}
       />
     </main>
   )

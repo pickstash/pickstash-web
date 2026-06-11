@@ -9,12 +9,16 @@ export default async function MessyPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: boxes } = await supabase
-    .from('boxes')
-    .select('*')
-    .is('closed_at', null)
-    .gte('deadline_at', new Date().toISOString())
-    .order('updated_at', { ascending: false })
+  const now = new Date().toISOString()
+
+  const [{ data: boxes }, { data: participations }, { data: favs }] = await Promise.all([
+    supabase.from('boxes').select('*').is('closed_at', null).gte('deadline_at', now).order('updated_at', { ascending: false }),
+    supabase.from('box_participants').select('box_id, last_seen_at').eq('user_id', user.id),
+    supabase.from('favorites').select('box_id').eq('user_id', user.id),
+  ])
+
+  const lastSeenMap = new Map((participations ?? []).map(p => [p.box_id, p.last_seen_at]))
+  const favoriteSet = new Set((favs ?? []).map(f => f.box_id))
 
   return (
     <main className="min-h-screen bg-gray-50 flex flex-col">
@@ -33,11 +37,16 @@ export default async function MessyPage() {
 
       <div className="flex-1 px-5 space-y-3 pb-10">
         {boxes && boxes.length > 0 ? (
-          boxes.map(box => <BoxCard key={box.id} box={box as Box} />)
+          boxes.map(box => (
+            <BoxCard
+              key={box.id}
+              box={box as Box}
+              isNew={new Date((box as Box).updated_at) > new Date(lastSeenMap.get(box.id) ?? 0)}
+              isFavorite={favoriteSet.has(box.id)}
+            />
+          ))
         ) : (
-          <div className="text-center py-20 text-sm text-gray-400">
-            아직 상자가 없어요.
-          </div>
+          <div className="text-center py-20 text-sm text-gray-400">아직 상자가 없어요.</div>
         )}
       </div>
 

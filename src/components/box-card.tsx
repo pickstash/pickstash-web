@@ -7,9 +7,11 @@ interface BoxCardProps {
   box: Box
   participantCount?: number
   winnerName?: string | null
+  isNew?: boolean
+  isFavorite?: boolean
 }
 
-export function BoxCard({ box, participantCount, winnerName }: BoxCardProps) {
+export function BoxCard({ box, participantCount, winnerName, isNew, isFavorite }: BoxCardProps) {
   const status = getBoxStatus(box)
 
   const statusLabel =
@@ -21,17 +23,27 @@ export function BoxCard({ box, participantCount, winnerName }: BoxCardProps) {
     <Link href={`/box/${box.id}`}>
       <div className="bg-white border border-gray-100 rounded-2xl p-4 active:bg-gray-50 transition-colors">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="font-semibold text-gray-900 text-base leading-snug flex-1">{box.title}</h3>
-          {status === 'SHOWDOWN' && (
-            <span className="shrink-0 text-xs font-medium bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full">
-              결판 중
-            </span>
-          )}
-          {statusLabel && (
-            <span className="shrink-0 text-xs font-medium bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
-              {statusLabel}
-            </span>
-          )}
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <h3 className="font-semibold text-gray-900 text-base leading-snug truncate">{box.title}</h3>
+            {isNew && (
+              <span className="shrink-0 text-xs font-bold bg-blue-500 text-white px-1.5 py-0.5 rounded-full">
+                N
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {isFavorite && <span className="text-yellow-400 text-sm">★</span>}
+            {status === 'SHOWDOWN' && (
+              <span className="text-xs font-medium bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full">
+                결판 중
+              </span>
+            )}
+            {statusLabel && (
+              <span className="text-xs font-medium bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+                {statusLabel}
+              </span>
+            )}
+          </div>
         </div>
 
         {winnerName && (

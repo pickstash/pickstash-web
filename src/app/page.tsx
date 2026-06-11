@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { AppDrawer } from '@/components/app-drawer'
+import { ShakingBoxesSection } from '@/components/shaking-boxes-section'
 
 export default async function HomePage() {
   const supabase = await createClient()
@@ -29,6 +30,8 @@ export default async function HomePage() {
         </h1>
         <AppDrawer nickname={profile?.nickname ?? ''} />
       </header>
+
+      <ShakingBoxesSection />
 
       <div className="flex-1 px-5 py-6 space-y-3">
         <Link href="/messy">

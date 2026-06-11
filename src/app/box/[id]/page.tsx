@@ -35,12 +35,18 @@ export default async function BoxDetailPage({ params }: { params: Promise<{ id: 
   const myParticipant = box.box_participants.find(p => p.user_id === user.id)
   if (!myParticipant) redirect('/')
 
+  const [{ data: favorite }] = await Promise.all([
+    supabase.from('favorites').select('box_id').eq('user_id', user.id).eq('box_id', id).maybeSingle(),
+    supabase.from('box_participants').update({ last_seen_at: new Date().toISOString() }).eq('box_id', id).eq('user_id', user.id),
+  ])
+
   return (
     <BoxDetailClient
       box={box}
       isOwner={myParticipant.role === 'owner'}
       currentUserId={user.id}
       initialOptions={optionsData ?? []}
+      initialIsFavorite={!!favorite}
     />
   )
 }

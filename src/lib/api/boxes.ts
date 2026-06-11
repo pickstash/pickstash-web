@@ -110,3 +110,43 @@ export async function closeBox(id: string): Promise<void> {
     .eq('id', id)
   if (error) throw error
 }
+
+export async function startShowdown(id: string, newDeadline: string): Promise<void> {
+  const supabase = createClient()
+  const { data: box } = await supabase.from('boxes').select('current_round').eq('id', id).single()
+  const { error } = await supabase
+    .from('boxes')
+    .update({
+      current_round: (box?.current_round ?? 1) + 1,
+      deadline_at: newDeadline,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id)
+  if (error) throw error
+}
+
+export async function markAllSeen(): Promise<void> {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+  await supabase
+    .from('box_participants')
+    .update({ last_seen_at: new Date().toISOString() })
+    .eq('user_id', user.id)
+}
+
+export async function getShakingBoxes(): Promise<Box[]> {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const { data } = await supabase
+    .from('box_participants')
+    .select('box_id, last_seen_at, boxes(*)')
+    .eq('user_id', user.id)
+
+  if (!data) return []
+  return data
+    .filter(p => p.boxes && new Date((p.boxes as unknown as Box).updated_at) > new Date(p.last_seen_at))
+    .map(p => p.boxes as unknown as Box)
+}

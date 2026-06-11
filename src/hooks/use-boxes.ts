@@ -9,6 +9,9 @@ import {
   updateBoxTitle,
   updateBoxDeadline,
   closeBox,
+  startShowdown,
+  markAllSeen,
+  getShakingBoxes,
   type CreateBoxInput,
 } from '@/lib/api/boxes'
 
@@ -70,5 +73,28 @@ export function useCloseBox(boxId: string) {
       queryClient.invalidateQueries({ queryKey: ['box', boxId] })
       queryClient.invalidateQueries({ queryKey: ['boxes'] })
     },
+  })
+}
+
+export function useStartShowdown(boxId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (newDeadline: string) => startShowdown(boxId, newDeadline),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['box', boxId] })
+      queryClient.invalidateQueries({ queryKey: ['boxes'] })
+    },
+  })
+}
+
+export function useShakingBoxes() {
+  return useQuery({ queryKey: ['boxes', 'shaking'], queryFn: getShakingBoxes })
+}
+
+export function useMarkAllSeen() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: markAllSeen,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['boxes', 'shaking'] }),
   })
 }
