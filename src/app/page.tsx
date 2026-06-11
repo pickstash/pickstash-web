@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { AppDrawer } from '@/components/app-drawer'
 
 export default async function HomePage() {
   const supabase = await createClient()
@@ -22,10 +23,11 @@ export default async function HomePage() {
 
   return (
     <main className="min-h-screen bg-gray-50 flex flex-col">
-      <header className="bg-white px-5 pt-12 pb-5 border-b border-gray-100">
+      <header className="bg-white px-5 pt-12 pb-5 border-b border-gray-100 flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-900">
           {profile?.nickname ?? ''}님의 결정창고
         </h1>
+        <AppDrawer nickname={profile?.nickname ?? ''} />
       </header>
 
       <div className="flex-1 px-5 py-6 space-y-3">
