@@ -49,7 +49,7 @@ export default async function InvitePage({ params }: { params: Promise<{ id: str
           <p className="text-base font-semibold text-gray-900">{box.title}</p>
         </div>
 
-        <InviteClient boxTitle={box.title} inviteUrl={inviteUrl} />
+        <InviteClient boxId={id} boxTitle={box.title} inviteUrl={inviteUrl} />
 
         {/* 현재 참여 친구 */}
         <div className="bg-white rounded-2xl p-5">

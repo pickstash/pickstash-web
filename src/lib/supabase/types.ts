@@ -275,6 +275,26 @@ export interface Database {
         Args: { p_box_id: string; p_group_id: string }
         Returns: undefined
       }
+      get_group_by_invite_code: {
+        Args: { p_code: string }
+        Returns: { id: string; name: string }[]
+      }
+      join_group_by_invite_code: {
+        Args: { p_code: string }
+        Returns: string
+      }
+      check_group_name_exists: {
+        Args: { p_name: string }
+        Returns: boolean
+      }
+      is_box_participant: {
+        Args: { p_box_id: string }
+        Returns: boolean
+      }
+      is_group_member: {
+        Args: { p_group_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
