@@ -2,19 +2,22 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useUpdateBoxTitle, useUpdateBoxDeadline } from '@/hooks/use-boxes'
+import { useUpdateBoxTitle, useUpdateBoxDeadline, useCloseBox } from '@/hooks/use-boxes'
 import { DeadlineBottomSheet } from '@/components/deadline-bottom-sheet'
-import { getBoxStatus } from '@/lib/domain/box-status'
+import { OptionsSection } from '@/components/options-section'
+import { getBoxStatus, isDoneStatus } from '@/lib/domain/box-status'
 import { formatKoreanDate, formatKoreanDateTime } from '@/lib/utils'
 import type { BoxWithParticipants } from '@/lib/api/boxes'
+import type { Option } from '@/lib/api/options'
 
 interface BoxDetailClientProps {
   box: BoxWithParticipants
   isOwner: boolean
   currentUserId: string
+  initialOptions: Option[]
 }
 
-export function BoxDetailClient({ box: initialBox, isOwner }: BoxDetailClientProps) {
+export function BoxDetailClient({ box: initialBox, isOwner, initialOptions }: BoxDetailClientProps) {
   const [box, setBox] = useState(initialBox)
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleInput, setTitleInput] = useState(box.title)
@@ -22,8 +25,10 @@ export function BoxDetailClient({ box: initialBox, isOwner }: BoxDetailClientPro
 
   const updateTitle = useUpdateBoxTitle(box.id)
   const updateDeadline = useUpdateBoxDeadline(box.id)
+  const closeBox = useCloseBox(box.id)
 
   const status = getBoxStatus(box)
+  const isDone = isDoneStatus(status)
 
   function handleSaveTitle() {
     if (!titleInput.trim() || titleInput === box.title) {
@@ -91,7 +96,7 @@ export function BoxDetailClient({ box: initialBox, isOwner }: BoxDetailClientPro
           ) : (
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-base font-semibold text-gray-900">{box.title}</h2>
-              {isOwner && (
+              {isOwner && !isDone && (
                 <button
                   onClick={() => { setEditingTitle(true); setTitleInput(box.title) }}
                   className="text-xs text-gray-400 shrink-0"
@@ -115,7 +120,7 @@ export function BoxDetailClient({ box: initialBox, isOwner }: BoxDetailClientPro
             <span className="text-gray-400">마감일</span>
             <div className="flex items-center gap-2">
               <span className="text-gray-700">{formatKoreanDateTime(box.deadline_at)}</span>
-              {isOwner && (
+              {isOwner && !isDone && (
                 <button
                   onClick={() => setDeadlineSheetOpen(true)}
                   className="text-xs text-blue-500"
@@ -157,20 +162,43 @@ export function BoxDetailClient({ box: initialBox, isOwner }: BoxDetailClientPro
           </div>
         </div>
 
-        {/* 선택지 (2단계에서는 빈 섹션) */}
-        <div className="bg-white rounded-2xl p-5">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">선택지</h3>
-          <p className="text-sm text-gray-400 text-center py-4">아직 선택지가 없어요.</p>
-        </div>
+        <OptionsSection
+          boxId={box.id}
+          round={box.current_round}
+          initialOptions={initialOptions}
+          canVote={status === 'OPEN' || status === 'SHOWDOWN'}
+        />
       </div>
 
       {/* 하단 버튼 */}
       <div className="px-5 pb-10 space-y-2">
-        <Link href={`/box/${box.id}/option/new`}>
-          <button className="w-full border border-gray-200 text-gray-700 py-3.5 rounded-xl text-sm font-medium active:bg-gray-50">
-            선택지 추가하기
+        {!isDone && (
+          <Link href={`/box/${box.id}/option/new`}>
+            <button className="w-full border border-gray-200 text-gray-700 py-3.5 rounded-xl text-sm font-medium active:bg-gray-50">
+              선택지 추가하기
+            </button>
+          </Link>
+        )}
+        {isOwner && !isDone && (
+          <button
+            onClick={() => {
+              if (!closeBox.isPending) {
+                closeBox.mutate(undefined, {
+                  onSuccess: () => setBox(prev => ({ ...prev, closed_at: new Date().toISOString() })),
+                })
+              }
+            }}
+            disabled={closeBox.isPending}
+            className="w-full bg-gray-900 text-white py-4 rounded-xl text-sm font-semibold disabled:opacity-50"
+          >
+            {closeBox.isPending ? '처리 중...' : '정리 완료하기'}
           </button>
-        </Link>
+        )}
+        {isDone && (
+          <div className="text-center py-2 text-sm text-gray-400">
+            {status === 'RESOLVED' ? '정리 완료된 상자예요.' : '마감 시간이 지난 상자예요.'}
+          </div>
+        )}
       </div>
 
       <DeadlineBottomSheet

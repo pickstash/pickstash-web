@@ -8,6 +8,7 @@ import {
   getMessyBoxes,
   updateBoxTitle,
   updateBoxDeadline,
+  closeBox,
   type CreateBoxInput,
 } from '@/lib/api/boxes'
 
@@ -54,6 +55,17 @@ export function useUpdateBoxDeadline(boxId: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (deadline_at: string) => updateBoxDeadline(boxId, deadline_at),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['box', boxId] })
+      queryClient.invalidateQueries({ queryKey: ['boxes'] })
+    },
+  })
+}
+
+export function useCloseBox(boxId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => closeBox(boxId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['box', boxId] })
       queryClient.invalidateQueries({ queryKey: ['boxes'] })

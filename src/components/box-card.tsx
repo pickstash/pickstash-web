@@ -6,10 +6,16 @@ import type { Box } from '@/lib/api/boxes'
 interface BoxCardProps {
   box: Box
   participantCount?: number
+  winnerName?: string | null
 }
 
-export function BoxCard({ box, participantCount }: BoxCardProps) {
+export function BoxCard({ box, participantCount, winnerName }: BoxCardProps) {
   const status = getBoxStatus(box)
+
+  const statusLabel =
+    status === 'RESOLVED' ? '정리완료!' :
+    status === 'EXPIRED' ? (winnerName ? null : '투표없이 마감됐어요.') :
+    null
 
   return (
     <Link href={`/box/${box.id}`}>
@@ -21,7 +27,18 @@ export function BoxCard({ box, participantCount }: BoxCardProps) {
               결판 중
             </span>
           )}
+          {statusLabel && (
+            <span className="shrink-0 text-xs font-medium bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+              {statusLabel}
+            </span>
+          )}
         </div>
+
+        {winnerName && (
+          <p className="mt-1.5 text-sm font-semibold text-blue-600">
+            {winnerName}(으)로 결정!
+          </p>
+        )}
 
         <div className="mt-2 space-y-0.5 text-xs text-gray-400">
           <p>생성일 {formatKoreanDate(box.created_at)}</p>

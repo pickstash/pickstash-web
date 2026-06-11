@@ -101,3 +101,12 @@ export async function updateBoxDeadline(id: string, deadline_at: string): Promis
     .eq('id', id)
   if (error) throw error
 }
+
+export async function closeBox(id: string): Promise<void> {
+  const supabase = createClient()
+  const { error } = await supabase
+    .from('boxes')
+    .update({ closed_at: new Date().toISOString() })
+    .eq('id', id)
+  if (error) throw error
+}

@@ -10,17 +10,24 @@ export default async function BoxDetailPage({ params }: { params: Promise<{ id: 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data, error } = await supabase
-    .from('boxes')
-    .select(`
-      *,
-      box_participants(
-        user_id, role, joined_at, last_seen_at,
-        profiles(id, nickname, avatar_url)
-      )
-    `)
-    .eq('id', id)
-    .single()
+  const [{ data, error }, { data: optionsData }] = await Promise.all([
+    supabase
+      .from('boxes')
+      .select(`
+        *,
+        box_participants(
+          user_id, role, joined_at, last_seen_at,
+          profiles(id, nickname, avatar_url)
+        )
+      `)
+      .eq('id', id)
+      .single(),
+    supabase
+      .from('options')
+      .select('*')
+      .eq('box_id', id)
+      .order('created_at', { ascending: true }),
+  ])
 
   if (error || !data) notFound()
 
@@ -33,6 +40,7 @@ export default async function BoxDetailPage({ params }: { params: Promise<{ id: 
       box={box}
       isOwner={myParticipant.role === 'owner'}
       currentUserId={user.id}
+      initialOptions={optionsData ?? []}
     />
   )
 }
