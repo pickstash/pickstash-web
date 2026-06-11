@@ -39,3 +39,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# IDE
+.idea/
+
+# generated service worker (Serwist output)
+/public/sw.js
+/public/sw.js.map
+
+# supabase CLI
+supabase/.temp/
