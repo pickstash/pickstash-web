@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { AppDrawer } from '@/components/app-drawer'
 import { ShakingBoxesSection } from '@/components/shaking-boxes-section'
+import { PushNotificationBanner } from '@/components/push-notification-banner'
 
 export default async function HomePage() {
   const supabase = await createClient()
@@ -32,6 +33,7 @@ export default async function HomePage() {
       </header>
 
       <ShakingBoxesSection />
+      <PushNotificationBanner />
 
       <div className="flex-1 px-5 py-6 space-y-3">
         <Link href="/messy">

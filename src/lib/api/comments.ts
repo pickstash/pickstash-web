@@ -37,6 +37,11 @@ export async function createComment(optionId: string, body: string): Promise<voi
     supabase.from('box_participants').update({ last_seen_at: now }).eq('box_id', option.box_id).eq('user_id', user.id),
   ])
   if (error) throw error
+
+  // 다른 참여자에게 push 알림 (실패해도 무시)
+  supabase.functions.invoke('send-push', {
+    body: { box_id: option.box_id, triggered_by: user.id },
+  }).catch(() => {})
 }
 
 export async function deleteComment(id: string): Promise<void> {

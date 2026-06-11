@@ -5,12 +5,19 @@ import { Providers } from '@/components/providers'
 export const metadata: Metadata = {
   title: '결정창고',
   description: '친구들과 함께 의사결정하는 앱',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: '결정창고',
+  },
 }
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
+  themeColor: '#111827',
 }
 
 export default function RootLayout({

@@ -258,6 +258,33 @@ export interface Database {
         }
         Relationships: []
       }
+      push_subscriptions: {
+        Row: {
+          id: string
+          user_id: string
+          endpoint: string
+          p256dh: string
+          auth: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          endpoint: string
+          p256dh: string
+          auth: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          endpoint?: string
+          p256dh?: string
+          auth?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -294,6 +321,10 @@ export interface Database {
       is_group_member: {
         Args: { p_group_id: string }
         Returns: boolean
+      }
+      delete_account: {
+        Args: Record<string, never>
+        Returns: void
       }
     }
     Enums: {
