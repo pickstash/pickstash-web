@@ -1,0 +1,37 @@
+import Link from 'next/link'
+import { getBoxStatus } from '@/lib/domain/box-status'
+import { formatKoreanDateTime, formatKoreanDate } from '@/lib/utils'
+import type { Box } from '@/lib/api/boxes'
+
+interface BoxCardProps {
+  box: Box
+  participantCount?: number
+}
+
+export function BoxCard({ box, participantCount }: BoxCardProps) {
+  const status = getBoxStatus(box)
+
+  return (
+    <Link href={`/box/${box.id}`}>
+      <div className="bg-white border border-gray-100 rounded-2xl p-4 active:bg-gray-50 transition-colors">
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="font-semibold text-gray-900 text-base leading-snug flex-1">{box.title}</h3>
+          {status === 'SHOWDOWN' && (
+            <span className="shrink-0 text-xs font-medium bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full">
+              결판 중
+            </span>
+          )}
+        </div>
+
+        <div className="mt-2 space-y-0.5 text-xs text-gray-400">
+          <p>생성일 {formatKoreanDate(box.created_at)}</p>
+          <p>마감일 {formatKoreanDateTime(box.deadline_at)}</p>
+        </div>
+
+        {participantCount !== undefined && (
+          <p className="mt-2 text-xs text-gray-400">{participantCount}명 참여 중</p>
+        )}
+      </div>
+    </Link>
+  )
+}
