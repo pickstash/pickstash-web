@@ -1,9 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { signOut } from '@/lib/api/auth'
+
+type PwaPrompt = Event & { prompt(): Promise<void> }
+declare global { interface Window { __pwaPrompt?: PwaPrompt } }
 
 interface AppDrawerProps {
   nickname: string
@@ -11,7 +14,30 @@ interface AppDrawerProps {
 
 export function AppDrawer({ nickname }: AppDrawerProps) {
   const [open, setOpen] = useState(false)
+  const [pwaPrompt, setPwaPrompt] = useState<PwaPrompt | null>(null)
+  const [isStandalone, setIsStandalone] = useState(true)
   const router = useRouter()
+
+  useEffect(() => {
+    setIsStandalone(window.matchMedia('(display-mode: standalone)').matches)
+
+    if (window.__pwaPrompt) {
+      setPwaPrompt(window.__pwaPrompt)
+      return
+    }
+    const handle = () => {
+      if (window.__pwaPrompt) setPwaPrompt(window.__pwaPrompt)
+    }
+    window.addEventListener('pwa-install-ready', handle)
+    return () => window.removeEventListener('pwa-install-ready', handle)
+  }, [])
+
+  async function handleInstall() {
+    if (!pwaPrompt) return
+    await pwaPrompt.prompt()
+    setPwaPrompt(null)
+    setOpen(false)
+  }
 
   async function handleLogout() {
     await signOut()
@@ -71,7 +97,18 @@ export function AppDrawer({ nickname }: AppDrawerProps) {
               </div>
             </nav>
 
-            <div className="px-5 pb-10 border-t border-gray-100 pt-4">
+            <div className="px-5 pb-10 border-t border-gray-100 pt-4 space-y-1">
+              {!isStandalone && (
+                <button
+                  onClick={pwaPrompt ? handleInstall : undefined}
+                  className="w-full text-left px-3 py-2.5 rounded-xl text-sm text-blue-500 hover:bg-blue-50 active:bg-blue-100 flex items-center justify-between"
+                >
+                  <span>앱으로 설치하기</span>
+                  {!pwaPrompt && (
+                    <span className="text-xs text-gray-400">Chrome 메뉴에서 설치</span>
+                  )}
+                </button>
+              )}
               <button
                 onClick={handleLogout}
                 className="w-full text-left px-3 py-2.5 rounded-xl text-sm text-red-500 hover:bg-red-50 active:bg-red-100"
