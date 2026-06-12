@@ -80,9 +80,9 @@ export function PwaInstallBanner() {
     }
   }
 
-  function openChrome() {
+  function openExternalBrowser() {
     const url = location.href.replace(/^https?:\/\//, '')
-    location.href = `intent://${url}#Intent;scheme=https;package=com.android.chrome;end`
+    location.href = `intent://${url}#Intent;scheme=https;end`
   }
 
   if (state === 'hidden') return null
@@ -164,12 +164,12 @@ export function PwaInstallBanner() {
 
         {state === 'android-inapp' && (
           <div className="px-4 pb-4 space-y-2">
-            <p className="text-xs text-gray-500">Chrome에서 열어야 앱을 설치할 수 있어요</p>
+            <p className="text-xs text-gray-500">외부 브라우저에서 열어야 앱을 설치할 수 있어요</p>
             <button
-              onClick={openChrome}
+              onClick={openExternalBrowser}
               className="w-full bg-gray-900 text-white py-3 rounded-xl text-sm font-semibold"
             >
-              Chrome으로 열기
+              외부 브라우저로 열기
             </button>
           </div>
         )}
