@@ -45,17 +45,21 @@ export function PwaInstallBanner() {
       return
     }
 
-    // installable: beforeinstallprompt 필요
+    // 이미 캡처된 경우 즉시 사용
     if (window.__pwaPrompt) {
       localStorage.setItem('pwa-was-installable', '1')
       setPrompt(window.__pwaPrompt)
       setState('installable')
       return
     }
+
+    // 이전에 installable이었던 기록이 있으면 배너 먼저 표시
     if (localStorage.getItem('pwa-was-installable')) {
       setState('installable')
-      return
+      // return 하지 않고 계속 이벤트 대기 — prompt가 늦게 올 수 있음
     }
+
+    // beforeinstallprompt가 늦게 오는 경우를 위해 항상 리스너 등록
     const handle = () => {
       if (window.__pwaPrompt) {
         localStorage.setItem('pwa-was-installable', '1')
