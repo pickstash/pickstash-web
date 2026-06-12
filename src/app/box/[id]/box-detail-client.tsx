@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useUpdateBoxTitle, useUpdateBoxDeadline, useCloseBox } from '@/hooks/use-boxes'
+import { useUpdateBoxTitle, useUpdateBoxDeadline, useCloseBox, useDeleteBox } from '@/hooks/use-boxes'
 import { useToggleFavorite } from '@/hooks/use-favorites'
 import { DeadlineBottomSheet } from '@/components/deadline-bottom-sheet'
 import { OptionsSection } from '@/components/options-section'
@@ -24,11 +24,13 @@ export function BoxDetailClient({ box: initialBox, isOwner, initialOptions, init
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleInput, setTitleInput] = useState(box.title)
   const [deadlineSheetOpen, setDeadlineSheetOpen] = useState(false)
-const [isFavorite, setIsFavorite] = useState(initialIsFavorite)
+  const [confirmDeleteBox, setConfirmDeleteBox] = useState(false)
+  const [isFavorite, setIsFavorite] = useState(initialIsFavorite)
 
   const updateTitle = useUpdateBoxTitle(box.id)
   const updateDeadline = useUpdateBoxDeadline(box.id)
   const closeBox = useCloseBox(box.id)
+  const deleteBox = useDeleteBox()
   const toggleFavorite = useToggleFavorite(box.id)
 
   const status = getBoxStatus(box)
@@ -194,6 +196,29 @@ function handleToggleFavorite() {
           <div className="text-center py-2 text-sm text-gray-400">
             {status === 'RESOLVED' ? '정리 완료된 상자예요.' : '마감 시간이 지난 상자예요.'}
           </div>
+        )}
+        {isOwner && (
+          confirmDeleteBox ? (
+            <div className="space-y-2 pt-2">
+              <p className="text-center text-sm text-gray-500">상자를 삭제하면 선택지, 투표, 댓글이 모두 사라져요. 정말 삭제할까요?</p>
+              <div className="flex gap-2">
+                <button onClick={() => setConfirmDeleteBox(false)} className="flex-1 border border-gray-200 text-gray-700 py-3.5 rounded-xl text-sm font-medium">
+                  취소
+                </button>
+                <button
+                  onClick={() => deleteBox.mutate(box.id)}
+                  disabled={deleteBox.isPending}
+                  className="flex-1 bg-red-500 text-white py-3.5 rounded-xl text-sm font-semibold disabled:opacity-50"
+                >
+                  삭제하기
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button onClick={() => setConfirmDeleteBox(true)} className="w-full border border-red-200 text-red-400 py-3.5 rounded-xl text-sm font-medium">
+              상자 삭제
+            </button>
+          )
         )}
       </div>
 

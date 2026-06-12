@@ -9,6 +9,7 @@ import {
   updateBoxTitle,
   updateBoxDeadline,
   closeBox,
+  deleteBox,
   startShowdown,
   markAllSeen,
   getShakingBoxes,
@@ -72,6 +73,18 @@ export function useCloseBox(boxId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['box', boxId] })
       queryClient.invalidateQueries({ queryKey: ['boxes'] })
+    },
+  })
+}
+
+export function useDeleteBox() {
+  const router = useRouter()
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (boxId: string) => deleteBox(boxId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['boxes'] })
+      router.push('/')
     },
   })
 }

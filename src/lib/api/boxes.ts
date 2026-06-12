@@ -111,6 +111,12 @@ export async function closeBox(id: string): Promise<void> {
   if (error) throw error
 }
 
+export async function deleteBox(id: string): Promise<void> {
+  const supabase = createClient()
+  const { error } = await supabase.from('boxes').delete().eq('id', id)
+  if (error) throw error
+}
+
 export async function startShowdown(id: string, newDeadline: string): Promise<void> {
   const supabase = createClient()
   const { data: box } = await supabase.from('boxes').select('current_round').eq('id', id).single()

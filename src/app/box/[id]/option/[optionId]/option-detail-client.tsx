@@ -175,8 +175,8 @@ export function OptionDetailClient({
         </div>
       </div>
 
-      {/* 삭제 (방장 또는 작성자) */}
-      {(isOwner || isAuthor) && (
+      {/* 삭제 (작성자만) */}
+      {isAuthor && (
         <div className="px-5 pb-10">
           {!confirmDelete ? (
             <button onClick={() => setConfirmDelete(true)} className="w-full border border-red-200 text-red-400 py-3.5 rounded-xl text-sm font-medium">
