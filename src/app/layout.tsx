@@ -27,6 +27,16 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko" className="h-full">
+      <head>
+        {/* React 마운트 전에 beforeinstallprompt를 잡아두기 위한 early capture */}
+        <script dangerouslySetInnerHTML={{ __html: `
+          window.addEventListener('beforeinstallprompt', function(e) {
+            e.preventDefault();
+            window.__pwaPrompt = e;
+            window.dispatchEvent(new Event('pwa-install-ready'));
+          });
+        `}} />
+      </head>
       <body className="min-h-full bg-background text-foreground antialiased">
         <Providers>{children}</Providers>
       </body>

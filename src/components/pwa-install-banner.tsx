@@ -2,37 +2,48 @@
 
 import { useEffect, useState } from 'react'
 
-type InstallState = 'android' | 'ios' | 'hidden'
+type PwaPrompt = Event & { prompt(): Promise<void> }
+
+declare global {
+  interface Window {
+    __pwaPrompt?: PwaPrompt
+  }
+}
+
+type InstallState = 'installable' | 'ios' | 'hidden'
 
 export function PwaInstallBanner() {
   const [state, setState] = useState<InstallState>('hidden')
-  const [deferredPrompt, setDeferredPrompt] = useState<Event & { prompt(): Promise<void> } | null>(null)
+  const [deferredPrompt, setDeferredPrompt] = useState<PwaPrompt | null>(null)
 
   useEffect(() => {
-    if (typeof window === 'undefined') return
-
-    // 이미 설치됨(standalone) 이거나 이미 닫은 경우 숨김
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches
     const dismissed = localStorage.getItem('pwa-install-dismissed')
     if (isStandalone || dismissed) return
 
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !('MSStream' in window)
-
     if (isIOS) {
-      // iOS는 beforeinstallprompt 없음 — 안내 배너만 표시
       setState('ios')
       return
     }
 
-    // Android/Chrome: beforeinstallprompt 이벤트 대기
-    function handleBeforeInstall(e: Event) {
-      e.preventDefault()
-      setDeferredPrompt(e as Event & { prompt(): Promise<void> })
-      setState('android')
+    // layout의 early capture 스크립트가 이미 잡아둔 이벤트 확인
+    if (window.__pwaPrompt) {
+      setDeferredPrompt(window.__pwaPrompt)
+      setState('installable')
+      return
     }
 
-    window.addEventListener('beforeinstallprompt', handleBeforeInstall)
-    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall)
+    // 아직 안 왔으면 커스텀 이벤트로 대기
+    function handleReady() {
+      if (window.__pwaPrompt) {
+        setDeferredPrompt(window.__pwaPrompt)
+        setState('installable')
+      }
+    }
+
+    window.addEventListener('pwa-install-ready', handleReady)
+    return () => window.removeEventListener('pwa-install-ready', handleReady)
   }, [])
 
   function handleDismiss() {
@@ -69,7 +80,7 @@ export function PwaInstallBanner() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
-        {state === 'android' && (
+        {state === 'installable' && (
           <button
             onClick={handleInstall}
             className="text-xs bg-gray-900 text-white px-3 py-1.5 rounded-lg font-medium"
