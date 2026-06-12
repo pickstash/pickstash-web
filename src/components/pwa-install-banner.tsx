@@ -107,12 +107,19 @@ export function PwaInstallBanner() {
         {/* 상태별 안내 */}
         {state === 'installable' && (
           <div className="px-4 pb-4">
-            <button
-              onClick={install}
-              className="w-full bg-gray-900 text-white py-3 rounded-xl text-sm font-semibold"
-            >
-              앱으로 설치하기
-            </button>
+            {prompt ? (
+              <button
+                onClick={install}
+                className="w-full bg-gray-900 text-white py-3 rounded-xl text-sm font-semibold"
+              >
+                앱으로 설치하기
+              </button>
+            ) : (
+              <div className="bg-gray-50 rounded-xl px-4 py-3 space-y-1">
+                <p className="text-sm text-gray-700">Chrome 주소창 오른쪽의 <span className="font-semibold">설치 아이콘 ⊕</span> 을 클릭하거나</p>
+                <p className="text-sm text-gray-700">메뉴 → <span className="font-semibold">"결정창고 설치"</span> 를 선택하세요</p>
+              </div>
+            )}
           </div>
         )}
 
