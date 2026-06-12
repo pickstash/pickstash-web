@@ -18,6 +18,7 @@ function detectBrowser(): BrowserType {
   if (isIOS && isInApp) return 'ios-inapp'
   if (isIOS) return 'ios-safari'
   if (/Android/.test(ua) && isInApp) return 'android-inapp'
+  if (/Safari\//.test(ua) && !/Chrome|CriOS|OPR|Edg\/|SamsungBrowser/.test(ua)) return 'ios-safari'
   return 'installable'
 }
 
@@ -134,7 +135,7 @@ export function AppDrawer({ nickname }: AppDrawerProps) {
                 </button>
               )}
 
-              {(browser === 'ios-safari' || browser === 'ios-inapp') && (
+{(browser === 'ios-safari' || browser === 'ios-inapp') && (
                 <div className="px-3 py-2.5 space-y-2">
                   <p className="text-xs font-semibold text-gray-400">앱으로 설치하기</p>
                   {browser === 'ios-inapp' && (
