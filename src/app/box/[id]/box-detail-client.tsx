@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useUpdateBoxTitle, useUpdateBoxDeadline, useCloseBox, useStartShowdown } from '@/hooks/use-boxes'
+import { useUpdateBoxTitle, useUpdateBoxDeadline, useCloseBox } from '@/hooks/use-boxes'
 import { useToggleFavorite } from '@/hooks/use-favorites'
 import { DeadlineBottomSheet } from '@/components/deadline-bottom-sheet'
 import { OptionsSection } from '@/components/options-section'
@@ -24,13 +24,11 @@ export function BoxDetailClient({ box: initialBox, isOwner, initialOptions, init
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleInput, setTitleInput] = useState(box.title)
   const [deadlineSheetOpen, setDeadlineSheetOpen] = useState(false)
-  const [showdownSheetOpen, setShowdownSheetOpen] = useState(false)
-  const [isFavorite, setIsFavorite] = useState(initialIsFavorite)
+const [isFavorite, setIsFavorite] = useState(initialIsFavorite)
 
   const updateTitle = useUpdateBoxTitle(box.id)
   const updateDeadline = useUpdateBoxDeadline(box.id)
   const closeBox = useCloseBox(box.id)
-  const startShowdown = useStartShowdown(box.id)
   const toggleFavorite = useToggleFavorite(box.id)
 
   const status = getBoxStatus(box)
@@ -60,17 +58,7 @@ export function BoxDetailClient({ box: initialBox, isOwner, initialOptions, init
     })
   }
 
-  function handleShowdownConfirm(date: Date) {
-    const deadline_at = date.toISOString()
-    startShowdown.mutate(deadline_at, {
-      onSuccess: () => {
-        setBox(prev => ({ ...prev, current_round: prev.current_round + 1, deadline_at }))
-        setShowdownSheetOpen(false)
-      },
-    })
-  }
-
-  function handleToggleFavorite() {
+function handleToggleFavorite() {
     setIsFavorite(prev => !prev)
     toggleFavorite.mutate(isFavorite, {
       onError: () => setIsFavorite(prev => !prev),
@@ -191,15 +179,7 @@ export function BoxDetailClient({ box: initialBox, isOwner, initialOptions, init
             </button>
           </Link>
         )}
-        {isOwner && !isDone && (
-          <button
-            onClick={() => setShowdownSheetOpen(true)}
-            className="w-full border border-orange-200 text-orange-500 py-3.5 rounded-xl text-sm font-medium active:bg-orange-50"
-          >
-            끝장전 시작하기
-          </button>
-        )}
-        {isOwner && !isDone && (
+{isOwner && !isDone && (
           <button
             onClick={() => closeBox.mutate(undefined, {
               onSuccess: () => setBox(prev => ({ ...prev, closed_at: new Date().toISOString() })),
@@ -222,11 +202,6 @@ export function BoxDetailClient({ box: initialBox, isOwner, initialOptions, init
         defaultValue={new Date(box.deadline_at)}
         onClose={() => setDeadlineSheetOpen(false)}
         onConfirm={handleDeadlineConfirm}
-      />
-      <DeadlineBottomSheet
-        open={showdownSheetOpen}
-        onClose={() => setShowdownSheetOpen(false)}
-        onConfirm={handleShowdownConfirm}
       />
     </main>
   )
