@@ -5,103 +5,166 @@ import { useEffect, useState } from 'react'
 type PwaPrompt = Event & { prompt(): Promise<void> }
 
 declare global {
-  interface Window {
-    __pwaPrompt?: PwaPrompt
-  }
+  interface Window { __pwaPrompt?: PwaPrompt }
 }
 
-type InstallState = 'installable' | 'ios' | 'hidden'
+type InstallState =
+  | 'installable'    // Chrome/Samsung: beforeinstallprompt 있음
+  | 'ios-safari'     // iOS Safari: 수동 홈 화면 추가
+  | 'ios-inapp'      // iOS 인앱 브라우저: Safari로 열기 안내
+  | 'android-inapp'  // Android 인앱 브라우저: Chrome으로 열기
+  | 'hidden'
+
+function detect(): InstallState {
+  if (typeof window === 'undefined') return 'hidden'
+  if (window.matchMedia('(display-mode: standalone)').matches) return 'hidden'
+  if (localStorage.getItem('pwa-install-dismissed')) return 'hidden'
+
+  const ua = navigator.userAgent
+  const isIOS = /iPhone|iPad|iPod/.test(ua)
+  const isInApp = /KAKAOTALK|NAVER\(inapp|Instagram|FBAN|FBAV|Line\/|Snapchat/i.test(ua)
+
+  if (isIOS && isInApp) return 'ios-inapp'
+  if (isIOS) return 'ios-safari'
+  if (/Android/.test(ua) && isInApp) return 'android-inapp'
+
+  // Chrome, Samsung, Edge 등 beforeinstallprompt 지원 브라우저
+  return 'installable'
+}
 
 export function PwaInstallBanner() {
   const [state, setState] = useState<InstallState>('hidden')
-  const [deferredPrompt, setDeferredPrompt] = useState<PwaPrompt | null>(null)
+  const [prompt, setPrompt] = useState<PwaPrompt | null>(null)
 
   useEffect(() => {
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches
-    const dismissed = localStorage.getItem('pwa-install-dismissed')
-    if (isStandalone || dismissed) return
+    const initial = detect()
+    if (initial === 'hidden') return
 
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !('MSStream' in window)
-    if (isIOS) {
-      setState('ios')
+    if (initial !== 'installable') {
+      setState(initial)
       return
     }
 
-    // beforeinstallprompt가 한 번이라도 발생한 적 있으면 배너 표시 유지
-    const wasInstallable = localStorage.getItem('pwa-was-installable')
-
+    // installable: beforeinstallprompt 필요
     if (window.__pwaPrompt) {
       localStorage.setItem('pwa-was-installable', '1')
-      setDeferredPrompt(window.__pwaPrompt)
+      setPrompt(window.__pwaPrompt)
       setState('installable')
       return
     }
-
-    // 강력 새로고침 등으로 이벤트를 놓쳤어도 기록이 있으면 배너 표시
-    if (wasInstallable) {
+    if (localStorage.getItem('pwa-was-installable')) {
       setState('installable')
       return
     }
-
-    // 아직 이벤트 미발생 — 대기
-    function handleReady() {
+    const handle = () => {
       if (window.__pwaPrompt) {
         localStorage.setItem('pwa-was-installable', '1')
-        setDeferredPrompt(window.__pwaPrompt)
+        setPrompt(window.__pwaPrompt)
         setState('installable')
       }
     }
-
-    window.addEventListener('pwa-install-ready', handleReady)
-    return () => window.removeEventListener('pwa-install-ready', handleReady)
+    window.addEventListener('pwa-install-ready', handle)
+    return () => window.removeEventListener('pwa-install-ready', handle)
   }, [])
 
-  function handleDismiss() {
+  function dismiss() {
     localStorage.setItem('pwa-install-dismissed', '1')
     setState('hidden')
   }
 
-  async function handleInstall() {
-    if (deferredPrompt) {
-      await deferredPrompt.prompt()
+  async function install() {
+    if (prompt) {
+      await prompt.prompt()
       localStorage.removeItem('pwa-was-installable')
       setState('hidden')
-    } else {
-      // 강력 새로고침 등으로 prompt 객체가 없는 경우 — Chrome 주소창 안내
-      alert('Chrome 주소창 오른쪽의 설치 아이콘(⊕)을 클릭하거나, 메뉴 → "결정창고 설치"를 선택하세요.')
     }
+  }
+
+  function openChrome() {
+    const url = location.href.replace(/^https?:\/\//, '')
+    location.href = `intent://${url}#Intent;scheme=https;package=com.android.chrome;end`
   }
 
   if (state === 'hidden') return null
 
   return (
-    <div className="mx-5 mt-4 bg-white border border-gray-200 rounded-2xl px-4 py-4 flex gap-3 shadow-sm">
-      <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0">
-        <img src="/icons/icon-192.png" alt="결정창고" className="w-full h-full object-cover" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-gray-900">앱으로 설치하기</p>
-        {state === 'ios' ? (
-          <p className="text-xs text-gray-400 mt-0.5">
-            하단 공유 버튼(<span className="font-medium">↑</span>) → "홈 화면에 추가"를 탭하세요
-          </p>
-        ) : (
-          <p className="text-xs text-gray-400 mt-0.5">빠르게 실행하고 알림을 받을 수 있어요</p>
-        )}
-      </div>
-      <div className="flex flex-col items-end justify-between shrink-0">
-        <button onClick={handleDismiss} className="text-gray-300 p-0.5">
-          <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-        {state === 'installable' && (
-          <button
-            onClick={handleInstall}
-            className="text-xs bg-gray-900 text-white px-3 py-1.5 rounded-lg font-medium"
-          >
-            설치
+    <div className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-6 pt-2">
+      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+        {/* 앱 정보 행 */}
+        <div className="flex items-center gap-3 px-4 pt-4 pb-3">
+          <img src="/icons/icon-192.png" alt="결정창고" className="w-10 h-10 rounded-xl shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-gray-900">결정창고</p>
+            <p className="text-xs text-gray-400 truncate">친구들과 함께 의사결정하는 앱</p>
+          </div>
+          <button onClick={dismiss} className="text-gray-300 p-1 shrink-0">
+            <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
+        </div>
+
+        {/* 상태별 안내 */}
+        {state === 'installable' && (
+          <div className="px-4 pb-4">
+            <button
+              onClick={install}
+              className="w-full bg-gray-900 text-white py-3 rounded-xl text-sm font-semibold"
+            >
+              앱으로 설치하기
+            </button>
+          </div>
+        )}
+
+        {state === 'ios-safari' && (
+          <div className="px-4 pb-4 space-y-3">
+            <div className="bg-gray-50 rounded-xl px-4 py-3 flex items-center gap-3">
+              <span className="text-2xl">①</span>
+              <p className="text-sm text-gray-700">
+                하단 <span className="font-semibold">공유 버튼</span>
+                <span className="inline-block mx-1 px-1.5 py-0.5 bg-gray-200 rounded text-xs">↑</span>
+                을 탭하세요
+              </p>
+            </div>
+            <div className="bg-gray-50 rounded-xl px-4 py-3 flex items-center gap-3">
+              <span className="text-2xl">②</span>
+              <p className="text-sm text-gray-700">
+                <span className="font-semibold">"홈 화면에 추가"</span>를 선택하세요
+              </p>
+            </div>
+          </div>
+        )}
+
+        {state === 'ios-inapp' && (
+          <div className="px-4 pb-4 space-y-3">
+            <p className="text-xs text-gray-500">Safari에서 열어야 앱을 설치할 수 있어요</p>
+            <div className="bg-gray-50 rounded-xl px-4 py-3 flex items-center gap-3">
+              <span className="text-2xl">①</span>
+              <p className="text-sm text-gray-700">
+                우측 하단
+                <span className="inline-block mx-1 px-1.5 py-0.5 bg-gray-200 rounded text-xs">···</span>
+                또는 공유 버튼을 탭하세요
+              </p>
+            </div>
+            <div className="bg-gray-50 rounded-xl px-4 py-3 flex items-center gap-3">
+              <span className="text-2xl">②</span>
+              <p className="text-sm text-gray-700">
+                <span className="font-semibold">"Safari로 열기"</span>를 선택하세요
+              </p>
+            </div>
+          </div>
+        )}
+
+        {state === 'android-inapp' && (
+          <div className="px-4 pb-4 space-y-2">
+            <p className="text-xs text-gray-500">Chrome에서 열어야 앱을 설치할 수 있어요</p>
+            <button
+              onClick={openChrome}
+              className="w-full bg-gray-900 text-white py-3 rounded-xl text-sm font-semibold"
+            >
+              Chrome으로 열기
+            </button>
+          </div>
         )}
       </div>
     </div>
