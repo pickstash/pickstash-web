@@ -1,4 +1,5 @@
 import { KakaoLoginButton } from './kakao-login-button'
+import { TestLoginButtons } from './test-login-buttons'
 
 export default function LoginPage() {
   return (
@@ -10,7 +11,10 @@ export default function LoginPage() {
             친구들과 함께 의사결정을 내리는 공간
           </p>
         </div>
-        <KakaoLoginButton />
+        <div className="w-full space-y-3">
+          <KakaoLoginButton />
+          <TestLoginButtons />
+        </div>
       </div>
     </main>
   )
