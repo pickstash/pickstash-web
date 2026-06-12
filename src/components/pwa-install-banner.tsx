@@ -27,16 +27,26 @@ export function PwaInstallBanner() {
       return
     }
 
-    // layout의 early capture 스크립트가 이미 잡아둔 이벤트 확인
+    // beforeinstallprompt가 한 번이라도 발생한 적 있으면 배너 표시 유지
+    const wasInstallable = localStorage.getItem('pwa-was-installable')
+
     if (window.__pwaPrompt) {
+      localStorage.setItem('pwa-was-installable', '1')
       setDeferredPrompt(window.__pwaPrompt)
       setState('installable')
       return
     }
 
-    // 아직 안 왔으면 커스텀 이벤트로 대기
+    // 강력 새로고침 등으로 이벤트를 놓쳤어도 기록이 있으면 배너 표시
+    if (wasInstallable) {
+      setState('installable')
+      return
+    }
+
+    // 아직 이벤트 미발생 — 대기
     function handleReady() {
       if (window.__pwaPrompt) {
+        localStorage.setItem('pwa-was-installable', '1')
         setDeferredPrompt(window.__pwaPrompt)
         setState('installable')
       }
@@ -52,9 +62,14 @@ export function PwaInstallBanner() {
   }
 
   async function handleInstall() {
-    if (!deferredPrompt) return
-    await deferredPrompt.prompt()
-    setState('hidden')
+    if (deferredPrompt) {
+      await deferredPrompt.prompt()
+      localStorage.removeItem('pwa-was-installable')
+      setState('hidden')
+    } else {
+      // 강력 새로고침 등으로 prompt 객체가 없는 경우 — Chrome 주소창 안내
+      alert('Chrome 주소창 오른쪽의 설치 아이콘(⊕)을 클릭하거나, 메뉴 → "결정창고 설치"를 선택하세요.')
+    }
   }
 
   if (state === 'hidden') return null
