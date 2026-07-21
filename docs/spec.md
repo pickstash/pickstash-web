@@ -7,7 +7,15 @@
 
 ## 1. 서비스 개요
 
-친구들과 함께 의사결정을 하는 PWA 웹앱. 도메인 구조는 3계층:
+> 2026-07-20 기획 v1 반영 (노션 "결정창고 기획 정리 v1" 기준). 이 개정이 이전 명세와 충돌하면 이 문서의 현재 내용이 우선한다.
+
+**타겟**: 카톡을 쓰는 2030. **대체 대상은 카톡 톡게시판** — 톡게시판의 4가지 불편(①투표 없음 ②알림 없음 ③게시판 무한 생성 ④댓글 사진 첨부 불가)을 해결한다. 새 기능 판단 잣대: "이게 ①~④ 중 무엇을 해결하나?"
+
+**두 가지 사용 모드 (둘 다 1급)**:
+- **모드 A. 친구와 결정**: 방장(총무형, 앱을 제대로 쓰는 한 명) + 참여자(설치·학습 의지 낮음 — 링크 클릭→카카오 로그인 1번→투표까지 마찰 제로, 창고·들썩임 등 용어 지식 제로로 완주 가능해야 함)
+- **모드 B. 혼자 쓰기**: 고민 후보를 메모해두고 스스로 결정하는 개인 고민 보드. 마감 없는 상자가 자연스러움. 고민이 커지면 친구 초대로 전환(콜드 스타트 해소 루프)
+
+도메인 구조는 3계층:
 
 | 용어 | 의미 | 예시 |
 |---|---|---|
@@ -15,7 +23,9 @@
 | 상자 (box) | 결정할 주제 | "해외여행 어디로 갈까?" |
 | 선택지 (option) | 상자 안의 후보 | 비엔나, 터키, 아이슬란드 |
 
-핵심 루프: **상자 생성 → 친구/그룹 초대 → 선택지 추가 → 좋아요/싫어요 투표 → (필요 시 끝장전 재투표) → 마감 또는 정리 완료 → 정리된 창고로 이동**
+핵심 루프: **상자 생성(마감 선택) → (선택) 친구/그룹 초대 → 선택지 추가 → 좋아요/싫어요 투표 → 정리 완료("이대로 결정하기") 또는 마감 → 정리된 창고에 기록으로 남음**. 동점/무투표로 마감된 상자에는 시스템이 **단순 재투표**를 제안하고, "다시 정리하기"로 재오픈할 수 있다.
+
+**용어 카피 규칙**: 만든 용어(들썩이는 상자 등)는 첫 노출 시 반드시 한 줄 부제와 페어링한다. 행동 버튼은 결과를 말한다(예: "이대로 결정하기"). 끝장전이라는 용어는 UI에서 쓰지 않는다 — 재투표는 시스템 제안 문구("공동 1등이 나왔어요! 결승전으로 정해볼까요?")로 표현한다.
 
 ## 2. 기술 스택
 
@@ -65,16 +75,18 @@ src/
 type BoxStatus = 'OPEN' | 'SHOWDOWN' | 'EXPIRED' | 'RESOLVED';
 
 function getBoxStatus(box: {
-  deadlineAt: Date;
+  deadlineAt: Date | null;   // null = 마감 없는 상자 (혼자 모드 등)
   closedAt: Date | null;
   currentRound: number;
 }): BoxStatus {
-  if (box.closedAt) return 'RESOLVED';               // 정리 완료 (수동)
-  if (box.deadlineAt < new Date()) return 'EXPIRED'; // 시간 만료 (자동)
-  if (box.currentRound > 1) return 'SHOWDOWN';       // 결판 중 (끝장전 진행)
-  return 'OPEN';                                      // 정리 미완료
+  if (box.closedAt) return 'RESOLVED';                // 정리 완료 (수동)
+  if (box.deadlineAt && box.deadlineAt < new Date()) return 'EXPIRED'; // 시간 만료 (자동)
+  if (box.currentRound > 1) return 'SHOWDOWN';        // 결판 중 (재투표 진행)
+  return 'OPEN';                                       // 정리 미완료
 }
 ```
+
+마감 없는 상자(`deadline_at IS NULL`)는 EXPIRED가 될 수 없고, 수동 "이대로 결정하기"로만 RESOLVED가 된다.
 
 - **어질러진 창고** = OPEN + SHOWDOWN
 - **정리된 창고** = RESOLVED + EXPIRED
@@ -84,15 +96,19 @@ function getBoxStatus(box: {
 
 | 라벨 | 조건 | 표시 |
 |---|---|---|
-| NEW | `boxes.updated_at > box_participants.last_seen_at` (내가 마지막으로 본 이후 업데이트됨) | NEW 뱃지 |
+| NEW | `boxes.updated_at > box_participants.last_seen_at` (내가 마지막으로 본 이후 업데이트됨). **모든 창고 목록에서 표시** | NEW 뱃지 (버터) |
 | 즐겨찾기 | favorites에 존재 | 별 아이콘 |
-| 정리상태 | 아래 중 1개 | 상태 텍스트 |
+| 정리상태 | 아래 4종 중 정확히 1개 | 상태 라벨 |
 
-정리상태 표시 텍스트:
-- RESOLVED → "정리완료!"
-- EXPIRED → "투표없이 마감됐어요." (단, 투표가 있으면 최다득표 텍스트 우선)
-- SHOWDOWN → "결판 중" 뱃지
-- **최다 득표**: RESOLVED/EXPIRED 상자에서 (좋아요 − 싫어요) 합산 최고 선택지 이름을 강조 노출. 예: "신도림으로 결정!" 동점이면 생략.
+정리상태 라벨 4종 (항상 1개 표시):
+- RESOLVED → **"정리완료!"** (leaf)
+- EXPIRED → **"시간 만료"** (중립 회색)
+- SHOWDOWN → **"결판 중"** (tangerine)
+- OPEN → **"정리 미완료"** (아웃라인 중립)
+
+부가 표시:
+- **최다 득표**: RESOLVED/EXPIRED 상자에서 (좋아요 − 싫어요) 합산 최고 선택지 이름을 강조 노출(버터 형광펜 밑줄). 예: "신도림으로 결정!" 동점이면 결정 문구 대신 "공동 1등 N개" 표기.
+- 정리된 창고 카드는 **결정 결과가 주인공**이다 — 결정 문구를 제목 다음 최상단에, 날짜 메타는 보조로.
 
 ## 4. 라우트 맵
 
@@ -110,7 +126,7 @@ function getBoxStatus(box: {
 | `/messy` | 어질러진 창고 | 7-7 |
 | `/done` | 정리된 창고 | 7-7 |
 | `/favorites` | 즐겨찾는 창고 | 7-7 |
-| `/invite/[code]` | 상자 초대 랜딩 | **generateMetadata로 OG 동적 렌더링** |
+| `/invite/[code]` | 상자 초대 랜딩 | **generateMetadata로 OG 동적 렌더링** + 로그인 전 상자 미리보기 |
 | `/groups` | 그룹 관리 | 7-8 |
 | `/groups/[id]` | 그룹 상세 | 7-8 |
 | `/group-invite/[code]` | 그룹 초대 랜딩 | OG 동적 렌더링 |
@@ -137,8 +153,8 @@ create table boxes (
   owner_id uuid not null references profiles(id) on delete cascade,
   title text not null,
   memo text,
-  deadline_at timestamptz not null,
-  closed_at timestamptz,                 -- 수동 "정리 완료" 시각. null이면 미완료
+  deadline_at timestamptz,               -- null = 마감 없는 상자 (혼자 모드)
+  closed_at timestamptz,                 -- 수동 "이대로 결정하기" 시각. null이면 미완료
   current_round int not null default 1,  -- 끝장전 시작 시 +1
   invite_code text not null unique default substr(md5(random()::text), 1, 8),
   created_at timestamptz not null default now(),
@@ -219,14 +235,35 @@ create table withdraw_reasons (
   detail text,                           -- 직접입력
   created_at timestamptz not null default now()
 );
+
+-- 상자 활동 로그 (들썩이는 상자에 "누가 뭘 했는지" 표시용, 2026-07 추가)
+create table box_activities (
+  id uuid primary key default gen_random_uuid(),
+  box_id uuid not null references boxes(id) on delete cascade,
+  actor_id uuid not null references profiles(id) on delete cascade,
+  type text not null check (type in (
+    'option_added', 'vote_cast', 'comment_added',
+    'box_closed', 'box_reopened', 'rematch_started',
+    'deadline_changed', 'participant_joined'
+  )),
+  meta jsonb not null default '{}',      -- { "option_name": "비엔나" } 등 표시용 부가정보
+  created_at timestamptz not null default now()
+);
+create index box_activities_box_created_idx on box_activities (box_id, created_at desc);
 ```
+
+**활동 기록은 DB 트리거로 일원화한다** (클라이언트가 직접 기록하지 않음 — RN 앱도 자동 적용):
+- `options`/`comments`/`votes`/`box_participants` AFTER INSERT 트리거 → `box_activities` insert
+- `box_activities` AFTER INSERT 트리거 → `boxes.updated_at = new.created_at` 갱신
+- 이로써 **이벤트 매트릭스**가 서버에서 보장된다: 선택지 추가·투표·댓글·참여·정리완료·재오픈·재투표 시작·마감 변경 전부가 들썩임(NEW) 신호를 만든다.
 
 ### RLS 방침
 - 모든 테이블 RLS 활성화
 - `boxes`/`options`/`votes`/`comments`: 해당 상자의 `box_participants`만 select/insert
-- `boxes` 수정(정리 완료, 끝장전 시작, 마감일 변경, 제목 수정): `role = 'owner'`만
+- `boxes` 수정(정리 완료, 재투표 시작, 마감일 변경, 제목 수정): `role = 'owner'`만
 - `votes`/`comments`/`favorites`: 본인 row만 insert/update/delete (`user_id = auth.uid()`)
 - `options` 수정/삭제: `created_by = auth.uid()` 또는 상자 owner
+- **정리된 상자 쓰기 가드 (서버 강제)**: 상자가 종결 상태(`closed_at IS NOT NULL` 또는 `deadline_at < now()`)면 `votes` insert/update/delete와 `options` insert/update/delete를 RLS에서 거부한다. UI disabled에만 의존하지 않는다. 예외: `comments`는 종결 상자에서도 허용(기록에 대한 대화), 본인 삭제도 허용
 - `groups`: 멤버만 조회, owner만 수정. `group_members`: 본인 행 delete(그룹 나가기) 가능
 - 예외: `/invite/[code]`, `/group-invite/[code]` 랜딩은 비참여자도 이름 조회 필요 → invite_code 기반 조회용 RPC 함수(`security definer`)로 처리
 - 탈퇴: `auth.users` 삭제 → cascade로 전부 정리. 단 본인이 owner인 상자/그룹은 탈퇴 전 처리 정책 필요(가장 단순: 함께 삭제하고 탈퇴 화면에서 경고 문구 표시)
@@ -262,7 +299,18 @@ begin
   on conflict do nothing;
 end;
 $$ language plpgsql security definer;
+
+-- 이대로 결정하기 (owner 검증 + 활동 기록, 2026-07 추가)
+create or replace function close_box(p_box_id uuid) returns void ...;
+
+-- 다시 정리하기: closed_at 해제 + (선택) 새 마감. EXPIRED 상자는 새 마감 필수 (2026-07 추가)
+create or replace function reopen_box(p_box_id uuid, p_deadline timestamptz) returns void ...;
+
+-- 재투표 시작: current_round += 1 + 새 마감 (owner 검증, 2026-07 추가)
+create or replace function start_rematch(p_box_id uuid, p_deadline timestamptz) returns void ...;
 ```
+
+(세 함수 전문은 `supabase/migrations/004_replan.sql`에 있다. 모두 `security definer` + owner 검증 + `box_activities` 기록 포함.)
 
 호출 방식: `supabase.rpc('함수명', { 파라미터 })` — 웹과 RN 앱에서 완전히 동일하다.
 
@@ -270,7 +318,7 @@ $$ language plpgsql security definer;
 
 ### 초대 플로우 (3가지 방식)
 1. **카카오톡 초대**: Kakao JS SDK `Share.sendDefault`로 초대 메시지 전송 (제목: 상자 이름, 버튼: 초대링크)
-2. **초대링크 복사**: `https://<도메인>/invite/<invite_code>` 클립보드 복사. 링크 클릭 시 OG 미리보기(상자 이름 + "투표하러 가기") 노출 → 로그인 → `box_participants` insert → 상자 상세로
+2. **초대링크 복사**: `https://<도메인>/invite/<invite_code>` 클립보드 복사. 링크 클릭 시 OG 미리보기(상자 이름 + "투표하러 가기") 노출 → **랜딩에서 로그인 전에 상자 미리보기**(제목·메모·선택지 이름·참여 인원 — S2 마찰 제로의 핵심, `get_box_preview_by_invite_code` RPC) → 카카오 로그인 → `box_participants` insert → 상자 상세로
 3. **그룹으로 초대**: 그룹 검색 바텀시트에서 그룹 선택 → 해당 그룹 멤버 전원을 `box_participants`에 insert
 
 ### 투표 플로우
@@ -278,28 +326,36 @@ $$ language plpgsql security definer;
 2. Supabase Realtime으로 같은 상자를 보는 참여자에게 카운트 실시간 반영. TanStack Query 낙관적 업데이트 병행
 3. 화면에 노출되는 카운트·최다득표 계산은 항상 **현재 라운드의 votes만** 집계
 
-### 끝장전(재투표) 플로우
-1. owner가 상자 상세에서 "끝장전 시작하기" 탭
-2. `boxes.current_round += 1`, `deadline_at`을 새로 입력받아 갱신 (마감일시 바텀시트 재사용)
-3. 이전 라운드 투표는 보존되지만 화면 집계에서 제외. 상태는 SHOWDOWN("결판 중")으로 표시
-4. 새 라운드에서 다시 투표 → 마감 또는 정리 완료로 종료
+### 재투표(단순) 플로우 — 구 "끝장전"의 축소판
 
-### 마감 플로우
-- 수동: owner가 "정리 완료하기" 탭 → `closed_at = now()`
-- 자동: `deadline_at` 경과 시 조회 시점에 EXPIRED로 계산. 배치 작업 없음
+복잡한 규칙(투표 자격 제한, 라운드 제한)은 의도적으로 버렸다. 재투표는 **시스템 제안**으로만 노출된다:
+
+1. EXPIRED 상자 상세에서 owner에게 상황별 제안 배너 표시:
+   - 공동 1등 → "공동 1등이 나왔어요! 결승전으로 정해볼까요?" + [재투표 시작] [이대로 두기]
+   - 무투표/승자 있음 → "다시 정리하기" 버튼만
+2. [재투표 시작] → 마감일시 바텀시트 → `start_rematch` RPC (`current_round += 1`, 새 deadline)
+3. 이전 라운드 투표는 보존되지만 화면 집계에서 제외. 상태는 SHOWDOWN("결판 중")
+4. 새 라운드에서 다시 투표 → 마감 또는 "이대로 결정하기"로 종료
+
+### 마감/재오픈 플로우
+- 수동: owner가 "이대로 결정하기" 탭 → `close_box` RPC (`closed_at = now()`) → 스탬프 피드백
+- 자동: `deadline_at` 경과 시 조회 시점에 EXPIRED로 계산. 배치 작업 없음. 마감 없는 상자는 자동 마감 없음
+- **다시 정리하기**: RESOLVED/EXPIRED 상자에서 owner가 재오픈 → confirm + (EXPIRED였다면 새 마감 필수 입력) → `reopen_box` RPC (`closed_at = null`)
 
 ### 읽음 처리 플로우
 - 상자 상세 진입 시 `box_participants.last_seen_at = now()` 갱신
 - 메인의 "지금 들썩이는 상자" = 내가 참여한 상자 중 `updated_at > last_seen_at`인 것. "모두 확인 처리" 버튼은 전부 `last_seen_at = now()`
+- 들썩 항목에는 최신 `box_activities`를 문구로 표시: "하영님이 선택지를 추가했어요" (내 활동은 제외 — 트리거가 기록해도 표시에서 actor_id = 나면 제외)
 
 ## 7. 화면별 명세
 
 ### 7-1. 메인 `/`
 - 헤더: "{닉네임}님의 결정창고" + 햄버거 메뉴
-- 창고 진입 카드: 정리된 창고 / 어질러진 창고 (각 상자 개수 뱃지)
-- 즐겨찾는 창고 진입 버튼
-- **지금 들썩이는 상자** 섹션: 친구들이 업데이트했는데 내가 아직 안 본 상자 목록 + "모두 확인 처리" 버튼
+- **지금 들썩이는 상자** 패널 (버터 틴트 배경): 항목마다 NEW 뱃지 + 제목 + 최신 활동 문구("하영님이 선택지를 추가했어요") + "모두 확인 처리" 버튼
+    - 빈 상태에도 패널 유지: "아직 들썩이는 상자가 없네요 / 친구들이 의견을 더하면 상자가 다시 들썩이기 시작할거에요!"
+- 창고 진입 카드 3종 (동일 레이아웃 + 각 카운트): 어질러진 / 정리된 / 즐겨찾는
 - 하단 고정: "새로운 상자 만들기" 버튼
+- 첫 사용자(상자 0개)면 캐릭터 빈 상태 + 안내
 
 ### 7-2. 상자 생성 `/box/new`
 - 상자 이름 input (필수, 빈 값 검증)
@@ -307,16 +363,18 @@ $$ language plpgsql security definer;
 - "마감 기한 설정" 체크박스: 체크 시 마감일시 표시, 탭하면 **마감일시 바텀시트**
     - 바텀시트: 날짜(YYYY-MM-DD), 시간(HH:MM) 선택, "현재 시간으로 변경" 체크, 확인 버튼
     - 과거 시간 선택 불가 검증
-    - 미체크 시 기본값: 생성시각 + 7일
+    - **미체크 시 마감 없는 상자로 생성** (`deadline_at = null`) — 혼자 고민 보드 용도. 부제: "마감 없이 두면 혼자 고민 정리용으로 좋아요"
 - "상자 만들기" 버튼 → 생성 후 상자 상세로 이동, 생성자는 owner로 box_participants에 자동 insert
 
 ### 7-3. 상자 상세 `/box/[id]`
-- 라벨 영역 (즐겨찾기 토글 포함), 상자 제목 + 수정하기(owner만)
-- 생성일 / 마감일 표시 + "변경하기"(owner만, 마감일시 바텀시트 재사용)
-- 참여 인원 수 + 참여 친구 아바타 목록 + "+친구초대" → `/box/[id]/invite`
-- 선택지 N개 목록: 카드마다 이름, 좋아요/싫어요 버튼+카운트, 탭하면 선택지 상세로
-- 하단 버튼 3개: "선택지 추가하기" / "끝장전 시작하기"(owner만) / "정리 완료하기"(owner만)
-- RESOLVED/EXPIRED 상자는 투표·추가·수정 비활성화 (읽기 전용)
+- 헤더: 뒤로가기(**내비 스택 유지** — 진입한 창고로 복귀), 제목, 즐겨찾기 토글
+- 정리상태 라벨 + 상자 제목 + 수정하기(owner만) + 메모
+- 생성일 / 마감일(없으면 "마감 없음") 표시 + "변경하기"(owner만, 바텀시트 재사용)
+- 참여 인원 수 + 아바타 목록 + "+친구초대" → `/box/[id]/invite`. **참여자가 나 혼자면 초대 유도를 강요하지 않는다** (혼자 모드)
+- 선택지 N개 목록: 카드마다 이름·요약 미리보기·작성자·좋아요/싫어요 버튼+카운트, 탭하면 선택지 상세로
+- 하단 버튼: "선택지 추가하기" / "이대로 결정하기"(owner만, 결과형 카피)
+- RESOLVED: 결정 결과 + 스탬프 + "다시 정리하기"(owner) / EXPIRED: 상황별 재투표 제안 배너(6장 참조) + "다시 정리하기"(owner)
+- RESOLVED/EXPIRED 상자는 투표·선택지 추가·수정·삭제 비활성 (서버 가드 병행). 댓글은 허용
 
 ### 7-4. 친구 초대 `/box/[id]/invite`
 - 상자 이름 표시
@@ -325,7 +383,7 @@ $$ language plpgsql security definer;
 - 현재 참여 친구 목록
 
 ### 7-5. 선택지 상세 `/box/[id]/option/[optionId]`
-- 선택지 이름 + 편집/삭제 (작성자 또는 owner만)
+- 선택지 이름 + 편집(작성자 또는 owner) / 삭제(작성자만). **RESOLVED/EXPIRED 상자에서는 편집·삭제 UI를 숨긴다** (서버 가드 병행)
 - 좋아요/싫어요 버튼 + 카운트 (현재 라운드 기준)
 - 요약: 불릿 리스트 (예: "항공권이 비싸", "나 너무 가고 싶어 제발")
 - 메모: 자유 텍스트
@@ -367,18 +425,17 @@ $$ language plpgsql security definer;
 - 결정창고: 어질러진 창고 / 정리된 창고 / 즐겨찾는 창고
 - 마이페이지: 그룹 관리 / 프로필 관리
 
-## 8. 권장 구현 순서 (한 번에 한 단계씩)
+## 8. 권장 구현 순서
 
-각 단계는 배포 가능한 상태로 끝낸다. 다음 단계를 미리 만들지 않는다.
+기능 구현 1~8단계(구 순서)는 2026-06까지 완료됨. **현재는 2026-07 리뉴얼 국면** — 아래 순서로 진행한다. 각 단계는 빌드 가능한 상태로 끝낸다.
 
-1. **셋업**: Next.js + Supabase 연결 + 전체 스키마 마이그레이션 + 카카오 로그인 + 프로필 자동 생성
-2. **상자 CRUD**: 생성(마감일시 바텀시트 포함) → 상세 → 어질러진 창고 목록
-3. **선택지 + 투표**: 선택지 CRUD(요약/링크 포함) → 투표 upsert → Realtime 반영
-4. **마감/정리**: 정리 완료 → 상태 파생 → 정리된 창고 + 최다득표 라벨
-5. **초대**: invite_code → 랜딩 + OG → 카카오톡 공유 SDK
-6. **그룹**: 그룹 CRUD → 그룹 초대 → 그룹으로 상자 초대 → 필터 바텀시트
-7. **부가 기능**: 즐겨찾기, NEW 라벨/들썩이는 상자(last_seen_at), 댓글, 끝장전
-8. **마감재**: 프로필/탈퇴, 검색/정렬 완성, PWA(Serwist), RLS 전수 점검
+1. **스키마 리뉴얼**: `004_replan.sql` — box_activities + 활동 트리거 + close/reopen/rematch RPC + deadline_at nullable + 정리된 상자 쓰기 가드 RLS + 초대 미리보기 RPC
+2. **도메인·데이터 레이어**: getBoxStatus(null 마감), 라벨 4종, activities API/훅, 이벤트 매트릭스
+3. **공통 리스킨 기반**: max-width 컨테이너, to-be 토큰(디자인 시스템 v1) 공통 컴포넌트, 테스트 로그인 숨김
+4. **화면 재구현**: 로그인 → 메인(들썩 활동·빈 상태) → 창고 3종(라벨 4종·NEW 확대) → 상자 상세(결정/재투표/재오픈) → 선택지 → 생성(무마감) → 초대 착지(미리보기)
+5. **마감재**: 드로어·그룹·프로필 리스킨, 전수 검증
+
+Later(이번 범위 아님): 사진 첨부, 친구 자동 등록, 선택지 정렬·무한스크롤, 그룹 라벨 파생, 다크모드, 검색/필터 완성
 
 ## 9. AI 작업 규칙
 
