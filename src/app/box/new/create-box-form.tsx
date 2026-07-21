@@ -25,73 +25,77 @@ export function CreateBoxForm() {
     e.preventDefault()
     if (!title.trim()) return
 
-    const deadlineDate = hasDeadline && deadline ? deadline : defaultDeadline()
+    // 마감을 켜지 않으면 마감 없는 상자 (혼자 고민 보드 용도)
     createBox.mutate({
       title: title.trim(),
       memo: memo.trim() || undefined,
-      deadline_at: deadlineDate.toISOString(),
+      deadline_at: hasDeadline && deadline ? deadline.toISOString() : null,
     })
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col flex-1 px-5 py-6 gap-5">
+    <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-5 px-5 py-6">
       <div>
-        <label className="block text-sm text-gray-500 mb-1.5">상자 이름 *</label>
+        <label className="mb-1.5 block text-[13px] font-semibold text-ink-soft">상자 이름 *</label>
         <input
           type="text"
           value={title}
           onChange={e => setTitle(e.target.value)}
           placeholder="예) 해외여행 어디로 갈까?"
           maxLength={50}
-          className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300"
+          className="w-full rounded-field border-[1.5px] border-line bg-paper px-4 py-3 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none focus:ring-[3px] focus:ring-butter-tint"
         />
       </div>
 
       <div>
-        <label className="block text-sm text-gray-500 mb-1.5">메모</label>
+        <label className="mb-1.5 block text-[13px] font-semibold text-ink-soft">메모</label>
         <textarea
           value={memo}
           onChange={e => setMemo(e.target.value)}
           placeholder="자유롭게 메모해보세요"
           maxLength={200}
           rows={3}
-          className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-300"
+          className="w-full resize-none rounded-field border-[1.5px] border-line bg-paper px-4 py-3 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none focus:ring-[3px] focus:ring-butter-tint"
         />
       </div>
 
       <div>
-        <label className="flex items-center gap-2 cursor-pointer mb-3">
+        <label className="mb-2 flex cursor-pointer items-center gap-2">
           <input
             type="checkbox"
             checked={hasDeadline}
             onChange={e => handleDeadlineCheck(e.target.checked)}
-            className="rounded"
+            className="h-[17px] w-[17px] rounded accent-ink"
           />
-          <span className="text-sm text-gray-700">마감 기한 설정</span>
+          <span className="text-sm font-semibold text-ink">마감 기한 설정</span>
         </label>
 
-        {hasDeadline && deadline && (
+        {hasDeadline && deadline ? (
           <button
             type="button"
             onClick={() => setSheetOpen(true)}
-            className="w-full text-left border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700"
+            className="w-full rounded-field border-[1.5px] border-line bg-paper px-4 py-3 text-left text-sm text-ink"
           >
             {formatKoreanDateTime(deadline.toISOString())}까지
           </button>
+        ) : (
+          <p className="text-[12px] text-ink-faint">
+            마감 없이 두면 혼자 고민을 정리하기 좋아요. 언제든 결정할 수 있어요.
+          </p>
         )}
       </div>
 
       {createBox.isError && (
-        <p className="text-sm text-red-500">상자 생성에 실패했어요. 다시 시도해주세요.</p>
+        <p className="text-sm text-tomato">상자 생성에 실패했어요. 다시 시도해주세요.</p>
       )}
 
       <div className="mt-auto">
         <button
           type="submit"
           disabled={!title.trim() || createBox.isPending}
-          className="w-full bg-gray-900 text-white py-4 rounded-xl text-sm font-semibold disabled:opacity-40 active:opacity-80"
+          className="w-full rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80 disabled:opacity-40"
         >
-          {createBox.isPending ? '생성 중...' : '상자 만들기'}
+          {createBox.isPending ? '만드는 중...' : '상자 만들기'}
         </button>
       </div>
 

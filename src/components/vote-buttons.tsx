@@ -24,27 +24,27 @@ export function VoteButtons({ optionId, boxId, round, counts, disabled }: VoteBu
       <button
         onClick={() => handleVote('like')}
         disabled={disabled || vote.isPending}
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+        className={`flex items-center gap-1.5 rounded-full border-[1.5px] px-3.5 py-1.5 text-[13.5px] font-bold transition-colors disabled:opacity-45 ${
           counts.myVote === 'like'
-            ? 'bg-blue-100 text-blue-600'
-            : 'bg-gray-100 text-gray-500 active:bg-gray-200'
+            ? 'border-butter-dark bg-butter-tint text-ink'
+            : 'border-line bg-paper text-ink active:bg-cream'
         }`}
       >
         <span>👍</span>
-        <span>{counts.like}</span>
+        <span className="tabular-nums">{counts.like}</span>
       </button>
 
       <button
         onClick={() => handleVote('dislike')}
         disabled={disabled || vote.isPending}
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+        className={`flex items-center gap-1.5 rounded-full border-[1.5px] px-3.5 py-1.5 text-[13.5px] font-bold transition-colors disabled:opacity-45 ${
           counts.myVote === 'dislike'
-            ? 'bg-red-100 text-red-500'
-            : 'bg-gray-100 text-gray-500 active:bg-gray-200'
+            ? 'border-tomato bg-tomato-tint text-[#B4482F]'
+            : 'border-line bg-paper text-ink active:bg-cream'
         }`}
       >
         <span>👎</span>
-        <span>{counts.dislike}</span>
+        <span className="tabular-nums">{counts.dislike}</span>
       </button>
     </div>
   )

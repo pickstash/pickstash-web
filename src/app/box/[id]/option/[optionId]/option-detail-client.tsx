@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import { VoteButtons } from '@/components/vote-buttons'
+import { PageHeader } from '@/components/page-header'
 import { useBoxVotes } from '@/hooks/use-votes'
 import { useRealtimeVotes } from '@/hooks/use-realtime-votes'
 import { useDeleteOption } from '@/hooks/use-options'
@@ -17,6 +18,7 @@ interface OptionDetailClientProps {
   isOwner: boolean
   isAuthor: boolean
   canVote: boolean
+  isDone: boolean
   currentUserId: string
 }
 
@@ -27,6 +29,7 @@ export function OptionDetailClient({
   isOwner,
   isAuthor,
   canVote,
+  isDone,
   currentUserId,
 }: OptionDetailClientProps) {
   const { data: votes = {} } = useBoxVotes(boxId, round)
@@ -42,9 +45,13 @@ export function OptionDetailClient({
 
   const counts = votes[option.id] ?? { like: 0, dislike: 0, myVote: null }
   const summary = Array.isArray(option.summary)
-    ? (option.summary as { text: string; order: number }[]).sort((a, b) => a.order - b.order)
+    ? [...(option.summary as { text: string; order: number }[])].sort((a, b) => a.order - b.order)
     : []
   const links = Array.isArray(option.links) ? (option.links as string[]) : []
+
+  // 정리된 상자에서는 편집·삭제 불가 (spec 3장 · 004 RLS 병행)
+  const canEdit = !isDone && (isOwner || isAuthor)
+  const canDelete = !isDone && isAuthor
 
   function handleSubmitComment(e: React.FormEvent) {
     e.preventDefault()
@@ -55,37 +62,38 @@ export function OptionDetailClient({
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 flex flex-col">
-      <header className="bg-white px-5 pt-12 pb-4 border-b border-gray-100 flex items-center gap-3">
-        <Link href={`/box/${boxId}`} className="text-gray-400">
-          <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
-        </Link>
-        <h1 className="flex-1 text-base font-semibold text-gray-900 truncate">{option.name}</h1>
-        {(isOwner || isAuthor) && (
-          <Link href={`/box/${boxId}/option/${option.id}/edit`} className="text-xs text-blue-500 shrink-0">
-            수정
-          </Link>
-        )}
-      </header>
+    <main className="flex min-h-dvh flex-col">
+      <PageHeader
+        title={option.name}
+        fallbackHref={`/box/${boxId}`}
+        right={
+          canEdit ? (
+            <Link
+              href={`/box/${boxId}/option/${option.id}/edit`}
+              className="shrink-0 text-[13px] font-semibold text-ink-soft"
+            >
+              수정
+            </Link>
+          ) : undefined
+        }
+      />
 
-      <div className="flex-1 px-5 py-5 space-y-4">
+      <div className="flex-1 space-y-3 px-5 pb-5 pt-1">
         {/* 투표 */}
-        <div className="bg-white rounded-2xl p-5 space-y-3">
-          <h2 className="text-sm font-semibold text-gray-900">투표</h2>
+        <div className="space-y-3 rounded-card border border-[#ECEADC] bg-paper p-5">
+          <h2 className="text-[13.5px] font-extrabold text-ink">투표</h2>
           <VoteButtons optionId={option.id} boxId={boxId} round={round} counts={counts} disabled={!canVote} />
-          {!canVote && <p className="text-xs text-gray-400">마감된 상자에서는 투표할 수 없어요.</p>}
+          {!canVote && <p className="text-xs text-ink-faint">정리된 상자에서는 투표할 수 없어요.</p>}
         </div>
 
-        {/* 요약 항목 */}
+        {/* 요약 */}
         {summary.length > 0 && (
-          <div className="bg-white rounded-2xl p-5 space-y-2">
-            <h2 className="text-sm font-semibold text-gray-900">요약</h2>
+          <div className="space-y-2 rounded-card border border-[#ECEADC] bg-paper p-5">
+            <h2 className="text-[13.5px] font-extrabold text-ink">요약</h2>
             <ul className="space-y-1.5">
               {summary.map((item, i) => (
-                <li key={i} className="flex gap-2 text-sm text-gray-700">
-                  <span className="text-gray-300 shrink-0">•</span>
+                <li key={i} className="flex gap-2 text-[13.5px] text-ink">
+                  <span className="shrink-0 text-[#DBD8C6]">—</span>
                   {item.text}
                 </li>
               ))}
@@ -95,20 +103,20 @@ export function OptionDetailClient({
 
         {/* 메모 */}
         {option.memo && (
-          <div className="bg-white rounded-2xl p-5 space-y-2">
-            <h2 className="text-sm font-semibold text-gray-900">메모</h2>
-            <p className="text-sm text-gray-700 whitespace-pre-wrap">{option.memo}</p>
+          <div className="space-y-2 rounded-card border border-[#ECEADC] bg-paper p-5">
+            <h2 className="text-[13.5px] font-extrabold text-ink">메모</h2>
+            <p className="whitespace-pre-wrap text-[13.5px] text-ink">{option.memo}</p>
           </div>
         )}
 
         {/* 링크 */}
         {links.length > 0 && (
-          <div className="bg-white rounded-2xl p-5 space-y-2">
-            <h2 className="text-sm font-semibold text-gray-900">링크</h2>
+          <div className="space-y-2 rounded-card border border-[#ECEADC] bg-paper p-5">
+            <h2 className="text-[13.5px] font-extrabold text-ink">링크</h2>
             <ul className="space-y-2">
               {links.map((link, i) => (
                 <li key={i}>
-                  <a href={link} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-500 break-all underline">
+                  <a href={link} target="_blank" rel="noopener noreferrer" className="break-all text-[13px] text-ink underline decoration-butter-dark underline-offset-2">
                     {link}
                   </a>
                 </li>
@@ -118,38 +126,41 @@ export function OptionDetailClient({
         )}
 
         {/* 댓글 */}
-        <div className="bg-white rounded-2xl p-5 space-y-4">
-          <h2 className="text-sm font-semibold text-gray-900">댓글 {comments.length > 0 ? comments.length : ''}</h2>
+        <div className="space-y-4 rounded-card border border-[#ECEADC] bg-paper p-5">
+          <h2 className="text-[13.5px] font-extrabold text-ink">
+            댓글 {comments.length > 0 ? comments.length : ''}
+          </h2>
 
           {comments.length === 0 && (
-            <p className="text-sm text-gray-400 text-center py-2">아직 댓글이 없어요.</p>
+            <p className="py-2 text-center text-[13px] text-ink-faint">아직 댓글이 없어요.</p>
           )}
 
           <div className="space-y-4">
             {comments.map(comment => (
               <div key={comment.id} className="flex gap-3">
-                <div className="w-7 h-7 rounded-full bg-gray-200 overflow-hidden shrink-0">
+                <div className="h-7 w-7 shrink-0 overflow-hidden rounded-full bg-butter-tint">
                   {comment.profiles?.avatar_url ? (
-                    <img src={comment.profiles.avatar_url} alt={comment.profiles.nickname} className="w-full h-full object-cover" />
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={comment.profiles.avatar_url} alt={comment.profiles.nickname} className="h-full w-full object-cover" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-xs text-gray-500">
+                    <div className="flex h-full w-full items-center justify-center text-[11px] font-bold text-ink">
                       {comment.profiles?.nickname?.[0] ?? '?'}
                     </div>
                   )}
                 </div>
-                <div className="flex-1 min-w-0">
+                <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-medium text-gray-700">{comment.profiles?.nickname}</span>
+                    <span className="text-xs font-bold text-ink">{comment.profiles?.nickname}</span>
                     {comment.user_id === currentUserId && (
                       <button
                         onClick={() => deleteComment.mutate(comment.id)}
-                        className="text-xs text-gray-300 shrink-0"
+                        className="shrink-0 text-[11px] text-ink-faint"
                       >
                         삭제
                       </button>
                     )}
                   </div>
-                  <p className="text-sm text-gray-700 mt-0.5 break-words">{comment.body}</p>
+                  <p className="mt-0.5 break-words text-[13.5px] text-ink">{comment.body}</p>
                 </div>
               </div>
             ))}
@@ -162,12 +173,12 @@ export function OptionDetailClient({
               onChange={e => setCommentBody(e.target.value)}
               placeholder="댓글을 입력하세요"
               maxLength={200}
-              className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gray-400"
+              className="flex-1 rounded-field border-[1.5px] border-line bg-paper px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none"
             />
             <button
               type="submit"
               disabled={!commentBody.trim() || createComment.isPending}
-              className="shrink-0 bg-gray-900 text-white px-4 py-2.5 rounded-xl text-sm font-medium disabled:opacity-50"
+              className="shrink-0 rounded-field bg-ink px-4 py-2.5 text-sm font-bold text-cream disabled:opacity-50"
             >
               등록
             </button>
@@ -175,24 +186,30 @@ export function OptionDetailClient({
         </div>
       </div>
 
-      {/* 삭제 (작성자만) */}
-      {isAuthor && (
+      {/* 삭제 (작성자만, 진행 중 상자만) */}
+      {canDelete && (
         <div className="px-5 pb-10">
           {!confirmDelete ? (
-            <button onClick={() => setConfirmDelete(true)} className="w-full border border-red-200 text-red-400 py-3.5 rounded-xl text-sm font-medium">
+            <button
+              onClick={() => setConfirmDelete(true)}
+              className="w-full rounded-field border border-tomato/40 py-3.5 text-sm font-semibold text-tomato active:bg-tomato-tint"
+            >
               선택지 삭제
             </button>
           ) : (
             <div className="space-y-2">
-              <p className="text-center text-sm text-gray-500">정말 삭제하시겠어요?</p>
+              <p className="text-center text-[13px] text-ink-soft">정말 삭제하시겠어요?</p>
               <div className="flex gap-2">
-                <button onClick={() => setConfirmDelete(false)} className="flex-1 border border-gray-200 text-gray-700 py-3.5 rounded-xl text-sm font-medium">
+                <button
+                  onClick={() => setConfirmDelete(false)}
+                  className="flex-1 rounded-field border border-line py-3.5 text-sm font-bold text-ink-soft"
+                >
                   취소
                 </button>
                 <button
                   onClick={() => deleteOption.mutate(option.id)}
                   disabled={deleteOption.isPending}
-                  className="flex-1 bg-red-500 text-white py-3.5 rounded-xl text-sm font-semibold disabled:opacity-50"
+                  className="flex-1 rounded-field bg-tomato py-3.5 text-sm font-bold text-white disabled:opacity-50"
                 >
                   삭제하기
                 </button>

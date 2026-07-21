@@ -20,62 +20,64 @@ export function OptionsSection({ boxId, round, initialOptions, canVote }: Option
 
   useRealtimeVotes(boxId, round)
 
-  if (options.length === 0) {
-    return (
-      <div className="bg-white rounded-2xl p-5">
-        <h3 className="text-sm font-semibold text-gray-900 mb-3">선택지</h3>
-        <p className="text-sm text-gray-400 text-center py-4">아직 선택지가 없어요.</p>
-      </div>
-    )
-  }
-
   return (
-    <div className="bg-white rounded-2xl p-5 space-y-3">
-      <h3 className="text-sm font-semibold text-gray-900">선택지</h3>
-      <div className="space-y-2">
-        {options.map(option => {
-          const counts = votes[option.id] ?? { like: 0, dislike: 0, myVote: null }
-          return (
-            <div key={option.id} className="border border-gray-100 rounded-xl p-4 space-y-3">
-              <div className="flex items-start justify-between gap-2">
-                <Link
-                  href={`/box/${boxId}/option/${option.id}`}
-                  className="flex-1 text-sm font-medium text-gray-900 active:opacity-70"
-                >
-                  {option.name}
-                </Link>
-                <Link
-                  href={`/box/${boxId}/option/${option.id}`}
-                  className="text-xs text-gray-400 shrink-0"
-                >
-                  자세히 보기
-                </Link>
-              </div>
+    <section className="space-y-2.5">
+      <div className="flex items-baseline justify-between px-0.5">
+        <h3 className="text-[13.5px] font-extrabold text-ink">선택지 {options.length}개</h3>
+      </div>
 
-              {Array.isArray(option.summary) && (option.summary as { text: string }[]).length > 0 && (
-                <ul className="space-y-0.5">
-                  {(option.summary as { text: string; order: number }[])
-                    .sort((a, b) => a.order - b.order)
-                    .map((item, i) => (
-                      <li key={i} className="text-xs text-gray-500 flex gap-1.5">
-                        <span className="text-gray-300">•</span>
+      {options.length === 0 ? (
+        <div className="rounded-card border border-dashed border-[#D9D6C2] bg-paper/60 px-6 py-10 text-center">
+          <p className="text-[13px] font-bold text-ink">아직 선택지가 없어요</p>
+          <p className="mt-1 text-[12px] text-ink-soft">떠오르는 후보를 먼저 담아보세요!</p>
+        </div>
+      ) : (
+        <div className="space-y-2.5">
+          {options.map(option => {
+            const counts = votes[option.id] ?? { like: 0, dislike: 0, myVote: null }
+            const summary = Array.isArray(option.summary)
+              ? ([...(option.summary as { text: string; order: number }[])].sort((a, b) => a.order - b.order))
+              : []
+            return (
+              <div key={option.id} className="space-y-2.5 rounded-[18px] border border-[#ECEADC] bg-paper p-4">
+                <div className="flex items-baseline justify-between gap-2">
+                  <Link
+                    href={`/box/${boxId}/option/${option.id}`}
+                    className="min-w-0 flex-1 truncate text-[14.5px] font-extrabold text-ink active:opacity-70"
+                  >
+                    {option.name}
+                  </Link>
+                  <Link
+                    href={`/box/${boxId}/option/${option.id}`}
+                    className="shrink-0 text-[10.5px] font-semibold text-ink-faint"
+                  >
+                    자세히 ›
+                  </Link>
+                </div>
+
+                {summary.length > 0 && (
+                  <ul className="space-y-0.5">
+                    {summary.map((item, i) => (
+                      <li key={i} className="flex gap-1.5 text-xs text-ink-soft">
+                        <span className="text-[#DBD8C6]">—</span>
                         {item.text}
                       </li>
                     ))}
-                </ul>
-              )}
+                  </ul>
+                )}
 
-              <VoteButtons
-                optionId={option.id}
-                boxId={boxId}
-                round={round}
-                counts={counts}
-                disabled={!canVote}
-              />
-            </div>
-          )
-        })}
-      </div>
-    </div>
+                <VoteButtons
+                  optionId={option.id}
+                  boxId={boxId}
+                  round={round}
+                  counts={counts}
+                  disabled={!canVote}
+                />
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </section>
   )
 }

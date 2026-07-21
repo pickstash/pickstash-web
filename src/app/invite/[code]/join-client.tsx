@@ -31,9 +31,9 @@ export function JoinClient({ code, isLoggedIn }: JoinClientProps) {
     <button
       onClick={handleJoin}
       disabled={loading}
-      className="w-full bg-gray-900 text-white py-4 rounded-xl text-sm font-semibold disabled:opacity-50"
+      className="w-full rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80 disabled:opacity-50"
     >
-      {loading ? '참여 중...' : isLoggedIn ? '상자 참여하기' : '로그인하고 참여하기'}
+      {loading ? '참여 중...' : isLoggedIn ? '상자 참여하기' : '카카오로 참여하기'}
     </button>
   )
 }

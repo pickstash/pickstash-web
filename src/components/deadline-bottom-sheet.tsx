@@ -54,50 +54,51 @@ export function DeadlineBottomSheet({ open, defaultValue, onClose, onConfirm }: 
 
   return (
     <div className="fixed inset-0 z-50">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl px-5 pt-5 pb-10">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-base font-semibold text-gray-900">마감일시 설정</h3>
-          <button onClick={onClose} className="text-sm text-gray-400">닫기</button>
+      <div className="absolute inset-0 bg-ink/45" onClick={onClose} />
+      <div className="absolute inset-x-0 bottom-0 mx-auto max-w-[430px] rounded-t-sheet bg-paper px-5 pb-10 pt-3">
+        <div className="mx-auto mb-4 h-1 w-9 rounded-full bg-line" />
+        <div className="mb-5 flex items-center justify-between">
+          <h3 className="text-base font-extrabold tracking-tight text-ink">마감일시 설정</h3>
+          <button onClick={onClose} className="text-[13px] text-ink-faint">닫기</button>
         </div>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm text-gray-500 mb-1">날짜</label>
+            <label className="mb-1.5 block text-[13px] font-semibold text-ink-soft">날짜</label>
             <input
               type="date"
               value={date}
               min={toDateInput(new Date())}
               onChange={e => { setDate(e.target.value); setError('') }}
-              className="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300"
+              className="w-full rounded-field border-[1.5px] border-line bg-paper px-3.5 py-3 text-sm text-ink focus:border-butter-dark focus:outline-none"
             />
           </div>
 
           <div>
-            <label className="block text-sm text-gray-500 mb-1">시간</label>
+            <label className="mb-1.5 block text-[13px] font-semibold text-ink-soft">시간</label>
             <input
               type="time"
               value={time}
               onChange={e => { setTime(e.target.value); setError('') }}
-              className="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300"
+              className="w-full rounded-field border-[1.5px] border-line bg-paper px-3.5 py-3 text-sm text-ink focus:border-butter-dark focus:outline-none"
             />
           </div>
 
-          <label className="flex items-center gap-2 cursor-pointer">
+          <label className="flex cursor-pointer items-center gap-2">
             <input
               type="checkbox"
               onChange={e => handleSetNow(e.target.checked)}
-              className="rounded"
+              className="h-[17px] w-[17px] rounded accent-ink"
             />
-            <span className="text-sm text-gray-600">현재 시간으로 변경</span>
+            <span className="text-sm text-ink-soft">현재 시간으로 변경</span>
           </label>
 
-          {error && <p className="text-sm text-red-500">{error}</p>}
+          {error && <p className="text-[12.5px] font-semibold text-tomato">{error}</p>}
         </div>
 
         <button
           onClick={handleConfirm}
-          className="mt-6 w-full bg-gray-900 text-white py-4 rounded-xl text-sm font-semibold active:opacity-80"
+          className="mt-6 w-full rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80"
         >
           확인
         </button>
