@@ -18,8 +18,8 @@ export default function EditOptionPage({
 
   if (isLoading) {
     return (
-      <main className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-sm text-gray-400">불러오는 중...</p>
+      <main className="flex min-h-dvh items-center justify-center">
+        <p className="text-sm text-ink-faint">불러오는 중...</p>
       </main>
     )
   }
@@ -35,17 +35,17 @@ export default function EditOptionPage({
   const links = Array.isArray(option.links) ? (option.links as string[]) : []
 
   return (
-    <main className="min-h-screen bg-gray-50 flex flex-col">
-      <header className="bg-white px-5 pt-12 pb-4 border-b border-gray-100 flex items-center gap-3">
-        <Link href={`/box/${boxId}/option/${optionId}`} className="text-gray-400">
-          <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+    <main className="flex min-h-dvh flex-col">
+      <header className="flex items-center gap-3 px-4 pt-[calc(env(safe-area-inset-top)+1rem)] pb-3">
+        <Link href={`/box/${boxId}/option/${optionId}`} aria-label="뒤로가기" className="-ml-2 flex h-9 w-9 items-center justify-center rounded-full text-ink active:bg-butter-tint">
+          <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
         </Link>
-        <h1 className="text-base font-semibold text-gray-900">선택지 수정</h1>
+        <h1 className="text-[17px] font-extrabold tracking-tight text-ink">선택지 수정</h1>
       </header>
 
-      <div className="flex-1 px-5 py-6">
+      <div className="flex-1 px-5 pb-10 pt-1">
         <OptionForm
           initialName={option.name}
           initialSummary={summary}

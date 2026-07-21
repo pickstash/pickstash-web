@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { deleteAccount } from '@/lib/api/profile'
+import { PageHeader } from '@/components/page-header'
 
 const REASONS = [
   '앱을 잘 사용하지 않아요',
@@ -50,21 +51,14 @@ export default function WithdrawPage() {
   const canSubmit = selected.length > 0 || (showDetail && detail.trim().length > 0)
 
   return (
-    <main className="min-h-screen bg-gray-50 flex flex-col">
-      <header className="bg-white px-5 pt-12 pb-4 border-b border-gray-100 flex items-center gap-3">
-        <Link href="/profile" className="text-gray-400">
-          <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
-        </Link>
-        <h1 className="text-base font-semibold text-gray-900">탈퇴하기</h1>
-      </header>
+    <main className="flex min-h-dvh flex-col">
+      <PageHeader title="탈퇴하기" fallbackHref="/profile" />
 
-      <div className="flex-1 px-5 py-6 space-y-5">
+      <div className="flex-1 space-y-4 px-5 pb-6 pt-1">
         {/* 경고 */}
-        <div className="bg-red-50 rounded-2xl p-5 space-y-2">
-          <p className="text-sm font-semibold text-red-600">결정창고를 정말 탈퇴하시겠어요?</p>
-          <ul className="space-y-1.5 text-sm text-red-500">
+        <div className="space-y-2 rounded-card bg-tomato-tint p-5">
+          <p className="text-sm font-extrabold text-[#B4482F]">결정창고를 정말 탈퇴하시겠어요?</p>
+          <ul className="space-y-1.5 text-[13px] text-[#B4482F]">
             <li>• 내가 만들거나 참여한 모든 상자와 데이터가 삭제돼요.</li>
             <li>• 내가 방장인 그룹도 함께 삭제돼요.</li>
             <li>• 삭제된 데이터는 복구할 수 없어요.</li>
@@ -72,26 +66,26 @@ export default function WithdrawPage() {
         </div>
 
         {/* 탈퇴 사유 */}
-        <div className="bg-white rounded-2xl p-5 space-y-3">
-          <h2 className="text-sm font-semibold text-gray-900">탈퇴하는 이유를 알려주세요</h2>
-          <p className="text-xs text-gray-400">서비스 개선에 활용할게요. (복수 선택 가능)</p>
+        <div className="space-y-3 rounded-card border border-[#ECEADC] bg-paper p-5">
+          <h2 className="text-[13.5px] font-extrabold text-ink">탈퇴하는 이유를 알려주세요</h2>
+          <p className="text-xs text-ink-faint">서비스 개선에 활용할게요. (복수 선택 가능)</p>
 
           <div className="space-y-2 pt-1">
             {REASONS.map(reason => (
               <button
                 key={reason}
                 onClick={() => toggleReason(reason)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-sm text-left transition-colors ${
+                className={`flex w-full items-center gap-3 rounded-field border-[1.5px] px-4 py-3 text-left text-sm transition-colors ${
                   selected.includes(reason)
-                    ? 'border-gray-900 bg-gray-900 text-white'
-                    : 'border-gray-200 text-gray-700 active:bg-gray-50'
+                    ? 'border-ink bg-ink text-cream'
+                    : 'border-line text-ink active:bg-cream'
                 }`}
               >
-                <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                  selected.includes(reason) ? 'border-white' : 'border-gray-300'
+                <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${
+                  selected.includes(reason) ? 'border-cream' : 'border-[#C9C7B6]'
                 }`}>
                   {selected.includes(reason) && (
-                    <span className="w-2 h-2 rounded-full bg-white block" />
+                    <span className="block h-2 w-2 rounded-full bg-cream" />
                   )}
                 </span>
                 {reason}
@@ -100,16 +94,16 @@ export default function WithdrawPage() {
 
             <button
               onClick={toggleDetail}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-sm text-left transition-colors ${
+              className={`flex w-full items-center gap-3 rounded-field border-[1.5px] px-4 py-3 text-left text-sm transition-colors ${
                 showDetail
-                  ? 'border-gray-900 bg-gray-900 text-white'
-                  : 'border-gray-200 text-gray-700 active:bg-gray-50'
+                  ? 'border-ink bg-ink text-cream'
+                  : 'border-line text-ink active:bg-cream'
               }`}
             >
-              <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                showDetail ? 'border-white' : 'border-gray-300'
+              <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${
+                showDetail ? 'border-cream' : 'border-[#C9C7B6]'
               }`}>
-                {showDetail && <span className="w-2 h-2 rounded-full bg-white block" />}
+                {showDetail && <span className="block h-2 w-2 rounded-full bg-cream" />}
               </span>
               직접 입력
             </button>
@@ -121,25 +115,25 @@ export default function WithdrawPage() {
                 placeholder="탈퇴 사유를 입력해 주세요"
                 maxLength={200}
                 rows={3}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 resize-none focus:outline-none focus:border-gray-400"
+                className="w-full resize-none rounded-field border-[1.5px] border-line bg-paper px-4 py-3 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none"
               />
             )}
           </div>
         </div>
 
-        {error && <p className="text-sm text-red-500 text-center">{error}</p>}
+        {error && <p className="text-center text-sm text-tomato">{error}</p>}
       </div>
 
-      <div className="px-5 pb-10 space-y-3">
+      <div className="space-y-3 px-5 pb-10">
         <button
           onClick={handleWithdraw}
           disabled={!canSubmit || loading}
-          className="w-full bg-red-500 text-white py-4 rounded-xl text-sm font-semibold disabled:opacity-40"
+          className="w-full rounded-field bg-tomato py-4 text-sm font-bold text-white disabled:opacity-40"
         >
           {loading ? '처리 중...' : '정말 탈퇴하기'}
         </button>
-        <Link href="/profile">
-          <button className="w-full border border-gray-200 text-gray-700 py-4 rounded-xl text-sm font-medium">
+        <Link href="/profile" className="block">
+          <button className="w-full rounded-field border border-line py-4 text-sm font-bold text-ink-soft">
             취소
           </button>
         </Link>

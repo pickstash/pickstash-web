@@ -43,14 +43,14 @@ export default async function GroupInviteLandingPage({ params }: Props) {
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-5">
-      <div className="w-full max-w-sm space-y-6">
-        <div className="text-center space-y-2">
-          <p className="text-sm text-gray-400">그룹 초대</p>
+    <main className="flex min-h-dvh flex-col items-center justify-center px-6">
+      <div className="w-full max-w-[340px] space-y-6">
+        <div className="space-y-2 text-center">
+          <p className="text-[12px] font-semibold text-ink-faint">그룹 초대</p>
           {group ? (
-            <h1 className="text-2xl font-bold text-gray-900">{group.name}</h1>
+            <h1 className="text-[22px] font-extrabold tracking-tight text-ink">{group.name}</h1>
           ) : (
-            <p className="text-base text-gray-400">유효하지 않은 초대 링크예요.</p>
+            <p className="text-base text-ink-soft">유효하지 않은 초대 링크예요.</p>
           )}
         </div>
         {group && <JoinClient code={code} isLoggedIn={!!user} />}

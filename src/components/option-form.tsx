@@ -81,8 +81,8 @@ export function OptionForm({
     <form onSubmit={handleSubmit} className="space-y-5">
       {/* 이름 */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-          선택지 이름 <span className="text-red-400">*</span>
+        <label className="mb-1.5 block text-[13px] font-semibold text-ink-soft">
+          선택지 이름 <span className="text-tomato">*</span>
         </label>
         <input
           type="text"
@@ -90,30 +90,30 @@ export function OptionForm({
           onChange={e => setName(e.target.value)}
           maxLength={50}
           placeholder="선택지 이름을 입력하세요"
-          className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gray-400"
+          className="w-full rounded-field border-[1.5px] border-line bg-paper px-4 py-3 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none focus:ring-[3px] focus:ring-butter-tint"
           required
         />
       </div>
 
       {/* 요약 항목 */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">요약 항목</label>
+        <label className="mb-1.5 block text-[13px] font-semibold text-ink-soft">요약 항목</label>
         <div className="space-y-2">
           {summaryItems.map((item, i) => (
-            <div key={i} className="flex gap-2 items-center">
+            <div key={i} className="flex items-center gap-2">
               <input
                 type="text"
                 value={item}
                 onChange={e => updateSummaryItem(i, e.target.value)}
                 placeholder={`항목 ${i + 1}`}
                 maxLength={100}
-                className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-gray-400"
+                className="flex-1 rounded-field border-[1.5px] border-line bg-paper px-4 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none"
               />
               {summaryItems.length > 1 && (
                 <button
                   type="button"
                   onClick={() => removeSummaryItem(i)}
-                  className="text-gray-400 p-1 shrink-0"
+                  className="shrink-0 p-1 text-ink-faint"
                 >
                   <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -127,7 +127,7 @@ export function OptionForm({
           <button
             type="button"
             onClick={addSummaryItem}
-            className="mt-2 text-xs text-blue-500 font-medium"
+            className="mt-2 text-xs font-semibold text-ink-soft"
           >
             + 항목 추가
           </button>
@@ -136,35 +136,35 @@ export function OptionForm({
 
       {/* 메모 */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">메모</label>
+        <label className="mb-1.5 block text-[13px] font-semibold text-ink-soft">메모</label>
         <textarea
           value={memo}
           onChange={e => setMemo(e.target.value)}
           rows={3}
           maxLength={500}
           placeholder="선택지에 대한 메모를 입력하세요"
-          className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gray-400 resize-none"
+          className="w-full resize-none rounded-field border-[1.5px] border-line bg-paper px-4 py-3 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none"
         />
       </div>
 
       {/* 링크 */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">링크</label>
+        <label className="mb-1.5 block text-[13px] font-semibold text-ink-soft">링크</label>
         <div className="space-y-2">
           {links.map((link, i) => (
-            <div key={i} className="flex gap-2 items-center">
+            <div key={i} className="flex items-center gap-2">
               <input
                 type="url"
                 value={link}
                 onChange={e => updateLink(i, e.target.value)}
                 placeholder="https://"
-                className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-gray-400"
+                className="flex-1 rounded-field border-[1.5px] border-line bg-paper px-4 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none"
               />
               {links.length > 1 && (
                 <button
                   type="button"
                   onClick={() => removeLink(i)}
-                  className="text-gray-400 p-1 shrink-0"
+                  className="shrink-0 p-1 text-ink-faint"
                 >
                   <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -178,7 +178,7 @@ export function OptionForm({
           <button
             type="button"
             onClick={addLink}
-            className="mt-2 text-xs text-blue-500 font-medium"
+            className="mt-2 text-xs font-semibold text-ink-soft"
           >
             + 링크 추가
           </button>
@@ -190,7 +190,7 @@ export function OptionForm({
         <button
           type="submit"
           disabled={isPending || !name.trim()}
-          className="w-full bg-gray-900 text-white py-4 rounded-xl text-sm font-semibold disabled:opacity-50"
+          className="w-full rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80 disabled:opacity-50"
         >
           {isPending ? '저장 중...' : submitLabel}
         </button>
@@ -198,7 +198,7 @@ export function OptionForm({
           <button
             type="button"
             onClick={onCancel}
-            className="w-full border border-gray-200 text-gray-700 py-3.5 rounded-xl text-sm font-medium"
+            className="w-full rounded-field border border-line py-3.5 text-sm font-bold text-ink-soft"
           >
             취소
           </button>
