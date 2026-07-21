@@ -30,23 +30,20 @@ export function PushNotificationBanner() {
   if (!show) return null
 
   return (
-    <div className="mx-5 mt-4 bg-gray-900 text-white rounded-2xl px-4 py-3.5 flex items-center gap-3">
-      <span className="text-xl shrink-0">🔔</span>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium">들썩이는 상자 알림 받기</p>
-        <p className="text-xs text-gray-400 mt-0.5">친구가 업데이트하면 바로 알려드려요</p>
+    <div className="mx-5 mt-4 flex items-center gap-3 rounded-card bg-ink px-4 py-3.5 text-cream">
+      <span className="shrink-0 text-xl">🔔</span>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-bold">들썩이는 상자 알림 받기</p>
+        <p className="mt-0.5 text-xs text-[#B4B2A2]">친구가 업데이트하면 바로 알려드려요</p>
       </div>
-      <div className="flex gap-2 shrink-0">
-        <button
-          onClick={handleDismiss}
-          className="text-xs text-gray-400 px-2 py-1"
-        >
+      <div className="flex shrink-0 items-center gap-2">
+        <button onClick={handleDismiss} className="px-2 py-1 text-xs text-[#8B897B]">
           나중에
         </button>
         <button
           onClick={handleAllow}
           disabled={loading}
-          className="text-xs bg-white text-gray-900 font-semibold px-3 py-1.5 rounded-lg disabled:opacity-50"
+          className="rounded-full bg-butter px-3.5 py-1.5 text-xs font-extrabold text-ink disabled:opacity-50"
         >
           받기
         </button>

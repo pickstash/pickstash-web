@@ -19,7 +19,7 @@ export function KakaoLoginButton() {
     <button
       onClick={handleLogin}
       disabled={loading}
-      className="w-full flex items-center justify-center gap-3 rounded-xl bg-[#FEE500] px-6 py-4 text-sm font-semibold text-[#191919] shadow-sm transition-opacity hover:opacity-90 active:opacity-80 disabled:opacity-60"
+      className="flex w-full items-center justify-center gap-3 rounded-field bg-kakao px-6 py-4 text-sm font-bold text-kakao-ink transition-opacity hover:opacity-90 active:opacity-80 disabled:opacity-60"
     >
       <KakaoIcon />
       {loading ? '로그인 중...' : '카카오 로그인'}

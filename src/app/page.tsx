@@ -1,32 +1,46 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { AppDrawer } from '@/components/app-drawer'
 import { ShakingBoxesSection } from '@/components/shaking-boxes-section'
 import { PushNotificationBanner } from '@/components/push-notification-banner'
 
+const WAREHOUSES = [
+  { href: '/messy', icon: '📦', sub: '아직 정리 못 한', name: '어질러진 창고' },
+  { href: '/done', icon: '✅', sub: '결정이 끝난', name: '정리된 창고' },
+  { href: '/favorites', icon: '⭐', sub: '다시 꺼내보고 싶은', name: '즐겨찾는 창고' },
+] as const
+
 export default async function HomePage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  const now = new Date().toISOString()
   const [
     { data: profile },
     { count: messyCount },
     { count: doneCount },
+    { count: favoriteCount },
   ] = await Promise.all([
     supabase.from('profiles').select('nickname').eq('id', user.id).single(),
     supabase.from('boxes').select('*', { count: 'exact', head: true })
       .is('closed_at', null)
-      .gte('deadline_at', new Date().toISOString()),
+      .or(`deadline_at.is.null,deadline_at.gte.${now}`),
     supabase.from('boxes').select('*', { count: 'exact', head: true })
-      .or(`closed_at.not.is.null,deadline_at.lt.${new Date().toISOString()}`),
+      .or(`closed_at.not.is.null,deadline_at.lt.${now}`),
+    supabase.from('favorites').select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id),
   ])
 
+  const counts = [messyCount ?? 0, doneCount ?? 0, favoriteCount ?? 0]
+  const isFirstVisit = (messyCount ?? 0) === 0 && (doneCount ?? 0) === 0
+
   return (
-    <main className="min-h-screen bg-gray-50 flex flex-col">
-      <header className="bg-white px-5 pt-12 pb-5 border-b border-gray-100 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">
+    <main className="flex min-h-dvh flex-col">
+      <header className="flex items-center justify-between px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-4">
+        <h1 className="text-xl font-extrabold tracking-tight text-ink">
           {profile?.nickname ?? ''}님의 결정창고
         </h1>
         <AppDrawer nickname={profile?.nickname ?? ''} />
@@ -35,38 +49,39 @@ export default async function HomePage() {
       <ShakingBoxesSection />
       <PushNotificationBanner />
 
-      <div className="flex-1 px-5 py-6 space-y-3">
-        <Link href="/messy">
-          <div className="bg-white rounded-2xl p-5 border border-gray-100 flex items-center justify-between active:bg-gray-50">
-            <div>
-              <p className="text-xs text-gray-400 mb-1">아직 정리 못 한</p>
-              <p className="text-base font-semibold text-gray-900">어질러진 창고</p>
+      <div className="flex-1 space-y-2.5 px-5 py-5">
+        {WAREHOUSES.map((w, i) => (
+          <Link key={w.href} href={w.href} className="block">
+            <div className="flex items-center gap-3 rounded-card border border-[#ECEADC] bg-paper px-4 py-4 shadow-[0_2px_10px_rgba(42,42,39,0.05)] active:bg-butter-tint/40">
+              <span className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-cream text-[19px]">
+                {w.icon}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[10.5px] font-semibold text-ink-faint">{w.sub}</span>
+                <span className="block text-[14.5px] font-extrabold tracking-tight text-ink">{w.name}</span>
+              </span>
+              <span className="text-[21px] font-extrabold tabular-nums text-ink">{counts[i]}</span>
             </div>
-            <span className="text-2xl font-bold text-gray-900">{messyCount ?? 0}</span>
-          </div>
-        </Link>
+          </Link>
+        ))}
 
-        <Link href="/done">
-          <div className="bg-white rounded-2xl p-5 border border-gray-100 flex items-center justify-between active:bg-gray-50">
+        {isFirstVisit && (
+          <div className="flex flex-col items-center gap-3 rounded-card border border-dashed border-[#D9D6C2] bg-paper/60 px-6 py-8 text-center">
+            <Image src="/icons/icon-192.png" alt="" width={64} height={64} className="rounded-2xl" />
             <div>
-              <p className="text-xs text-gray-400 mb-1">결정이 끝난</p>
-              <p className="text-base font-semibold text-gray-900">정리된 창고</p>
+              <p className="text-[14px] font-extrabold text-ink">첫 상자를 만들어보세요</p>
+              <p className="mt-1 text-[12px] leading-relaxed text-ink-soft">
+                친구들과 정할 것도, 혼자 고민 중인 것도 좋아요.<br />
+                상자에 담으면 결정이 남아요.
+              </p>
             </div>
-            <span className="text-2xl font-bold text-gray-900">{doneCount ?? 0}</span>
           </div>
-        </Link>
-
-        <Link href="/favorites">
-          <div className="bg-white rounded-2xl p-5 border border-gray-100 flex items-center gap-3 active:bg-gray-50">
-            <span className="text-xl">⭐</span>
-            <p className="text-base font-semibold text-gray-900">즐겨찾는 창고</p>
-          </div>
-        </Link>
+        )}
       </div>
 
       <div className="px-5 pb-10">
-        <Link href="/box/new">
-          <button className="w-full bg-gray-900 text-white py-4 rounded-xl text-sm font-semibold active:opacity-80">
+        <Link href="/box/new" className="block">
+          <button className="w-full rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80">
             새로운 상자 만들기
           </button>
         </Link>

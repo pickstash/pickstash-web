@@ -18,6 +18,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
+  viewportFit: 'cover', // env(safe-area-inset-*)이 노치 값을 반환하도록
   themeColor: '#f7f6ea',
 }
 
@@ -39,7 +40,10 @@ export default function RootLayout({
         `}} />
       </head>
       <body className="min-h-full bg-background text-foreground antialiased">
-        <Providers>{children}</Providers>
+        <Providers>
+          {/* 모바일 우선 — 큰 화면에서는 430px 중앙 정렬 (spec: 390px 기준 설계) */}
+          <div className="mx-auto w-full max-w-[430px] min-h-dvh">{children}</div>
+        </Providers>
       </body>
     </html>
   )
