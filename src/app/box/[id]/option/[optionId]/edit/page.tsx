@@ -33,6 +33,7 @@ export default function EditOptionPage({
     ? (option.summary as { text: string; order: number }[])
     : []
   const links = Array.isArray(option.links) ? (option.links as string[]) : []
+  const images = Array.isArray(option.images) ? (option.images as string[]) : []
 
   return (
     <main className="flex min-h-dvh flex-col">
@@ -47,15 +48,17 @@ export default function EditOptionPage({
 
       <div className="flex-1 px-5 pb-10 pt-1">
         <OptionForm
+          boxId={boxId}
           initialName={option.name}
           initialSummary={summary}
           initialMemo={option.memo ?? ''}
           initialLinks={links}
+          initialImages={images}
           isPending={updateOption.isPending}
           submitLabel="수정하기"
           onSubmit={data => {
             updateOption.mutate(
-              { name: data.name, summary: data.summary, memo: data.memo, links: data.links },
+              { name: data.name, summary: data.summary, memo: data.memo, links: data.links, images: data.images },
               { onSuccess: () => router.push(`/box/${boxId}/option/${optionId}`) }
             )
           }}

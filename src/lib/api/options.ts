@@ -9,6 +9,7 @@ export interface CreateOptionInput {
   name: string
   summary?: SummaryItem[]
   memo?: string
+  images?: string[]
 }
 
 export interface UpdateOptionInput {
@@ -16,6 +17,26 @@ export interface UpdateOptionInput {
   summary?: SummaryItem[]
   memo?: string
   links?: string[]
+  images?: string[]
+}
+
+/** 선택지 이미지 업로드 → 공개 URL 반환 (option-images 버킷) */
+export async function uploadOptionImage(boxId: string, file: File): Promise<string> {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
+  const rand = Math.random().toString(36).slice(2, 10)
+  const path = `${boxId}/${user.id}/${Date.now()}-${rand}.${ext}`
+
+  const { error: uploadError } = await supabase.storage
+    .from('option-images')
+    .upload(path, file, { upsert: false, contentType: file.type })
+  if (uploadError) throw uploadError
+
+  const { data: { publicUrl } } = supabase.storage.from('option-images').getPublicUrl(path)
+  return publicUrl
 }
 
 export async function getOptions(boxId: string): Promise<Option[]> {
@@ -51,6 +72,8 @@ export async function createOption(input: CreateOptionInput): Promise<Option> {
       box_id: input.box_id,
       name: input.name,
       summary: (input.summary ?? []) as unknown as Database['public']['Tables']['options']['Insert']['summary'],
+      images: (input.images ?? []) as unknown as Database['public']['Tables']['options']['Insert']['images'],
+      memo: input.memo ?? null,
       created_by: user.id,
     })
     .select()
@@ -83,6 +106,7 @@ export async function updateOption(id: string, input: UpdateOptionInput): Promis
       ...(input.summary !== undefined && { summary: input.summary as unknown as Database['public']['Tables']['options']['Update']['summary'] }),
       ...(input.memo !== undefined && { memo: input.memo }),
       ...(input.links !== undefined && { links: input.links as unknown as Database['public']['Tables']['options']['Update']['links'] }),
+      ...(input.images !== undefined && { images: input.images as unknown as Database['public']['Tables']['options']['Update']['images'] }),
     })
     .eq('id', id)
   if (error) throw error

@@ -22,6 +22,7 @@ export default function NewOptionPage({ params }: { params: Promise<{ id: string
 
       <div className="flex-1 px-5 pb-10 pt-1">
         <OptionForm
+          boxId={boxId}
           isPending={createOption.isPending}
           submitLabel="선택지 추가하기"
           onSubmit={data =>
@@ -30,6 +31,7 @@ export default function NewOptionPage({ params }: { params: Promise<{ id: string
               name: data.name,
               summary: data.summary,
               memo: data.memo || undefined,
+              images: data.images,
             })
           }
           onCancel={() => history.back()}

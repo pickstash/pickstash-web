@@ -1,29 +1,36 @@
 'use client'
 
-import { useState } from 'react'
-import type { SummaryItem } from '@/lib/api/options'
+import { useRef, useState } from 'react'
+import { uploadOptionImage, type SummaryItem } from '@/lib/api/options'
 
 interface OptionFormProps {
+  boxId: string
   initialName?: string
   initialSummary?: SummaryItem[]
   initialMemo?: string
   initialLinks?: string[]
+  initialImages?: string[]
   isPending?: boolean
   onSubmit: (data: {
     name: string
     summary: SummaryItem[]
     memo: string
     links: string[]
+    images: string[]
   }) => void
   onCancel?: () => void
   submitLabel?: string
 }
 
+const MAX_IMAGES = 6
+
 export function OptionForm({
+  boxId,
   initialName = '',
   initialSummary = [],
   initialMemo = '',
   initialLinks = [],
+  initialImages = [],
   isPending,
   onSubmit,
   onCancel,
@@ -39,6 +46,38 @@ export function OptionForm({
   const [links, setLinks] = useState<string[]>(
     initialLinks.length > 0 ? initialLinks : ['']
   )
+  const [images, setImages] = useState<string[]>(initialImages)
+  const [uploading, setUploading] = useState(false)
+  const [imageError, setImageError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  async function handleAddImages(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    e.target.value = ''
+    if (files.length === 0) return
+    setImageError(null)
+
+    const room = MAX_IMAGES - images.length
+    const toUpload = files.slice(0, room)
+    if (toUpload.some(f => f.size > 5 * 1024 * 1024)) {
+      setImageError('5MB 이하의 이미지만 올릴 수 있어요.')
+      return
+    }
+
+    setUploading(true)
+    try {
+      const urls = await Promise.all(toUpload.map(f => uploadOptionImage(boxId, f)))
+      setImages(prev => [...prev, ...urls])
+    } catch {
+      setImageError('사진 업로드에 실패했어요.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  function removeImage(index: number) {
+    setImages(prev => prev.filter((_, i) => i !== index))
+  }
 
   function addSummaryItem() {
     setSummaryItems(prev => [...prev, ''])
@@ -74,7 +113,7 @@ export function OptionForm({
 
     const validLinks = links.map(l => l.trim()).filter(Boolean)
 
-    onSubmit({ name: name.trim(), summary, memo: memo.trim(), links: validLinks })
+    onSubmit({ name: name.trim(), summary, memo: memo.trim(), links: validLinks, images })
   }
 
   return (
@@ -147,6 +186,60 @@ export function OptionForm({
         />
       </div>
 
+      {/* 사진 */}
+      <div>
+        <label className="mb-1.5 block text-[13px] font-semibold text-ink-soft">사진</label>
+        <div className="flex flex-wrap gap-2">
+          {images.map((url, i) => (
+            <div key={url} className="relative h-20 w-20 overflow-hidden rounded-[14px] border border-line">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={url} alt={`사진 ${i + 1}`} className="h-full w-full object-cover" />
+              <button
+                type="button"
+                onClick={() => removeImage(i)}
+                aria-label="사진 삭제"
+                className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-ink/70 text-cream"
+              >
+                <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          ))}
+          {images.length < MAX_IMAGES && (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-[14px] border-[1.5px] border-dashed border-[#D9D6C2] bg-paper text-ink-faint active:bg-cream disabled:opacity-50"
+            >
+              {uploading ? (
+                <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                </svg>
+              ) : (
+                <>
+                  <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span className="text-[10px] font-semibold">사진</span>
+                </>
+              )}
+            </button>
+          )}
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={handleAddImages}
+        />
+        {imageError && <p className="mt-1.5 text-xs text-tomato">{imageError}</p>}
+      </div>
+
       {/* 링크 */}
       <div>
         <label className="mb-1.5 block text-[13px] font-semibold text-ink-soft">링크</label>
@@ -189,10 +282,10 @@ export function OptionForm({
       <div className="space-y-2 pt-2">
         <button
           type="submit"
-          disabled={isPending || !name.trim()}
+          disabled={isPending || uploading || !name.trim()}
           className="w-full rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80 disabled:opacity-50"
         >
-          {isPending ? '저장 중...' : submitLabel}
+          {isPending ? '저장 중...' : uploading ? '사진 올리는 중...' : submitLabel}
         </button>
         {onCancel && (
           <button

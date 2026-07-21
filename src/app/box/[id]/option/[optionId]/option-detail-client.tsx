@@ -48,6 +48,7 @@ export function OptionDetailClient({
     ? [...(option.summary as { text: string; order: number }[])].sort((a, b) => a.order - b.order)
     : []
   const links = Array.isArray(option.links) ? (option.links as string[]) : []
+  const images = Array.isArray(option.images) ? (option.images as string[]) : []
 
   // 정리된 상자에서는 편집·삭제 불가 (spec 3장 · 004 RLS 병행)
   const canEdit = !isDone && (isOwner || isAuthor)
@@ -85,6 +86,25 @@ export function OptionDetailClient({
           <VoteButtons optionId={option.id} boxId={boxId} round={round} counts={counts} disabled={!canVote} />
           {!canVote && <p className="text-xs text-ink-faint">정리된 상자에서는 투표할 수 없어요.</p>}
         </div>
+
+        {/* 사진 */}
+        {images.length > 0 && (
+          <div className="space-y-2 rounded-card border border-[#ECEADC] bg-paper p-5">
+            <h2 className="text-[13.5px] font-extrabold text-ink">사진</h2>
+            <div className="grid grid-cols-2 gap-2">
+              {images.map((url, i) => (
+                <a key={url} href={url} target="_blank" rel="noopener noreferrer">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={url}
+                    alt={`사진 ${i + 1}`}
+                    className="aspect-square w-full rounded-[14px] border border-line object-cover"
+                  />
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* 요약 */}
         {summary.length > 0 && (

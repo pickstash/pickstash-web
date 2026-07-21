@@ -38,6 +38,7 @@ export function OptionsSection({ boxId, round, initialOptions, canVote }: Option
             const summary = Array.isArray(option.summary)
               ? ([...(option.summary as { text: string; order: number }[])].sort((a, b) => a.order - b.order))
               : []
+            const images = Array.isArray(option.images) ? (option.images as string[]) : []
             return (
               <div key={option.id} className="space-y-2.5 rounded-[18px] border border-[#ECEADC] bg-paper p-4">
                 <div className="flex items-baseline justify-between gap-2">
@@ -54,6 +55,20 @@ export function OptionsSection({ boxId, round, initialOptions, canVote }: Option
                     자세히 ›
                   </Link>
                 </div>
+
+                {images.length > 0 && (
+                  <Link href={`/box/${boxId}/option/${option.id}`} className="flex gap-2 overflow-x-auto">
+                    {images.map((url, i) => (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        key={url}
+                        src={url}
+                        alt={`${option.name} 사진 ${i + 1}`}
+                        className="h-24 w-24 shrink-0 rounded-[14px] border border-line object-cover"
+                      />
+                    ))}
+                  </Link>
+                )}
 
                 {summary.length > 0 && (
                   <ul className="space-y-0.5">
