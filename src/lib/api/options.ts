@@ -58,8 +58,18 @@ export async function createOption(input: CreateOptionInput): Promise<Option> {
 
   if (error) throw error
 
-  // 상자 updated_at 갱신
-  await supabase.from('boxes').update({ updated_at: new Date().toISOString() }).eq('id', input.box_id)
+  // 활동 기록·updated_at 갱신은 DB 트리거가 수행 (004_replan.sql).
+  // 내 활동으로 내 목록에 NEW가 뜨지 않게 본인 last_seen_at만 당겨둔다.
+  await supabase
+    .from('box_participants')
+    .update({ last_seen_at: new Date().toISOString() })
+    .eq('box_id', input.box_id)
+    .eq('user_id', user.id)
+
+  // 다른 참여자에게 푸시 (실패 무시)
+  supabase.functions.invoke('send-push', {
+    body: { box_id: input.box_id, triggered_by: user.id },
+  }).catch(() => {})
 
   return data
 }

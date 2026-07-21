@@ -9,8 +9,9 @@ import {
   updateBoxTitle,
   updateBoxDeadline,
   closeBox,
+  reopenBox,
   deleteBox,
-  startShowdown,
+  startRematch,
   markAllSeen,
   getShakingBoxes,
   type CreateBoxInput,
@@ -89,10 +90,21 @@ export function useDeleteBox() {
   })
 }
 
-export function useStartShowdown(boxId: string) {
+export function useStartRematch(boxId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (newDeadline: string) => startShowdown(boxId, newDeadline),
+    mutationFn: (newDeadline: string) => startRematch(boxId, newDeadline),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['box', boxId] })
+      queryClient.invalidateQueries({ queryKey: ['boxes'] })
+    },
+  })
+}
+
+export function useReopenBox(boxId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (newDeadline?: string | null) => reopenBox(boxId, newDeadline),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['box', boxId] })
       queryClient.invalidateQueries({ queryKey: ['boxes'] })

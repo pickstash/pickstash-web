@@ -49,6 +49,16 @@ export async function upsertVote(optionId: string, voteType: 'like' | 'dislike',
     { onConflict: 'option_id,user_id,round' }
   )
   if (error) throw error
+
+  // 활동 기록은 DB 트리거가 수행. 내 목록에 NEW가 뜨지 않게 본인 last_seen_at만 갱신
+  const { data: option } = await supabase.from('options').select('box_id').eq('id', optionId).single()
+  if (option) {
+    await supabase
+      .from('box_participants')
+      .update({ last_seen_at: new Date().toISOString() })
+      .eq('box_id', option.box_id)
+      .eq('user_id', user.id)
+  }
 }
 
 export async function deleteVote(optionId: string, round: number): Promise<void> {

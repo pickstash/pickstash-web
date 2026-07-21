@@ -36,7 +36,7 @@ export interface Database {
           owner_id: string
           title: string
           memo: string | null
-          deadline_at: string
+          deadline_at: string | null
           closed_at: string | null
           current_round: number
           invite_code: string
@@ -48,7 +48,7 @@ export interface Database {
           owner_id: string
           title: string
           memo?: string | null
-          deadline_at: string
+          deadline_at?: string | null
           closed_at?: string | null
           current_round?: number
           invite_code?: string
@@ -60,7 +60,7 @@ export interface Database {
           owner_id?: string
           title?: string
           memo?: string | null
-          deadline_at?: string
+          deadline_at?: string | null
           closed_at?: string | null
           current_round?: number
           invite_code?: string
@@ -258,6 +258,33 @@ export interface Database {
         }
         Relationships: []
       }
+      box_activities: {
+        Row: {
+          id: string
+          box_id: string
+          actor_id: string
+          type: string
+          meta: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          box_id: string
+          actor_id: string
+          type: string
+          meta?: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          box_id?: string
+          actor_id?: string
+          type?: string
+          meta?: Json
+          created_at?: string
+        }
+        Relationships: []
+      }
       push_subscriptions: {
         Row: {
           id: string
@@ -325,6 +352,29 @@ export interface Database {
       delete_account: {
         Args: Record<string, never>
         Returns: void
+      }
+      close_box: {
+        Args: { p_box_id: string }
+        Returns: undefined
+      }
+      reopen_box: {
+        Args: { p_box_id: string; p_deadline?: string | null }
+        Returns: undefined
+      }
+      start_rematch: {
+        Args: { p_box_id: string; p_deadline: string }
+        Returns: undefined
+      }
+      get_box_preview_by_invite_code: {
+        Args: { p_code: string }
+        Returns: {
+          id: string
+          title: string
+          memo: string | null
+          owner_nickname: string
+          participant_count: number
+          option_names: string[]
+        }[]
       }
     }
     Enums: {

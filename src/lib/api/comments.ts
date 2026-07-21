@@ -28,12 +28,11 @@ export async function createComment(optionId: string, body: string): Promise<voi
   const { data: option } = await supabase.from('options').select('box_id').eq('id', optionId).single()
   if (!option) throw new Error('Option not found')
 
+  // 활동 기록·updated_at 갱신은 DB 트리거가 수행 (004_replan.sql)
   const now = new Date().toISOString()
   const [{ error }] = await Promise.all([
     supabase.from('comments').insert({ option_id: optionId, user_id: user.id, body }),
-    // 다른 참여자에겐 shaking 트리거
-    supabase.from('boxes').update({ updated_at: now }).eq('id', option.box_id),
-    // 본인은 방금 봤으므로 last_seen_at 갱신 (본인 shaking 방지)
+    // 본인은 방금 봤으므로 last_seen_at 갱신 (내 목록 NEW 방지)
     supabase.from('box_participants').update({ last_seen_at: now }).eq('box_id', option.box_id).eq('user_id', user.id),
   ])
   if (error) throw error

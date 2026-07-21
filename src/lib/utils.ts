@@ -16,6 +16,11 @@ export function formatKoreanDateTime(dateStr: string): string {
   }).format(new Date(dateStr))
 }
 
+/** 마감 없는 상자(null)를 포함한 마감일 표시 */
+export function formatDeadline(dateStr: string | null): string {
+  return dateStr ? formatKoreanDateTime(dateStr) : '마감 없음'
+}
+
 export function toDateInput(date: Date): string {
   return date.toLocaleDateString('sv-SE') // YYYY-MM-DD
 }
