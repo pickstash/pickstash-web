@@ -1,6 +1,9 @@
 -- 004_replan.sql — 2026-07 기획 v1 리뉴얼 (spec.md 5·6장 참조)
 -- ① 마감 없는 상자 허용  ② box_activities 활동 로그 + 트리거 일원화
 -- ③ 정리된 상자 쓰기 가드(RLS)  ④ close/reopen/rematch RPC  ⑤ 초대 랜딩 미리보기 RPC
+--
+-- ※ 여러 번 실행해도 안전(idempotent)하도록 모든 객체에 if exists / if not exists / or replace 가드.
+--   부분 실행 후 재실행해도 에러 없이 끝까지 완료된다.
 
 -- ─────────────────────────────────────────────
 -- ① 마감 없는 상자 (혼자 모드): deadline_at nullable
@@ -10,7 +13,7 @@ alter table boxes alter column deadline_at drop not null;
 -- ─────────────────────────────────────────────
 -- ② 상자 활동 로그
 -- ─────────────────────────────────────────────
-create table box_activities (
+create table if not exists box_activities (
   id uuid primary key default gen_random_uuid(),
   box_id uuid not null references boxes(id) on delete cascade,
   actor_id uuid not null references profiles(id) on delete cascade,
@@ -22,10 +25,11 @@ create table box_activities (
   meta jsonb not null default '{}',
   created_at timestamptz not null default now()
 );
-create index box_activities_box_created_idx on box_activities (box_id, created_at desc);
+create index if not exists box_activities_box_created_idx on box_activities (box_id, created_at desc);
 
 alter table box_activities enable row level security;
 
+drop policy if exists "box_activities: 참여자 조회" on box_activities;
 create policy "box_activities: 참여자 조회" on box_activities for select
   using (exists (select 1 from box_participants where box_id = box_activities.box_id and user_id = auth.uid()));
 -- insert 정책 없음: 기록은 아래 트리거(security definer)로만 수행
@@ -38,6 +42,7 @@ begin
   return new;
 end; $$;
 
+drop trigger if exists trg_touch_box_on_activity on box_activities;
 create trigger trg_touch_box_on_activity
   after insert on box_activities
   for each row execute function touch_box_on_activity();
@@ -51,6 +56,7 @@ begin
   return new;
 end; $$;
 
+drop trigger if exists trg_log_option_activity on options;
 create trigger trg_log_option_activity
   after insert on options
   for each row execute function log_option_activity();
@@ -67,6 +73,7 @@ begin
   return new;
 end; $$;
 
+drop trigger if exists trg_log_vote_activity on votes;
 create trigger trg_log_vote_activity
   after insert or update on votes
   for each row execute function log_vote_activity();
@@ -82,6 +89,7 @@ begin
   return new;
 end; $$;
 
+drop trigger if exists trg_log_comment_activity on comments;
 create trigger trg_log_comment_activity
   after insert on comments
   for each row execute function log_comment_activity();
@@ -97,6 +105,7 @@ begin
   return new;
 end; $$;
 
+drop trigger if exists trg_log_participant_activity on box_participants;
 create trigger trg_log_participant_activity
   after insert on box_participants
   for each row execute function log_participant_activity();
@@ -115,6 +124,7 @@ begin
   return new;
 end; $$;
 
+drop trigger if exists trg_log_deadline_change_activity on boxes;
 create trigger trg_log_deadline_change_activity
   after update on boxes
   for each row execute function log_deadline_change_activity();
@@ -134,28 +144,28 @@ language sql security definer set search_path = public stable as $$
   );
 $$;
 
-drop policy "votes: 본인 insert" on votes;
+drop policy if exists "votes: 본인 insert" on votes;
 create policy "votes: 본인 insert" on votes for insert
   with check (
     user_id = auth.uid()
     and box_is_open((select box_id from options where id = option_id))
   );
 
-drop policy "votes: 본인 update" on votes;
+drop policy if exists "votes: 본인 update" on votes;
 create policy "votes: 본인 update" on votes for update
   using (
     user_id = auth.uid()
     and box_is_open((select box_id from options where id = option_id))
   );
 
-drop policy "votes: 본인 delete" on votes;
+drop policy if exists "votes: 본인 delete" on votes;
 create policy "votes: 본인 delete" on votes for delete
   using (
     user_id = auth.uid()
     and box_is_open((select box_id from options where id = option_id))
   );
 
-drop policy "options: 참여자 추가" on options;
+drop policy if exists "options: 참여자 추가" on options;
 create policy "options: 참여자 추가" on options for insert
   with check (
     created_by = auth.uid()
@@ -163,7 +173,7 @@ create policy "options: 참여자 추가" on options for insert
     and box_is_open(options.box_id)
   );
 
-drop policy "options: 작성자·owner 수정" on options;
+drop policy if exists "options: 작성자·owner 수정" on options;
 create policy "options: 작성자·owner 수정" on options for update
   using (
     (created_by = auth.uid()
@@ -171,7 +181,7 @@ create policy "options: 작성자·owner 수정" on options for update
     and box_is_open(options.box_id)
   );
 
-drop policy "options: 작성자·owner 삭제" on options;
+drop policy if exists "options: 작성자·owner 삭제" on options;
 create policy "options: 작성자·owner 삭제" on options for delete
   using (
     (created_by = auth.uid()
