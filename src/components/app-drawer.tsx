@@ -65,7 +65,7 @@ export function AppDrawer({ nickname }: AppDrawerProps) {
 
   return (
     <>
-      <button onClick={() => setOpen(true)} className="p-1 text-gray-500" aria-label="메뉴">
+      <button onClick={() => setOpen(true)} className="p-1 text-ink" aria-label="메뉴">
         <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
         </svg>
@@ -73,48 +73,48 @@ export function AppDrawer({ nickname }: AppDrawerProps) {
 
       {open && (
         <div className="fixed inset-0 z-50 flex">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
-          <div className="relative ml-auto w-72 h-full bg-white flex flex-col shadow-xl">
-            <div className="px-5 pt-12 pb-5 border-b border-gray-100">
-              <p className="text-sm text-gray-400">안녕하세요</p>
-              <p className="text-base font-bold text-gray-900 mt-0.5">{nickname}님</p>
+          <div className="absolute inset-0 bg-ink/40" onClick={() => setOpen(false)} />
+          <div className="relative ml-auto flex h-full w-72 flex-col rounded-l-sheet bg-paper shadow-[-8px_0_24px_rgba(42,42,39,0.1)]">
+            <div className="border-b border-[#F1EFE0] px-5 pt-12 pb-5">
+              <p className="text-[13px] text-ink-faint">안녕하세요</p>
+              <p className="mt-0.5 text-[17px] font-extrabold tracking-tight text-ink">{nickname}님</p>
             </div>
 
-            <nav className="flex-1 px-2 py-4 space-y-1">
-              <p className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">결정창고</p>
+            <nav className="flex-1 space-y-1 px-2.5 py-4">
+              <p className="px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.08em] text-ink-faint">결정창고</p>
               {[
-                { href: '/messy', label: '어질러진 창고' },
-                { href: '/done', label: '정리된 창고' },
-                { href: '/favorites', label: '즐겨찾는 창고' },
+                { href: '/messy', label: '📦 어질러진 창고' },
+                { href: '/done', label: '✅ 정리된 창고' },
+                { href: '/favorites', label: '⭐ 즐겨찾는 창고' },
               ].map(({ href, label }) => (
                 <Link
                   key={href}
                   href={href}
                   onClick={() => setOpen(false)}
-                  className="flex items-center px-3 py-2.5 rounded-xl text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100"
+                  className="flex items-center gap-2 rounded-[14px] px-3 py-2.5 text-sm font-semibold text-ink hover:bg-cream active:bg-butter-tint"
                 >
                   {label}
                 </Link>
               ))}
 
               <div className="pt-3">
-                <p className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">마이페이지</p>
-                <Link href="/profile" onClick={() => setOpen(false)} className="flex items-center px-3 py-2.5 rounded-xl text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100">
+                <p className="px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.08em] text-ink-faint">마이페이지</p>
+                <Link href="/profile" onClick={() => setOpen(false)} className="flex items-center rounded-[14px] px-3 py-2.5 text-sm font-semibold text-ink hover:bg-cream active:bg-butter-tint">
                   프로필 관리
                 </Link>
-                <Link href="/groups" onClick={() => setOpen(false)} className="flex items-center px-3 py-2.5 rounded-xl text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100">
+                <Link href="/groups" onClick={() => setOpen(false)} className="flex items-center rounded-[14px] px-3 py-2.5 text-sm font-semibold text-ink hover:bg-cream active:bg-butter-tint">
                   그룹 관리
                 </Link>
               </div>
             </nav>
 
-            <div className="px-4 pb-10 border-t border-gray-100 pt-4 space-y-2">
+            <div className="space-y-2 border-t border-[#F1EFE0] px-3.5 pb-10 pt-4">
               {/* 앱 설치 영역 */}
               {browser === 'installable' && (
                 <button
                   onClick={pwaPrompt ? handleInstall : undefined}
                   disabled={!pwaPrompt}
-                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm text-blue-500 hover:bg-blue-50 active:bg-blue-100 disabled:opacity-40"
+                  className="flex w-full items-center justify-between rounded-[14px] bg-butter-tint px-3 py-2.5 text-sm font-bold text-ink active:opacity-80 disabled:opacity-40"
                 >
                   <span>앱으로 설치하기</span>
                   <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -126,7 +126,7 @@ export function AppDrawer({ nickname }: AppDrawerProps) {
               {browser === 'android-inapp' && (
                 <button
                   onClick={handleOpenExternal}
-                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm text-blue-500 hover:bg-blue-50 active:bg-blue-100"
+                  className="flex w-full items-center justify-between rounded-[14px] bg-butter-tint px-3 py-2.5 text-sm font-bold text-ink active:opacity-80"
                 >
                   <span>외부 브라우저로 열기</span>
                   <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -135,39 +135,39 @@ export function AppDrawer({ nickname }: AppDrawerProps) {
                 </button>
               )}
 
-{(browser === 'ios-safari' || browser === 'ios-inapp') && (
-                <div className="px-3 py-2.5 space-y-2">
-                  <p className="text-xs font-semibold text-gray-400">앱으로 설치하기</p>
+              {(browser === 'ios-safari' || browser === 'ios-inapp') && (
+                <div className="space-y-2 rounded-[14px] bg-butter-tint px-3 py-2.5">
+                  <p className="text-[11px] font-bold text-ink-soft">앱으로 설치하기</p>
                   {browser === 'ios-inapp' && (
-                    <p className="text-xs text-gray-500 flex items-center gap-1">
+                    <p className="flex items-center gap-1 text-xs text-ink-soft">
                       <span className="shrink-0">①</span>
                       하단
-                      <span className="px-1 py-0.5 bg-gray-100 rounded text-gray-600">···</span>
+                      <span className="rounded bg-paper px-1 py-0.5 text-ink">···</span>
                       또는 공유 버튼 탭
                     </p>
                   )}
                   {browser === 'ios-inapp' && (
-                    <p className="text-xs text-gray-500 flex items-center gap-1">
+                    <p className="flex items-center gap-1 text-xs text-ink-soft">
                       <span className="shrink-0">②</span>
-                      <span className="font-medium text-gray-700">Safari로 열기</span> 선택
+                      <span className="font-semibold text-ink">Safari로 열기</span> 선택
                     </p>
                   )}
-                  <p className="text-xs text-gray-500 flex items-center gap-1">
+                  <p className="flex items-center gap-1 text-xs text-ink-soft">
                     <span className="shrink-0">{browser === 'ios-inapp' ? '③' : '①'}</span>
                     하단 공유 버튼
-                    <span className="px-1 py-0.5 bg-gray-100 rounded text-gray-600">↑</span>
+                    <span className="rounded bg-paper px-1 py-0.5 text-ink">↑</span>
                     탭
                   </p>
-                  <p className="text-xs text-gray-500 flex items-center gap-1">
+                  <p className="flex items-center gap-1 text-xs text-ink-soft">
                     <span className="shrink-0">{browser === 'ios-inapp' ? '④' : '②'}</span>
-                    <span className="font-medium text-gray-700">"홈 화면에 추가"</span> 선택
+                    <span className="font-semibold text-ink">&quot;홈 화면에 추가&quot;</span> 선택
                   </p>
                 </div>
               )}
 
               <button
                 onClick={handleLogout}
-                className="w-full text-left px-3 py-2.5 rounded-xl text-sm text-red-500 hover:bg-red-50 active:bg-red-100"
+                className="w-full rounded-[14px] px-3 py-2.5 text-left text-sm font-semibold text-tomato hover:bg-tomato-tint"
               >
                 로그아웃
               </button>

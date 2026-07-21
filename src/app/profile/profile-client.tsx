@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { updateNickname, updateAvatarUrl, uploadAvatar } from '@/lib/api/profile'
 import { signOut } from '@/lib/api/auth'
+import { PageHeader } from '@/components/page-header'
 
 interface ProfileClientProps {
   userId: string
@@ -87,30 +88,24 @@ export function ProfileClient({ userId, nickname, avatarUrl, kakaoAvatarUrl }: P
   const isUsingKakaoAvatar = !!currentAvatarUrl && currentAvatarUrl === kakaoAvatarUrl
 
   return (
-    <main className="min-h-screen bg-gray-50 flex flex-col">
-      <header className="bg-white px-5 pt-12 pb-4 border-b border-gray-100 flex items-center gap-3">
-        <Link href="/" className="text-gray-400">
-          <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
-        </Link>
-        <h1 className="text-base font-semibold text-gray-900">프로필 관리</h1>
-      </header>
+    <main className="flex min-h-dvh flex-col">
+      <PageHeader title="프로필 관리" />
 
-      <div className="flex-1 px-5 py-6 space-y-4">
+      <div className="flex-1 space-y-3 px-5 pb-6 pt-1">
         {/* 프로필 사진 */}
-        <div className="bg-white rounded-2xl p-5 flex flex-col items-center gap-4">
+        <div className="flex flex-col items-center gap-4 rounded-card border border-[#ECEADC] bg-paper p-5">
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={isAvatarPending}
-            className="relative w-20 h-20 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center group"
+            className="group relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-butter-tint"
           >
             {currentAvatarUrl ? (
-              <img src={currentAvatarUrl} alt={nickname} className="w-full h-full object-cover" />
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={currentAvatarUrl} alt={nickname} className="h-full w-full object-cover" />
             ) : (
-              <span className="text-2xl font-bold text-gray-500">{displayInitial}</span>
+              <span className="text-2xl font-extrabold text-ink">{displayInitial}</span>
             )}
-            <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity">
+            <div className="absolute inset-0 flex items-center justify-center bg-ink/30 opacity-0 transition-opacity group-hover:opacity-100 group-active:opacity-100">
               {isAvatarPending ? (
                 <svg className="w-5 h-5 text-white animate-spin" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -133,14 +128,14 @@ export function ProfileClient({ userId, nickname, avatarUrl, kakaoAvatarUrl }: P
             onChange={handleFileChange}
           />
 
-          <p className="text-xs text-gray-400">사진을 탭하면 변경할 수 있어요</p>
+          <p className="text-xs text-ink-faint">사진을 탭하면 변경할 수 있어요</p>
 
           <div className="flex gap-3">
             {kakaoAvatarUrl && !isUsingKakaoAvatar && (
               <button
                 onClick={() => updateAvatarMutation.mutate(kakaoAvatarUrl)}
                 disabled={isAvatarPending}
-                className="text-sm text-blue-500 font-medium disabled:opacity-50"
+                className="text-sm font-semibold text-ink disabled:opacity-50"
               >
                 카카오 프로필로 변경
               </button>
@@ -148,12 +143,12 @@ export function ProfileClient({ userId, nickname, avatarUrl, kakaoAvatarUrl }: P
             {currentAvatarUrl && (
               <>
                 {kakaoAvatarUrl && !isUsingKakaoAvatar && (
-                  <span className="text-gray-200">|</span>
+                  <span className="text-line">|</span>
                 )}
                 <button
                   onClick={() => updateAvatarMutation.mutate(null)}
                   disabled={isAvatarPending}
-                  className="text-sm text-gray-400 font-medium disabled:opacity-50"
+                  className="text-sm font-semibold text-ink-faint disabled:opacity-50"
                 >
                   기본 프로필로 변경
                 </button>
@@ -161,12 +156,12 @@ export function ProfileClient({ userId, nickname, avatarUrl, kakaoAvatarUrl }: P
             )}
           </div>
 
-          {avatarError && <p className="text-xs text-red-500">{avatarError}</p>}
+          {avatarError && <p className="text-xs text-tomato">{avatarError}</p>}
         </div>
 
         {/* 닉네임 */}
-        <div className="bg-white rounded-2xl p-5 space-y-3">
-          <h2 className="text-sm font-semibold text-gray-900">닉네임</h2>
+        <div className="space-y-3 rounded-card border border-[#ECEADC] bg-paper p-5">
+          <h2 className="text-[13.5px] font-extrabold text-ink">닉네임</h2>
           {editingNickname ? (
             <div className="flex gap-2">
               <input
@@ -175,7 +170,7 @@ export function ProfileClient({ userId, nickname, avatarUrl, kakaoAvatarUrl }: P
                 onChange={e => setNicknameValue(e.target.value)}
                 maxLength={20}
                 autoFocus
-                className="flex-1 border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gray-500"
+                className="flex-1 rounded-field border-[1.5px] border-line bg-paper px-3.5 py-2.5 text-sm text-ink focus:border-butter-dark focus:outline-none"
                 onKeyDown={e => {
                   if (e.key === 'Enter') handleSaveNickname()
                   if (e.key === 'Escape') {
@@ -187,7 +182,7 @@ export function ProfileClient({ userId, nickname, avatarUrl, kakaoAvatarUrl }: P
               <button
                 onClick={handleSaveNickname}
                 disabled={updateNicknameMutation.isPending || !nicknameValue.trim()}
-                className="shrink-0 bg-gray-900 text-white px-4 py-2.5 rounded-xl text-sm font-medium disabled:opacity-50"
+                className="shrink-0 rounded-field bg-ink px-4 py-2.5 text-sm font-bold text-cream disabled:opacity-50"
               >
                 저장
               </button>
@@ -196,42 +191,42 @@ export function ProfileClient({ userId, nickname, avatarUrl, kakaoAvatarUrl }: P
                   setEditingNickname(false)
                   setNicknameValue(nickname)
                 }}
-                className="shrink-0 border border-gray-200 text-gray-700 px-4 py-2.5 rounded-xl text-sm font-medium"
+                className="shrink-0 rounded-field border border-line px-4 py-2.5 text-sm font-bold text-ink-soft"
               >
                 취소
               </button>
             </div>
           ) : (
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-700">{nickname}</span>
+              <span className="text-sm text-ink">{nickname}</span>
               <button
                 onClick={() => setEditingNickname(true)}
-                className="text-sm text-blue-500 font-medium"
+                className="text-sm font-semibold text-ink"
               >
                 변경
               </button>
             </div>
           )}
           {updateNicknameMutation.isError && (
-            <p className="text-xs text-red-500">닉네임 변경에 실패했어요.</p>
+            <p className="text-xs text-tomato">닉네임 변경에 실패했어요.</p>
           )}
         </div>
 
         {/* 계정 */}
-        <div className="bg-white rounded-2xl overflow-hidden">
+        <div className="overflow-hidden rounded-card border border-[#ECEADC] bg-paper">
           <button
             onClick={() => setConfirmLogout(true)}
-            className="w-full flex items-center justify-between px-5 py-4 text-sm text-gray-700 active:bg-gray-50"
+            className="flex w-full items-center justify-between px-5 py-4 text-sm text-ink active:bg-cream"
           >
             <span>로그아웃</span>
             <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
             </svg>
           </button>
-          <div className="border-t border-gray-100" />
+          <div className="border-t border-line" />
           <Link
             href="/profile/withdraw"
-            className="flex items-center justify-between px-5 py-4 text-sm text-red-400 active:bg-gray-50"
+            className="flex items-center justify-between px-5 py-4 text-sm text-tomato active:bg-cream"
           >
             <span>탈퇴하기</span>
             <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -244,19 +239,19 @@ export function ProfileClient({ userId, nickname, avatarUrl, kakaoAvatarUrl }: P
       {/* 로그아웃 확인 모달 */}
       {confirmLogout && (
         <div className="fixed inset-0 z-50 flex items-end">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setConfirmLogout(false)} />
-          <div className="relative w-full bg-white rounded-t-3xl px-5 pt-6 pb-10 space-y-4">
-            <p className="text-center text-base font-semibold text-gray-900">로그아웃 하시겠어요?</p>
+          <div className="absolute inset-0 bg-ink/40" onClick={() => setConfirmLogout(false)} />
+          <div className="relative mx-auto w-full max-w-[430px] space-y-4 rounded-t-sheet bg-paper px-5 pb-10 pt-6">
+            <p className="text-center text-base font-extrabold text-ink">로그아웃 하시겠어요?</p>
             <div className="flex gap-2">
               <button
                 onClick={() => setConfirmLogout(false)}
-                className="flex-1 border border-gray-200 text-gray-700 py-3.5 rounded-xl text-sm font-medium"
+                className="flex-1 rounded-field border border-line py-3.5 text-sm font-bold text-ink-soft"
               >
                 취소
               </button>
               <button
                 onClick={handleLogout}
-                className="flex-1 bg-gray-900 text-white py-3.5 rounded-xl text-sm font-semibold"
+                className="flex-1 rounded-field bg-ink py-3.5 text-sm font-bold text-cream"
               >
                 로그아웃
               </button>
