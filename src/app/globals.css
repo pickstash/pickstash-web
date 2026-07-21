@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f7f6ea; /* cream */
+  --foreground: #2a2a27; /* ink */
 }
 
 @theme inline {
@@ -10,8 +10,52 @@
   --color-foreground: var(--foreground);
 }
 
+@theme {
+  /* 서체 — Pretendard Variable 번들 (layout.tsx에서 dynamic subset CSS import) */
+  --font-sans: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont,
+    'Apple SD Gothic Neo', 'Segoe UI', 'Noto Sans KR', sans-serif;
+
+  /* 서피스·텍스트 */
+  --color-cream: #f7f6ea; /* 앱 배경 (로고 크림 계열) */
+  --color-paper: #ffffff; /* 카드·시트 표면 */
+  --color-ink: #2a2a27; /* 텍스트·프라이머리 버튼 (로고 잉크) */
+  --color-ink-soft: #737266; /* 보조 텍스트 */
+  --color-ink-faint: #a6a597; /* 메타 텍스트·플레이스홀더 */
+  --color-line: #e7e5d6; /* 보더·구분선 */
+
+  /* 브랜드 포인트 — 기존 파랑 계열 액션 컬러를 전면 대체 */
+  --color-butter: #ffd84a; /* NEW·좋아요·D-day·하이라이트 */
+  --color-butter-deep: #f5c63b; /* 그룹 라벨 보더 */
+  --color-butter-dark: #e3b93a; /* 버터 버튼 하단 섀도우·좋아요 활성 보더·포커스 링 */
+  --color-butter-tint: #fbf1ce; /* 들썩 패널·그룹 라벨·좋아요 활성 배경 */
+
+  /* 상태 의미 전용 */
+  --color-tangerine: #ee7b3f; /* 결판 중·스탬프 */
+  --color-leaf: #4e9c63; /* 정리완료 */
+  --color-leaf-tint: #e3efe0;
+  --color-tomato: #de5b41; /* 싫어요·삭제·에러 */
+  --color-tomato-tint: #f9e4dc;
+
+  /* 카카오 로그인 전용 — 브랜드 고정, 변경 불가 */
+  --color-kakao: #fee500;
+  --color-kakao-ink: #191919;
+
+  /* 라디우스 — 뭉툭하게: 버튼·입력 16 / 카드 20 / 패널·시트 24+ / 칩 full */
+  --radius-field: 16px;
+  --radius-card: 20px;
+  --radius-sheet: 24px;
+}
+
+/*
+ * 다크모드(차콜+버터)는 화면 리스킨 완료 후 활성화한다.
+ * 활성화 전에 prefers-color-scheme으로 아래 값을 먹이면
+ * 아직 회색·흰색이 하드코딩된 기존 화면이 깨진다.
+ *   --background: #1f1f1b; --foreground: #f1efe2;
+ *   paper #2a2a25 / line #3b3a32 / butter-tint #3a3623
+ *   leaf-tint #2c3a2c / tomato-tint #452e26
+ */
+
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }

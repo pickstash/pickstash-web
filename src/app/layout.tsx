@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next'
+import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css'
 import './globals.css'
 import { Providers } from '@/components/providers'
 
@@ -17,7 +18,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
-  themeColor: '#111827',
+  themeColor: '#f7f6ea',
 }
 
 export default function RootLayout({

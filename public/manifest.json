@@ -4,8 +4,8 @@
   "description": "친구들과 함께 의사결정하는 앱",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#111827",
+  "background_color": "#f7f6ea",
+  "theme_color": "#f7f6ea",
   "orientation": "portrait",
   "icons": [
     {
