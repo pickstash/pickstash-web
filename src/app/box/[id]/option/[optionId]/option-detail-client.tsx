@@ -9,6 +9,7 @@ import { useRealtimeVotes } from '@/hooks/use-realtime-votes'
 import { useDeleteOption } from '@/hooks/use-options'
 import { useComments, useCreateComment, useDeleteComment } from '@/hooks/use-comments'
 import { useRealtimeComments } from '@/hooks/use-realtime-comments'
+import { parseBlocks, linkDisplayLabel, linkHref } from '@/lib/domain/option-content'
 import type { Option } from '@/lib/api/options'
 
 interface OptionDetailClientProps {
@@ -44,11 +45,7 @@ export function OptionDetailClient({
   useRealtimeComments(option.id)
 
   const counts = votes[option.id] ?? { like: 0, dislike: 0, myVote: null }
-  const summary = Array.isArray(option.summary)
-    ? [...(option.summary as { text: string; order: number }[])].sort((a, b) => a.order - b.order)
-    : []
-  const links = Array.isArray(option.links) ? (option.links as string[]) : []
-  const images = Array.isArray(option.images) ? (option.images as string[]) : []
+  const blocks = parseBlocks(option.content)
 
   // 정리된 상자에서는 편집·삭제 불가 (spec 3장 · 004 RLS 병행)
   const canEdit = !isDone && (isOwner || isAuthor)
@@ -87,61 +84,46 @@ export function OptionDetailClient({
           {!canVote && <p className="text-xs text-ink-faint">정리된 상자에서는 투표할 수 없어요.</p>}
         </div>
 
-        {/* 사진 */}
-        {images.length > 0 && (
-          <div className="space-y-2 rounded-card border border-[#ECEADC] bg-paper p-5">
-            <h2 className="text-[13.5px] font-extrabold text-ink">사진</h2>
-            <div className="grid grid-cols-2 gap-2">
-              {images.map((url, i) => (
-                <a key={url} href={url} target="_blank" rel="noopener noreferrer">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={url}
-                    alt={`사진 ${i + 1}`}
-                    className="aspect-square w-full rounded-[14px] border border-line object-cover"
-                  />
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* 요약 */}
-        {summary.length > 0 && (
-          <div className="space-y-2 rounded-card border border-[#ECEADC] bg-paper p-5">
-            <h2 className="text-[13.5px] font-extrabold text-ink">요약</h2>
-            <ul className="space-y-1.5">
-              {summary.map((item, i) => (
-                <li key={i} className="flex gap-2 text-[13.5px] text-ink">
-                  <span className="shrink-0 text-[#DBD8C6]">—</span>
-                  {item.text}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {/* 메모 */}
-        {option.memo && (
-          <div className="space-y-2 rounded-card border border-[#ECEADC] bg-paper p-5">
-            <h2 className="text-[13.5px] font-extrabold text-ink">메모</h2>
-            <p className="whitespace-pre-wrap text-[13.5px] text-ink">{option.memo}</p>
-          </div>
-        )}
-
-        {/* 링크 */}
-        {links.length > 0 && (
-          <div className="space-y-2 rounded-card border border-[#ECEADC] bg-paper p-5">
-            <h2 className="text-[13.5px] font-extrabold text-ink">링크</h2>
-            <ul className="space-y-2">
-              {links.map((link, i) => (
-                <li key={i}>
-                  <a href={link} target="_blank" rel="noopener noreferrer" className="break-all text-[13px] text-ink underline decoration-butter-dark underline-offset-2">
-                    {link}
+        {/* 본문 (블록: 글·사진·라벨링크 순서대로) */}
+        {blocks.length > 0 && (
+          <div className="space-y-3 rounded-card border border-[#ECEADC] bg-paper p-5">
+            {blocks.map(block => {
+              if (block.type === 'text') {
+                return (
+                  <p key={block.id} className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-ink">
+                    {block.text}
+                  </p>
+                )
+              }
+              if (block.type === 'image') {
+                return (
+                  <a key={block.id} href={block.url} target="_blank" rel="noopener noreferrer" className="block">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={block.url}
+                      alt="첨부 사진"
+                      className="max-h-80 w-full rounded-[14px] border border-line object-cover"
+                    />
                   </a>
-                </li>
-              ))}
-            </ul>
+                )
+              }
+              return (
+                <a
+                  key={block.id}
+                  href={linkHref(block.url)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 rounded-field border border-line bg-cream/50 px-3.5 py-2.5 active:bg-cream"
+                >
+                  <span className="shrink-0 rounded-full bg-butter-tint px-2 py-0.5 text-[11px] font-bold text-ink">
+                    {linkDisplayLabel(block.label, block.url)}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-[12.5px] text-ink-soft underline decoration-butter-dark underline-offset-2">
+                    {block.url}
+                  </span>
+                </a>
+              )
+            })}
           </div>
         )}
 

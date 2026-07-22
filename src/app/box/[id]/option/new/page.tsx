@@ -29,9 +29,7 @@ export default function NewOptionPage({ params }: { params: Promise<{ id: string
             createOption.mutate({
               box_id: boxId,
               name: data.name,
-              summary: data.summary,
-              memo: data.memo || undefined,
-              images: data.images,
+              content: data.content,
             })
           }
           onCancel={() => history.back()}

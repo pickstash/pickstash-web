@@ -77,6 +77,7 @@ export interface Database {
           summary: Json
           links: Json
           images: Json
+          content: Json
           memo: string | null
           created_by: string
           created_at: string
@@ -88,6 +89,7 @@ export interface Database {
           summary?: Json
           links?: Json
           images?: Json
+          content?: Json
           memo?: string | null
           created_by: string
           created_at?: string
@@ -99,6 +101,7 @@ export interface Database {
           summary?: Json
           links?: Json
           images?: Json
+          content?: Json
           memo?: string | null
           created_by?: string
           created_at?: string

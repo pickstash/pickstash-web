@@ -1,23 +1,19 @@
 import { createClient } from '@/lib/supabase/client'
 import type { Database } from '@/lib/supabase/types'
+import type { OptionBlock } from '@/lib/domain/option-content'
 
 export type Option = Database['public']['Tables']['options']['Row']
-export type SummaryItem = { text: string; order: number }
+export type { OptionBlock } from '@/lib/domain/option-content'
 
 export interface CreateOptionInput {
   box_id: string
   name: string
-  summary?: SummaryItem[]
-  memo?: string
-  images?: string[]
+  content?: OptionBlock[]
 }
 
 export interface UpdateOptionInput {
   name?: string
-  summary?: SummaryItem[]
-  memo?: string
-  links?: string[]
-  images?: string[]
+  content?: OptionBlock[]
 }
 
 /** 선택지 이미지 업로드 → 공개 URL 반환 (option-images 버킷) */
@@ -71,9 +67,7 @@ export async function createOption(input: CreateOptionInput): Promise<Option> {
     .insert({
       box_id: input.box_id,
       name: input.name,
-      summary: (input.summary ?? []) as unknown as Database['public']['Tables']['options']['Insert']['summary'],
-      images: (input.images ?? []) as unknown as Database['public']['Tables']['options']['Insert']['images'],
-      memo: input.memo ?? null,
+      content: (input.content ?? []) as unknown as Database['public']['Tables']['options']['Insert']['content'],
       created_by: user.id,
     })
     .select()
@@ -103,10 +97,7 @@ export async function updateOption(id: string, input: UpdateOptionInput): Promis
     .from('options')
     .update({
       ...(input.name !== undefined && { name: input.name }),
-      ...(input.summary !== undefined && { summary: input.summary as unknown as Database['public']['Tables']['options']['Update']['summary'] }),
-      ...(input.memo !== undefined && { memo: input.memo }),
-      ...(input.links !== undefined && { links: input.links as unknown as Database['public']['Tables']['options']['Update']['links'] }),
-      ...(input.images !== undefined && { images: input.images as unknown as Database['public']['Tables']['options']['Update']['images'] }),
+      ...(input.content !== undefined && { content: input.content as unknown as Database['public']['Tables']['options']['Update']['content'] }),
     })
     .eq('id', id)
   if (error) throw error

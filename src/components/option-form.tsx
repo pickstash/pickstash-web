@@ -1,55 +1,72 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { uploadOptionImage, type SummaryItem } from '@/lib/api/options'
+import { uploadOptionImage } from '@/lib/api/options'
+import { cleanBlocks, type OptionBlock } from '@/lib/domain/option-content'
 
 interface OptionFormProps {
   boxId: string
   initialName?: string
-  initialSummary?: SummaryItem[]
-  initialMemo?: string
-  initialLinks?: string[]
-  initialImages?: string[]
+  initialContent?: OptionBlock[]
   isPending?: boolean
-  onSubmit: (data: {
-    name: string
-    summary: SummaryItem[]
-    memo: string
-    links: string[]
-    images: string[]
-  }) => void
+  onSubmit: (data: { name: string; content: OptionBlock[] }) => void
   onCancel?: () => void
   submitLabel?: string
 }
 
 const MAX_IMAGES = 6
+const MAX_BLOCKS = 20
+
+function newId(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID()
+  return `${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`
+}
 
 export function OptionForm({
   boxId,
   initialName = '',
-  initialSummary = [],
-  initialMemo = '',
-  initialLinks = [],
-  initialImages = [],
+  initialContent = [],
   isPending,
   onSubmit,
   onCancel,
   submitLabel = '저장',
 }: OptionFormProps) {
   const [name, setName] = useState(initialName)
-  const [summaryItems, setSummaryItems] = useState<string[]>(
-    initialSummary.length > 0
-      ? initialSummary.sort((a, b) => a.order - b.order).map(s => s.text)
-      : ['']
-  )
-  const [memo, setMemo] = useState(initialMemo)
-  const [links, setLinks] = useState<string[]>(
-    initialLinks.length > 0 ? initialLinks : ['']
-  )
-  const [images, setImages] = useState<string[]>(initialImages)
+  const [blocks, setBlocks] = useState<OptionBlock[]>(initialContent)
   const [uploading, setUploading] = useState(false)
   const [imageError, setImageError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const imageCount = blocks.filter(b => b.type === 'image').length
+  const atBlockLimit = blocks.length >= MAX_BLOCKS
+
+  function updateBlock(id: string, patch: Partial<OptionBlock>) {
+    setBlocks(prev => prev.map(b => (b.id === id ? ({ ...b, ...patch } as OptionBlock) : b)))
+  }
+
+  function removeBlock(id: string) {
+    setBlocks(prev => prev.filter(b => b.id !== id))
+  }
+
+  function moveBlock(index: number, dir: -1 | 1) {
+    setBlocks(prev => {
+      const next = [...prev]
+      const target = index + dir
+      if (target < 0 || target >= next.length) return prev
+      ;[next[index], next[target]] = [next[target], next[index]]
+      return next
+    })
+  }
+
+  function addText() {
+    if (atBlockLimit) return
+    setBlocks(prev => [...prev, { type: 'text', id: newId(), text: '' }])
+  }
+
+  function addLink() {
+    if (atBlockLimit) return
+    setBlocks(prev => [...prev, { type: 'link', id: newId(), label: '', url: '' }])
+  }
 
   async function handleAddImages(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? [])
@@ -57,7 +74,16 @@ export function OptionForm({
     if (files.length === 0) return
     setImageError(null)
 
-    const room = MAX_IMAGES - images.length
+    const imageRoom = MAX_IMAGES - imageCount
+    const room = Math.min(imageRoom, MAX_BLOCKS - blocks.length)
+    if (room <= 0) {
+      setImageError(
+        imageRoom <= 0
+          ? `사진은 최대 ${MAX_IMAGES}장까지 올릴 수 있어요.`
+          : `블록은 최대 ${MAX_BLOCKS}개까지 넣을 수 있어요.`,
+      )
+      return
+    }
     const toUpload = files.slice(0, room)
     if (toUpload.some(f => f.size > 5 * 1024 * 1024)) {
       setImageError('5MB 이하의 이미지만 올릴 수 있어요.')
@@ -67,7 +93,7 @@ export function OptionForm({
     setUploading(true)
     try {
       const urls = await Promise.all(toUpload.map(f => uploadOptionImage(boxId, f)))
-      setImages(prev => [...prev, ...urls])
+      setBlocks(prev => [...prev, ...urls.map(url => ({ type: 'image' as const, id: newId(), url }))])
     } catch {
       setImageError('사진 업로드에 실패했어요.')
     } finally {
@@ -75,45 +101,10 @@ export function OptionForm({
     }
   }
 
-  function removeImage(index: number) {
-    setImages(prev => prev.filter((_, i) => i !== index))
-  }
-
-  function addSummaryItem() {
-    setSummaryItems(prev => [...prev, ''])
-  }
-
-  function updateSummaryItem(index: number, value: string) {
-    setSummaryItems(prev => prev.map((item, i) => (i === index ? value : item)))
-  }
-
-  function removeSummaryItem(index: number) {
-    setSummaryItems(prev => prev.filter((_, i) => i !== index))
-  }
-
-  function addLink() {
-    setLinks(prev => [...prev, ''])
-  }
-
-  function updateLink(index: number, value: string) {
-    setLinks(prev => prev.map((item, i) => (i === index ? value : item)))
-  }
-
-  function removeLink(index: number) {
-    setLinks(prev => prev.filter((_, i) => i !== index))
-  }
-
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!name.trim()) return
-
-    const summary: SummaryItem[] = summaryItems
-      .map((text, i) => ({ text: text.trim(), order: i }))
-      .filter(s => s.text.length > 0)
-
-    const validLinks = links.map(l => l.trim()).filter(Boolean)
-
-    onSubmit({ name: name.trim(), summary, memo: memo.trim(), links: validLinks, images })
+    onSubmit({ name: name.trim(), content: cleanBlocks(blocks) })
   }
 
   return (
@@ -134,100 +125,124 @@ export function OptionForm({
         />
       </div>
 
-      {/* 요약 항목 */}
+      {/* 본문 블록 */}
       <div>
-        <label className="mb-1.5 block text-[13px] font-semibold text-ink-soft">요약 항목</label>
-        <div className="space-y-2">
-          {summaryItems.map((item, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <input
-                type="text"
-                value={item}
-                onChange={e => updateSummaryItem(i, e.target.value)}
-                placeholder={`항목 ${i + 1}`}
-                maxLength={100}
-                className="flex-1 rounded-field border-[1.5px] border-line bg-paper px-4 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none"
-              />
-              {summaryItems.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removeSummaryItem(i)}
-                  className="shrink-0 p-1 text-ink-faint"
-                >
-                  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-        {summaryItems.length < 10 && (
+        <label className="mb-1.5 block text-[13px] font-semibold text-ink-soft">본문</label>
+
+        {blocks.length === 0 ? (
+          <p className="rounded-field border border-dashed border-[#D9D6C2] bg-paper/60 px-4 py-6 text-center text-[12.5px] text-ink-faint">
+            아래 버튼으로 글·사진·링크를 자유롭게 배치하세요.
+          </p>
+        ) : (
+          <div className="space-y-2.5">
+            {blocks.map((block, i) => (
+              <div key={block.id} className="rounded-[16px] border border-line bg-paper p-3">
+                {/* 블록 컨트롤 */}
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-ink-faint">
+                    {block.type === 'text' ? '글' : block.type === 'image' ? '사진' : '링크'}
+                  </span>
+                  <div className="flex items-center gap-0.5">
+                    <button
+                      type="button"
+                      onClick={() => moveBlock(i, -1)}
+                      disabled={i === 0}
+                      aria-label="위로"
+                      className="flex h-7 w-7 items-center justify-center rounded-full text-ink-soft disabled:opacity-30 active:bg-cream"
+                    >
+                      <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" /></svg>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moveBlock(i, 1)}
+                      disabled={i === blocks.length - 1}
+                      aria-label="아래로"
+                      className="flex h-7 w-7 items-center justify-center rounded-full text-ink-soft disabled:opacity-30 active:bg-cream"
+                    >
+                      <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeBlock(block.id)}
+                      aria-label="블록 삭제"
+                      className="flex h-7 w-7 items-center justify-center rounded-full text-ink-faint active:bg-tomato-tint"
+                    >
+                      <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 블록 본체 */}
+                {block.type === 'text' && (
+                  <textarea
+                    value={block.text}
+                    onChange={e => updateBlock(block.id, { text: e.target.value })}
+                    rows={3}
+                    maxLength={1000}
+                    placeholder="내용을 입력하세요"
+                    className="w-full resize-none rounded-field border-[1.5px] border-line bg-paper px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none"
+                  />
+                )}
+
+                {block.type === 'image' && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={block.url}
+                    alt="첨부 사진"
+                    className="max-h-64 w-full rounded-[12px] border border-line object-cover"
+                  />
+                )}
+
+                {block.type === 'link' && (
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      value={block.label}
+                      onChange={e => updateBlock(block.id, { label: e.target.value })}
+                      maxLength={30}
+                      placeholder="라벨 (예: 최저가, 리뷰)"
+                      className="w-full rounded-field border-[1.5px] border-line bg-paper px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none"
+                    />
+                    <input
+                      type="url"
+                      value={block.url}
+                      onChange={e => updateBlock(block.id, { url: e.target.value })}
+                      placeholder="https://"
+                      className="w-full rounded-field border-[1.5px] border-line bg-paper px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none"
+                    />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* 블록 추가 버튼 */}
+        <div className="mt-2.5 flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={addSummaryItem}
-            className="mt-2 text-xs font-semibold text-ink-soft"
+            onClick={addText}
+            disabled={atBlockLimit}
+            className="flex items-center gap-1 rounded-full border-[1.5px] border-line bg-paper px-3.5 py-2 text-[12.5px] font-bold text-ink active:bg-cream disabled:opacity-40"
           >
-            + 항목 추가
+            ＋ 글
           </button>
-        )}
-      </div>
-
-      {/* 메모 */}
-      <div>
-        <label className="mb-1.5 block text-[13px] font-semibold text-ink-soft">메모</label>
-        <textarea
-          value={memo}
-          onChange={e => setMemo(e.target.value)}
-          rows={3}
-          maxLength={500}
-          placeholder="선택지에 대한 메모를 입력하세요"
-          className="w-full resize-none rounded-field border-[1.5px] border-line bg-paper px-4 py-3 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none"
-        />
-      </div>
-
-      {/* 사진 */}
-      <div>
-        <label className="mb-1.5 block text-[13px] font-semibold text-ink-soft">사진</label>
-        <div className="flex flex-wrap gap-2">
-          {images.map((url, i) => (
-            <div key={url} className="relative h-20 w-20 overflow-hidden rounded-[14px] border border-line">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={url} alt={`사진 ${i + 1}`} className="h-full w-full object-cover" />
-              <button
-                type="button"
-                onClick={() => removeImage(i)}
-                aria-label="사진 삭제"
-                className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-ink/70 text-cream"
-              >
-                <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          ))}
-          {images.length < MAX_IMAGES && (
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-[14px] border-[1.5px] border-dashed border-[#D9D6C2] bg-paper text-ink-faint active:bg-cream disabled:opacity-50"
-            >
-              {uploading ? (
-                <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-                </svg>
-              ) : (
-                <>
-                  <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                  </svg>
-                  <span className="text-[10px] font-semibold">사진</span>
-                </>
-              )}
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading || imageCount >= MAX_IMAGES || atBlockLimit}
+            className="flex items-center gap-1 rounded-full border-[1.5px] border-line bg-paper px-3.5 py-2 text-[12.5px] font-bold text-ink active:bg-cream disabled:opacity-40"
+          >
+            {uploading ? '올리는 중…' : '＋ 사진'}
+          </button>
+          <button
+            type="button"
+            onClick={addLink}
+            disabled={atBlockLimit}
+            className="flex items-center gap-1 rounded-full border-[1.5px] border-line bg-paper px-3.5 py-2 text-[12.5px] font-bold text-ink active:bg-cream disabled:opacity-40"
+          >
+            ＋ 링크
+          </button>
         </div>
         <input
           ref={fileInputRef}
@@ -238,44 +253,6 @@ export function OptionForm({
           onChange={handleAddImages}
         />
         {imageError && <p className="mt-1.5 text-xs text-tomato">{imageError}</p>}
-      </div>
-
-      {/* 링크 */}
-      <div>
-        <label className="mb-1.5 block text-[13px] font-semibold text-ink-soft">링크</label>
-        <div className="space-y-2">
-          {links.map((link, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <input
-                type="url"
-                value={link}
-                onChange={e => updateLink(i, e.target.value)}
-                placeholder="https://"
-                className="flex-1 rounded-field border-[1.5px] border-line bg-paper px-4 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none"
-              />
-              {links.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removeLink(i)}
-                  className="shrink-0 p-1 text-ink-faint"
-                >
-                  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-        {links.length < 5 && (
-          <button
-            type="button"
-            onClick={addLink}
-            className="mt-2 text-xs font-semibold text-ink-soft"
-          >
-            + 링크 추가
-          </button>
-        )}
       </div>
 
       {/* 버튼 */}

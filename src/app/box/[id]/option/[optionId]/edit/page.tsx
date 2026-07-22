@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useOption, useUpdateOption } from '@/hooks/use-options'
 import { OptionForm } from '@/components/option-form'
+import { parseBlocks } from '@/lib/domain/option-content'
 
 export default function EditOptionPage({
   params,
@@ -29,11 +30,7 @@ export default function EditOptionPage({
     return null
   }
 
-  const summary = Array.isArray(option.summary)
-    ? (option.summary as { text: string; order: number }[])
-    : []
-  const links = Array.isArray(option.links) ? (option.links as string[]) : []
-  const images = Array.isArray(option.images) ? (option.images as string[]) : []
+  const content = parseBlocks(option.content)
 
   return (
     <main className="flex min-h-dvh flex-col">
@@ -50,15 +47,12 @@ export default function EditOptionPage({
         <OptionForm
           boxId={boxId}
           initialName={option.name}
-          initialSummary={summary}
-          initialMemo={option.memo ?? ''}
-          initialLinks={links}
-          initialImages={images}
+          initialContent={content}
           isPending={updateOption.isPending}
           submitLabel="수정하기"
           onSubmit={data => {
             updateOption.mutate(
-              { name: data.name, summary: data.summary, memo: data.memo, links: data.links, images: data.images },
+              { name: data.name, content: data.content },
               { onSuccess: () => router.push(`/box/${boxId}/option/${optionId}`) }
             )
           }}

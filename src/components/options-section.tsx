@@ -1,11 +1,17 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { useOptions } from '@/hooks/use-options'
 import { useBoxVotes } from '@/hooks/use-votes'
 import { useRealtimeVotes } from '@/hooks/use-realtime-votes'
+import { useInfiniteReveal } from '@/hooks/use-infinite-reveal'
+import { sortOptions, OPTION_SORT_MODES, OPTION_SORT_LABELS, type OptionSortMode } from '@/lib/domain/option-sort'
+import { parseBlocks, getOptionPreview } from '@/lib/domain/option-content'
 import { VoteButtons } from './vote-buttons'
 import type { Option } from '@/lib/api/options'
+
+const PAGE_SIZE = 6
 
 interface OptionsSectionProps {
   boxId: string
@@ -17,13 +23,34 @@ interface OptionsSectionProps {
 export function OptionsSection({ boxId, round, initialOptions, canVote }: OptionsSectionProps) {
   const { data: options = initialOptions } = useOptions(boxId)
   const { data: votes = {} } = useBoxVotes(boxId, round)
+  const [sortMode, setSortMode] = useState<OptionSortMode>('latest')
 
   useRealtimeVotes(boxId, round)
 
+  const sorted = sortOptions(options, votes, sortMode)
+  const { visibleCount, sentinelRef, hasMore } = useInfiniteReveal(sorted.length, PAGE_SIZE, sortMode)
+  const visible = sorted.slice(0, visibleCount)
+
   return (
     <section className="space-y-2.5">
-      <div className="flex items-baseline justify-between px-0.5">
+      <div className="flex items-center justify-between gap-2 px-0.5">
         <h3 className="text-[13.5px] font-extrabold text-ink">선택지 {options.length}개</h3>
+        {options.length > 1 && (
+          <div className="flex items-center gap-0.5 rounded-full bg-[#EDEBDD] p-0.5">
+            {OPTION_SORT_MODES.map(mode => (
+              <button
+                key={mode}
+                onClick={() => setSortMode(mode)}
+                aria-pressed={sortMode === mode}
+                className={`rounded-full px-2.5 py-1 text-[11.5px] font-bold transition-colors ${
+                  sortMode === mode ? 'bg-paper text-ink shadow-sm' : 'text-ink-soft active:text-ink'
+                }`}
+              >
+                {OPTION_SORT_LABELS[mode]}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {options.length === 0 ? (
@@ -33,12 +60,9 @@ export function OptionsSection({ boxId, round, initialOptions, canVote }: Option
         </div>
       ) : (
         <div className="space-y-2.5">
-          {options.map(option => {
+          {visible.map(option => {
             const counts = votes[option.id] ?? { like: 0, dislike: 0, myVote: null }
-            const summary = Array.isArray(option.summary)
-              ? ([...(option.summary as { text: string; order: number }[])].sort((a, b) => a.order - b.order))
-              : []
-            const images = Array.isArray(option.images) ? (option.images as string[]) : []
+            const preview = getOptionPreview(parseBlocks(option.content))
             return (
               <div key={option.id} className="space-y-2.5 rounded-[18px] border border-[#ECEADC] bg-paper p-4">
                 <div className="flex items-baseline justify-between gap-2">
@@ -56,29 +80,19 @@ export function OptionsSection({ boxId, round, initialOptions, canVote }: Option
                   </Link>
                 </div>
 
-                {images.length > 0 && (
-                  <Link href={`/box/${boxId}/option/${option.id}`} className="flex gap-2 overflow-x-auto">
-                    {images.map((url, i) => (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        key={url}
-                        src={url}
-                        alt={`${option.name} 사진 ${i + 1}`}
-                        className="h-24 w-24 shrink-0 rounded-[14px] border border-line object-cover"
-                      />
-                    ))}
+                {preview.image && (
+                  <Link href={`/box/${boxId}/option/${option.id}`} className="block">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={preview.image}
+                      alt={`${option.name} 사진`}
+                      className="h-24 w-24 shrink-0 rounded-[14px] border border-line object-cover"
+                    />
                   </Link>
                 )}
 
-                {summary.length > 0 && (
-                  <ul className="space-y-0.5">
-                    {summary.map((item, i) => (
-                      <li key={i} className="flex gap-1.5 text-xs text-ink-soft">
-                        <span className="text-[#DBD8C6]">—</span>
-                        {item.text}
-                      </li>
-                    ))}
-                  </ul>
+                {preview.snippet && (
+                  <p className="line-clamp-2 text-xs leading-relaxed text-ink-soft">{preview.snippet}</p>
                 )}
 
                 <VoteButtons
@@ -91,6 +105,7 @@ export function OptionsSection({ boxId, round, initialOptions, canVote }: Option
               </div>
             )
           })}
+          {hasMore && <div key={visibleCount} ref={sentinelRef} aria-hidden className="h-1" />}
         </div>
       )}
     </section>
