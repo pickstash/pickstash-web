@@ -166,11 +166,10 @@ create table options (
   id uuid primary key default gen_random_uuid(),
   box_id uuid not null references boxes(id) on delete cascade,
   name text not null,
-  summary jsonb not null default '[]',   -- [{ "text": "항공권이 비싸", "order": 0 }, ...]
-  links jsonb not null default '[]',     -- ["https://...", ...]
-  memo text,
+  content jsonb not null default '[]',   -- 본문 블록(순서 배치): [{type:'text',id,text} | {type:'image',id,url} | {type:'link',id,label,url}, ...]
   created_by uuid not null references profiles(id),
   created_at timestamptz not null default now()
+  -- (레거시/휴면) summary·links·memo·images 컬럼은 006에서 content로 이관 후 미사용. 드롭하지 않고 스키마에만 남김.
 );
 
 -- 투표 (유저당 선택지×라운드 하나에 좋아요 또는 싫어요 1개)
@@ -371,7 +370,7 @@ create or replace function start_rematch(p_box_id uuid, p_deadline timestamptz) 
 - 정리상태 라벨 + 상자 제목 + 수정하기(owner만) + 메모
 - 생성일 / 마감일(없으면 "마감 없음") 표시 + "변경하기"(owner만, 바텀시트 재사용)
 - 참여 인원 수 + 아바타 목록 + "+친구초대" → `/box/[id]/invite`. **참여자가 나 혼자면 초대 유도를 강요하지 않는다** (혼자 모드)
-- 선택지 N개 목록: 카드마다 이름·요약 미리보기·작성자·좋아요/싫어요 버튼+카운트, 탭하면 선택지 상세로
+- 선택지 N개 목록: 카드마다 이름·본문 미리보기(첫 사진 + 첫 글 스니펫)·좋아요/싫어요 버튼+카운트, 상단에 정렬 토글(최신순/좋아요순) + 무한스크롤, 탭하면 선택지 상세로
 - 하단 버튼: "선택지 추가하기" / "이대로 결정하기"(owner만, 결과형 카피)
 - RESOLVED: 결정 결과 + 스탬프 + "다시 정리하기"(owner) / EXPIRED: 상황별 재투표 제안 배너(6장 참조) + "다시 정리하기"(owner)
 - RESOLVED/EXPIRED 상자는 투표·선택지 추가·수정·삭제 비활성 (서버 가드 병행). 댓글은 허용
@@ -385,16 +384,13 @@ create or replace function start_rematch(p_box_id uuid, p_deadline timestamptz) 
 ### 7-5. 선택지 상세 `/box/[id]/option/[optionId]`
 - 선택지 이름 + 편집(작성자 또는 owner) / 삭제(작성자만). **RESOLVED/EXPIRED 상자에서는 편집·삭제 UI를 숨긴다** (서버 가드 병행)
 - 좋아요/싫어요 버튼 + 카운트 (현재 라운드 기준)
-- 요약: 불릿 리스트 (예: "항공권이 비싸", "나 너무 가고 싶어 제발")
-- 메모: 자유 텍스트
-- 링크 목록: URL 리스트, 각 항목 삭제 버튼, "추가" 입력
+- 본문: `content` 블록을 순서대로 렌더 — 글(문단)·사진·라벨 링크가 자유롭게 섞인다. 링크는 라벨 칩(비면 도메인명) + URL 형태로 표시
 - 댓글: 입력창("댓글을 입력하세요" + 등록) + 작성자 아바타·닉네임·내용 목록, Realtime 반영
 
 ### 7-6. 선택지 생성/수정 `/box/[id]/option/new`, `.../edit`
 - 동일 폼 컴포넌트 재사용. 상단: 취소 / 완료 버튼
 - 선택지 이름 input (필수)
-- 요약 항목 리스트: 항목별 input + 삭제, 드래그로 순서 변경, "입력하세요..." 추가 행
-- 메모 textarea
+- 본문 블록 에디터: `＋글`·`＋사진`·`＋링크`로 블록 추가, 블록별 ↑↓ 이동·삭제. 사진은 1블록 1장(최대 6장), 링크는 라벨+URL. 상한 20블록. 저장 시 빈 글/빈 URL 블록은 제거
 - 완료 시 저장 후 이전 화면 복귀, 취소 시 변경사항 폐기 (수정 중 이탈 시 confirm)
 
 ### 7-7. 창고 목록 3종 `/messy`, `/done`, `/favorites`
@@ -435,7 +431,8 @@ create or replace function start_rematch(p_box_id uuid, p_deadline timestamptz) 
 4. **화면 재구현**: 로그인 → 메인(들썩 활동·빈 상태) → 창고 3종(라벨 4종·NEW 확대) → 상자 상세(결정/재투표/재오픈) → 선택지 → 생성(무마감) → 초대 착지(미리보기)
 5. **마감재**: 드로어·그룹·프로필 리스킨, 전수 검증
 
-Later(이번 범위 아님): 사진 첨부, 친구 자동 등록, 선택지 정렬·무한스크롤, 그룹 라벨 파생, 다크모드, 검색/필터 완성
+완료(2026-07): 사진 첨부(005), 선택지 정렬(최신/좋아요순)·무한스크롤, 선택지 본문 블록-라이트 모델(006 — summary/memo/images/links → content 블록).
+Later(이번 범위 아님): 친구 자동 등록, 그룹 라벨 파생, 다크모드, 검색/필터 완성
 
 ## 9. AI 작업 규칙
 
