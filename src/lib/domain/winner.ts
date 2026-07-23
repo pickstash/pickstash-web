@@ -1,7 +1,6 @@
 export interface OptionVoteSummary {
   name: string
   like: number
-  dislike: number
 }
 
 export interface VoteResult {
@@ -12,10 +11,10 @@ export interface VoteResult {
 
 export function getVoteResult(options: OptionVoteSummary[]): VoteResult {
   if (options.length === 0) return { winner: null, coLeaders: [], hasVotes: false }
-  const hasVotes = options.some(o => o.like > 0 || o.dislike > 0)
+  const hasVotes = options.some(o => o.like > 0)
   if (!hasVotes) return { winner: null, coLeaders: [], hasVotes: false }
 
-  const scored = options.map(o => ({ name: o.name, score: o.like - o.dislike }))
+  const scored = options.map(o => ({ name: o.name, score: o.like }))
   const maxScore = Math.max(...scored.map(o => o.score))
   const leaders = scored.filter(o => o.score === maxScore).map(o => o.name)
   if (leaders.length === 1) return { winner: leaders[0], coLeaders: [], hasVotes: true }
@@ -24,6 +23,21 @@ export function getVoteResult(options: OptionVoteSummary[]): VoteResult {
 
 export function getWinner(options: OptionVoteSummary[]): string | null {
   return getVoteResult(options).winner
+}
+
+/**
+ * 목록에서 1위로 강조할 항목의 key를 반환한다. 득점 = 좋아요 수.
+ * 무투표이거나 공동 1위면 null (아무도 강조하지 않음).
+ */
+export function getLeaderKey<T extends { key: string; like: number }>(
+  items: T[],
+): string | null {
+  const hasVotes = items.some(i => i.like > 0)
+  if (!hasVotes) return null
+  const scored = items.map(i => ({ key: i.key, score: i.like }))
+  const max = Math.max(...scored.map(s => s.score))
+  const leaders = scored.filter(s => s.score === max)
+  return leaders.length === 1 ? leaders[0].key : null
 }
 
 export function buildOptionVoteSummaries(
@@ -35,7 +49,6 @@ export function buildOptionVoteSummaries(
     return {
       name: opt.name,
       like: roundVotes.filter(v => v.vote_type === 'like').length,
-      dislike: roundVotes.filter(v => v.vote_type === 'dislike').length,
     }
   })
 }

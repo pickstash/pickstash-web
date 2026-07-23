@@ -2,6 +2,7 @@
 
 import { useVote } from '@/hooks/use-votes'
 import type { VoteCount } from '@/lib/api/votes'
+import { Icon } from './icon'
 
 interface VoteButtonsProps {
   optionId: string
@@ -9,43 +10,32 @@ interface VoteButtonsProps {
   round: number
   counts: VoteCount
   disabled?: boolean
+  /** 목록용 경량 스타일(작은 크기) */
+  compact?: boolean
 }
 
-export function VoteButtons({ optionId, boxId, round, counts, disabled }: VoteButtonsProps) {
+export function VoteButtons({ optionId, boxId, round, counts, disabled, compact = false }: VoteButtonsProps) {
   const vote = useVote(boxId, round)
+  const liked = counts.myVote === 'like'
 
-  function handleVote(voteType: 'like' | 'dislike') {
+  function handleLike() {
     if (disabled || vote.isPending) return
-    vote.mutate({ optionId, voteType, currentMyVote: counts.myVote })
+    vote.mutate({ optionId, voteType: 'like', currentMyVote: counts.myVote })
   }
 
-  return (
-    <div className="flex items-center gap-2">
-      <button
-        onClick={() => handleVote('like')}
-        disabled={disabled || vote.isPending}
-        className={`flex items-center gap-1.5 rounded-full border-[1.5px] px-3.5 py-1.5 text-[13.5px] font-bold transition-colors disabled:opacity-45 ${
-          counts.myVote === 'like'
-            ? 'border-butter-dark bg-butter-tint text-ink'
-            : 'border-line bg-paper text-ink active:bg-cream'
-        }`}
-      >
-        <span>👍</span>
-        <span className="tabular-nums">{counts.like}</span>
-      </button>
+  const size = compact ? 'px-2.5 py-1 text-[12.5px]' : 'px-3.5 py-1.5 text-[13.5px]'
+  const state = liked
+    ? 'border-butter-dark bg-butter-tint text-ink'
+    : 'border-line bg-paper text-ink-soft active:bg-cream'
 
-      <button
-        onClick={() => handleVote('dislike')}
-        disabled={disabled || vote.isPending}
-        className={`flex items-center gap-1.5 rounded-full border-[1.5px] px-3.5 py-1.5 text-[13.5px] font-bold transition-colors disabled:opacity-45 ${
-          counts.myVote === 'dislike'
-            ? 'border-tomato bg-tomato-tint text-[#B4482F]'
-            : 'border-line bg-paper text-ink active:bg-cream'
-        }`}
-      >
-        <span>👎</span>
-        <span className="tabular-nums">{counts.dislike}</span>
-      </button>
-    </div>
+  return (
+    <button
+      onClick={handleLike}
+      disabled={disabled || vote.isPending}
+      className={`flex w-fit items-center gap-1.5 rounded-full border font-bold transition-colors disabled:opacity-45 ${size} ${state}`}
+    >
+      <Icon name="heart" filled={liked} size={compact ? 15 : 16} className={liked ? 'text-butter-dark' : undefined} />
+      <span className="tabular-nums">{counts.like}</span>
+    </button>
   )
 }

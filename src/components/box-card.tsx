@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { getBoxStatus, BOX_STATUS_LABEL, type BoxStatus } from '@/lib/domain/box-status'
 import { formatKoreanDate, formatDeadline } from '@/lib/utils'
+import { Icon } from '@/components/icon'
 import type { Box } from '@/lib/api/boxes'
 
 interface BoxCardProps {
@@ -38,7 +39,14 @@ export function BoxCard({ box, participantCount, winnerName, coLeaderCount, isNe
             )}
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
-            {isFavorite && <span className="text-sm">⭐</span>}
+            {isFavorite && (
+              <Icon
+                name="star"
+                size={15}
+                strokeWidth={1.5}
+                style={{ fill: 'var(--color-butter)', stroke: 'var(--color-butter-dark)' }}
+              />
+            )}
             <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${STATUS_BADGE_CLASS[status]}`}>
               {status === 'SHOWDOWN' ? '🔥 결판 중' : BOX_STATUS_LABEL[status]}
             </span>

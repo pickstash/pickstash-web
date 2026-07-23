@@ -61,7 +61,7 @@ export default async function FavoritesPage() {
         ) : (
           <div className="rounded-card border border-dashed border-[#D9D6C2] bg-paper/60 px-6 py-14 text-center">
             <p className="text-[13.5px] font-bold text-ink">즐겨찾는 상자가 없어요</p>
-            <p className="mt-1 text-[12px] text-ink-soft">상자 상세의 ⭐를 눌러 담아두세요!</p>
+            <p className="mt-1 text-[12px] text-ink-soft">상자 상세에서 별 아이콘을 눌러 담아두세요!</p>
           </div>
         )}
       </div>

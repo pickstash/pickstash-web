@@ -5,11 +5,12 @@ import { createClient } from '@/lib/supabase/server'
 import { AppDrawer } from '@/components/app-drawer'
 import { ShakingBoxesSection } from '@/components/shaking-boxes-section'
 import { PushNotificationBanner } from '@/components/push-notification-banner'
+import { Icon } from '@/components/icon'
 
 const WAREHOUSES = [
-  { href: '/messy', icon: '📦', sub: '아직 정리 못 한', name: '어질러진 창고' },
-  { href: '/done', icon: '✅', sub: '결정이 끝난', name: '정리된 창고' },
-  { href: '/favorites', icon: '⭐', sub: '다시 꺼내보고 싶은', name: '즐겨찾는 창고' },
+  { href: '/messy', icon: 'box', sub: '아직 정리 못 한', name: '어질러진 창고' },
+  { href: '/done', icon: 'check', sub: '결정이 끝난', name: '정리된 창고' },
+  { href: '/favorites', icon: 'star', sub: '다시 꺼내보고 싶은', name: '즐겨찾는 창고' },
 ] as const
 
 export default async function HomePage() {
@@ -53,8 +54,8 @@ export default async function HomePage() {
         {WAREHOUSES.map((w, i) => (
           <Link key={w.href} href={w.href} className="block">
             <div className="flex items-center gap-3 rounded-card border border-[#ECEADC] bg-paper px-4 py-4 shadow-[0_2px_10px_rgba(42,42,39,0.05)] active:bg-butter-tint/40">
-              <span className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-cream text-[19px]">
-                {w.icon}
+              <span className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-cream text-ink">
+                <Icon name={w.icon} size={20} />
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-[10.5px] font-semibold text-ink-faint">{w.sub}</span>

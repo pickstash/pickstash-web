@@ -2,9 +2,11 @@
 
 import { useRouter } from 'next/navigation'
 import type { ReactNode } from 'react'
+import { Icon } from './icon'
 
 interface PageHeaderProps {
-  title: string
+  /** 비우면 헤더에 제목을 표시하지 않는다(히어로형 화면용) */
+  title?: string
   /** 히스토리가 없을 때(딥링크 진입) 돌아갈 곳 */
   fallbackHref?: string
   right?: ReactNode
@@ -32,11 +34,13 @@ export function PageHeader({ title, fallbackHref = '/', right }: PageHeaderProps
         aria-label="뒤로가기"
         className="-ml-2 flex h-9 w-9 items-center justify-center rounded-full text-ink active:bg-butter-tint"
       >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-        </svg>
+        <Icon name="back" size={21} strokeWidth={2.1} />
       </button>
-      <h1 className="min-w-0 flex-1 truncate text-[17px] font-extrabold tracking-tight text-ink">{title}</h1>
+      {title ? (
+        <h1 className="min-w-0 flex-1 truncate text-[17px] font-extrabold tracking-tight text-ink">{title}</h1>
+      ) : (
+        <div className="flex-1" />
+      )}
       {right}
     </header>
   )

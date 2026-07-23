@@ -15,9 +15,11 @@ import { useOptions } from '@/hooks/use-options'
 import { useBoxVotes } from '@/hooks/use-votes'
 import { DeadlineBottomSheet } from '@/components/deadline-bottom-sheet'
 import { OptionsSection } from '@/components/options-section'
+import { Icon } from '@/components/icon'
 import { PageHeader } from '@/components/page-header'
 import { getBoxStatus, isDoneStatus, BOX_STATUS_LABEL, type BoxStatus } from '@/lib/domain/box-status'
 import { getVoteResult } from '@/lib/domain/winner'
+import { parseBlocks, linkBlocksOf } from '@/lib/domain/option-content'
 import { formatKoreanDate, formatDeadline, defaultDeadline } from '@/lib/utils'
 import type { BoxWithParticipants } from '@/lib/api/boxes'
 import type { Option } from '@/lib/api/options'
@@ -46,6 +48,7 @@ export function BoxDetailClient({ box: initialBox, isOwner, initialOptions, init
   const [sheetPurpose, setSheetPurpose] = useState<SheetPurpose | null>(null)
   const [confirmDeleteBox, setConfirmDeleteBox] = useState(false)
   const [confirmReopen, setConfirmReopen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const [isFavorite, setIsFavorite] = useState(initialIsFavorite)
 
   const updateTitle = useUpdateBoxTitle(box.id)
@@ -58,6 +61,7 @@ export function BoxDetailClient({ box: initialBox, isOwner, initialOptions, init
 
   const { data: options = initialOptions } = useOptions(box.id)
   const { data: votes = {} } = useBoxVotes(box.id, box.current_round)
+  const hasLinks = options.some(o => linkBlocksOf(parseBlocks(o.content)).length > 0)
 
   const status = getBoxStatus(box)
   const isDone = isDoneStatus(status)
@@ -66,7 +70,7 @@ export function BoxDetailClient({ box: initialBox, isOwner, initialOptions, init
   const voteResult = getVoteResult(
     options.map(o => {
       const c = votes[o.id] ?? { like: 0, dislike: 0, myVote: null }
-      return { name: o.name, like: c.like, dislike: c.dislike }
+      return { name: o.name, like: c.like }
     })
   )
 
@@ -141,28 +145,95 @@ export function BoxDetailClient({ box: initialBox, isOwner, initialOptions, init
   return (
     <main className="flex min-h-dvh flex-col">
       <PageHeader
-        title={box.title}
         fallbackHref={isDone ? '/done' : '/messy'}
         right={
-          <button
-            onClick={handleToggleFavorite}
-            aria-label="즐겨찾기"
-            className="shrink-0 text-xl transition-transform active:scale-90"
-          >
-            {isFavorite ? '⭐' : '☆'}
-          </button>
+          <div className="flex items-center gap-0.5">
+            <button
+              onClick={handleToggleFavorite}
+              aria-label="즐겨찾기"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-transform active:scale-90"
+            >
+              <Icon
+                name="star"
+                size={23}
+                strokeWidth={1.6}
+                className={isFavorite ? undefined : 'text-ink-faint'}
+                style={isFavorite ? { fill: 'var(--color-butter)', stroke: 'var(--color-butter-dark)' } : undefined}
+              />
+            </button>
+            {isOwner && (
+              <button
+                onClick={() => setMenuOpen(true)}
+                aria-label="더보기"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink active:bg-butter-tint"
+              >
+                <Icon name="more" size={20} />
+              </button>
+            )}
+          </div>
         }
       />
 
-      <div className="flex-1 space-y-3 px-5 pb-5 pt-1">
-        {/* 상태 + 제목 + 메모 */}
-        <div className="space-y-3 rounded-card border border-[#ECEADC] bg-paper p-5">
+      {/* ⋯ 오버플로 메뉴 */}
+      {menuOpen && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+          <div className="fixed right-4 top-[calc(env(safe-area-inset-top)+3.1rem)] z-50 w-44 overflow-hidden rounded-[16px] border border-line bg-paper py-1 shadow-[0_8px_28px_rgba(42,42,39,0.16)]">
+            {isOwner && !isDone && (
+              <button
+                onClick={() => { setMenuOpen(false); setEditingTitle(true); setTitleInput(box.title) }}
+                className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-ink active:bg-cream"
+              >
+                제목 수정
+              </button>
+            )}
+            {isOwner && (
+              <button
+                onClick={() => { setMenuOpen(false); setConfirmDeleteBox(true) }}
+                className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-tomato active:bg-tomato-tint"
+              >
+                상자 삭제
+              </button>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* 상자 삭제 확인 */}
+      {confirmDeleteBox && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-8">
+          <div className="absolute inset-0 bg-ink/40" onClick={() => setConfirmDeleteBox(false)} />
+          <div className="relative w-full max-w-[300px] rounded-[20px] bg-paper p-5 shadow-[0_16px_40px_rgba(42,42,39,0.25)]">
+            <p className="text-[15px] font-extrabold text-ink">상자를 삭제할까요?</p>
+            <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-soft">선택지·투표·댓글이 모두 사라져요. 되돌릴 수 없어요.</p>
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={() => setConfirmDeleteBox(false)}
+                className="flex-1 rounded-field border border-line py-3 text-[13px] font-bold text-ink-soft"
+              >
+                취소
+              </button>
+              <button
+                onClick={() => deleteBox.mutate(box.id)}
+                disabled={deleteBox.isPending}
+                className="flex-1 rounded-field bg-tomato py-3 text-[13px] font-bold text-white disabled:opacity-50"
+              >
+                삭제하기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex-1 space-y-4 px-5 pb-5 pt-1">
+        {/* 히어로: 상태 · 질문 · 메모 · 메타 · 참여 */}
+        <div className="space-y-3">
           <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-bold ${STATUS_BADGE_CLASS[status]}`}>
             {status === 'SHOWDOWN' ? `🔥 결판 중 · ${box.current_round}라운드` : BOX_STATUS_LABEL[status]}
           </span>
 
           {editingTitle ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-end gap-2">
               <input
                 type="text"
                 value={titleInput}
@@ -170,28 +241,18 @@ export function BoxDetailClient({ box: initialBox, isOwner, initialOptions, init
                 onKeyDown={e => e.key === 'Enter' && handleSaveTitle()}
                 maxLength={50}
                 autoFocus
-                className="flex-1 border-b-[1.5px] border-butter-dark bg-transparent py-1 text-[17px] font-extrabold text-ink focus:outline-none"
+                className="flex-1 border-b-[1.5px] border-butter-dark bg-transparent pb-1 text-[22px] font-extrabold leading-tight text-ink focus:outline-none"
               />
               <button
                 onClick={handleSaveTitle}
                 disabled={updateTitle.isPending}
-                className="shrink-0 text-sm font-bold text-ink"
+                className="shrink-0 pb-1 text-sm font-bold text-ink"
               >
                 저장
               </button>
             </div>
           ) : (
-            <div className="flex items-baseline justify-between gap-2">
-              <h2 className="text-[19px] font-extrabold leading-snug tracking-tight text-ink">{box.title}</h2>
-              {isOwner && !isDone && (
-                <button
-                  onClick={() => { setEditingTitle(true); setTitleInput(box.title) }}
-                  className="shrink-0 text-[11px] font-semibold text-ink-faint"
-                >
-                  수정
-                </button>
-              )}
-            </div>
+            <h1 className="text-[22px] font-extrabold leading-tight tracking-tight text-ink">{box.title}</h1>
           )}
 
           {box.memo && (
@@ -200,19 +261,57 @@ export function BoxDetailClient({ box: initialBox, isOwner, initialOptions, init
             </p>
           )}
 
-          <div className="space-y-1 text-[11.5px] leading-relaxed text-ink-faint">
-            <p>생성일 {formatKoreanDate(box.created_at)}</p>
-            <p className="flex items-center gap-2">
-              <span>마감일 {formatDeadline(box.deadline_at)}</span>
-              {isOwner && !isDone && (
-                <button
-                  onClick={() => setSheetPurpose('deadline')}
-                  className="font-semibold text-ink-soft underline underline-offset-2"
-                >
-                  {box.deadline_at ? '변경' : '마감 만들기'}
-                </button>
-              )}
-            </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {isOwner && !isDone ? (
+              <button
+                onClick={() => setSheetPurpose('deadline')}
+                className="flex items-center gap-1.5 rounded-full border border-line bg-paper px-3 py-1.5 text-[12px] font-bold text-ink-soft active:bg-cream"
+              >
+                <Icon name="calendar" size={14} />
+                {box.deadline_at ? formatDeadline(box.deadline_at) : '마감 없음 · 정하기'}
+              </button>
+            ) : (
+              <span className="flex items-center gap-1.5 text-[12px] text-ink-faint">
+                <Icon name="calendar" size={14} />
+                마감 {formatDeadline(box.deadline_at)}
+              </span>
+            )}
+            <span className="text-[11px] text-ink-faint">생성 {formatKoreanDate(box.created_at)}</span>
+          </div>
+
+          {/* 참여 (가벼운 스트립) */}
+          <div className="flex items-center justify-between gap-2 rounded-[14px] bg-cream/70 px-3.5 py-2.5">
+            {isSolo ? (
+              <p className="min-w-0 text-[12px] leading-relaxed text-ink-soft">
+                <span className="font-bold text-ink">혼자 정리 중</span>이에요.<br />
+                함께 정하고 싶으면 친구를 초대해보세요.
+              </p>
+            ) : (
+              <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1.5">
+                <span className="text-[12px] font-bold text-ink">친구 {box.box_participants.length}명</span>
+                {box.box_participants.map(p => (
+                  <div key={p.user_id} className="flex items-center gap-1.5">
+                    <div className="h-6 w-6 overflow-hidden rounded-full border border-paper bg-butter-tint">
+                      {p.profiles?.avatar_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={p.profiles.avatar_url} alt={p.profiles.nickname} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-ink">
+                          {p.profiles?.nickname?.[0] ?? '?'}
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-[11.5px] font-semibold text-ink">{p.profiles?.nickname}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <Link
+              href={`/box/${box.id}/invite`}
+              className="shrink-0 rounded-full border-[1.5px] border-dashed border-[#C9C7B6] bg-paper px-2.5 py-1 text-[11.5px] font-bold text-ink-soft active:bg-cream"
+            >
+              + 초대
+            </Link>
           </div>
         </div>
 
@@ -293,64 +392,27 @@ export function BoxDetailClient({ box: initialBox, isOwner, initialOptions, init
           </div>
         )}
 
-        {/* 참여자 */}
-        <div className="rounded-card border border-[#ECEADC] bg-paper p-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-baseline gap-2">
-              <span className="text-[12.5px] text-ink-faint">참여 인원</span>
-              <span className="text-[13.5px] font-extrabold text-ink">{box.box_participants.length}명</span>
-            </div>
-            <Link
-              href={`/box/${box.id}/invite`}
-              className="rounded-full border-[1.5px] border-dashed border-[#C9C7B6] px-2.5 py-1 text-[11.5px] font-bold text-ink-soft active:bg-cream"
-            >
-              + 친구초대
-            </Link>
-          </div>
-          {isSolo ? (
-            <p className="mt-2.5 text-[12px] text-ink-soft">
-              혼자 정리 중인 상자예요. 함께 정하고 싶어지면 친구를 초대해보세요!
-            </p>
-          ) : (
-            <div className="mt-3 flex flex-wrap gap-x-3 gap-y-2">
-              {box.box_participants.map(p => (
-                <div key={p.user_id} className="flex items-center gap-1.5">
-                  <div className="h-7 w-7 overflow-hidden rounded-full border border-paper bg-butter-tint">
-                    {p.profiles?.avatar_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={p.profiles.avatar_url} alt={p.profiles.nickname} className="h-full w-full object-cover" />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-[11px] font-bold text-ink">
-                        {p.profiles?.nickname?.[0] ?? '?'}
-                      </div>
-                    )}
-                  </div>
-                  <span className="text-xs font-semibold text-ink">{p.profiles?.nickname}</span>
-                  {p.role === 'owner' && <span className="text-[10.5px] text-ink-faint">(방장)</span>}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
         <OptionsSection
           boxId={box.id}
           round={box.current_round}
           initialOptions={initialOptions}
           canVote={status === 'OPEN' || status === 'SHOWDOWN'}
+          linksHref={hasLinks ? `/box/${box.id}/links` : undefined}
         />
-      </div>
 
-      {/* 하단 버튼 */}
-      <div className="space-y-2 px-5 pb-10">
         {!isDone && (
           <Link href={`/box/${box.id}/option/new`} className="block">
-            <button className="w-full rounded-field bg-butter py-3.5 text-sm font-bold text-ink shadow-[0_1.5px_0_#E3B93A] active:opacity-80">
+            <div className="flex items-center justify-center gap-1.5 rounded-[18px] border border-dashed border-[#D9D6C2] bg-paper/50 py-4 text-[13px] font-bold text-ink-soft active:bg-cream">
+              <Icon name="plus" size={16} />
               선택지 추가하기
-            </button>
+            </div>
           </Link>
         )}
-        {isOwner && !isDone && (
+      </div>
+
+      {/* 하단: 결정 (방장) */}
+      {isOwner && !isDone && (
+        <div className="px-5 pb-10">
           <button
             onClick={() => closeBox.mutate(undefined, {
               onSuccess: () => setBox(prev => ({ ...prev, closed_at: new Date().toISOString() })),
@@ -360,39 +422,8 @@ export function BoxDetailClient({ box: initialBox, isOwner, initialOptions, init
           >
             {closeBox.isPending ? '결정하는 중...' : '이대로 결정하기'}
           </button>
-        )}
-        {isOwner && (
-          confirmDeleteBox ? (
-            <div className="space-y-2 pt-2">
-              <p className="text-center text-[12.5px] text-ink-soft">
-                상자를 삭제하면 선택지, 투표, 댓글이 모두 사라져요. 정말 삭제할까요?
-              </p>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setConfirmDeleteBox(false)}
-                  className="flex-1 rounded-field border border-line py-3.5 text-sm font-bold text-ink-soft"
-                >
-                  취소
-                </button>
-                <button
-                  onClick={() => deleteBox.mutate(box.id)}
-                  disabled={deleteBox.isPending}
-                  className="flex-1 rounded-field bg-tomato py-3.5 text-sm font-bold text-white disabled:opacity-50"
-                >
-                  삭제하기
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={() => setConfirmDeleteBox(true)}
-              className="w-full rounded-field border border-tomato/40 py-3.5 text-sm font-semibold text-tomato active:bg-tomato-tint"
-            >
-              상자 삭제
-            </button>
-          )
-        )}
-      </div>
+        </div>
+      )}
 
       <DeadlineBottomSheet
         open={sheetPurpose !== null}

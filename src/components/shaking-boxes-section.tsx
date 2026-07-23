@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useShakingBoxes, useMarkAllSeen } from '@/hooks/use-boxes'
 import { formatActivity, type ActivityInfo } from '@/lib/domain/activity-label'
+import { Icon } from '@/components/icon'
 
 export function ShakingBoxesSection() {
   const { data: items = [], isLoading } = useShakingBoxes()
@@ -13,7 +14,10 @@ export function ShakingBoxesSection() {
       <div className="rounded-card bg-butter-tint p-3.5">
         <div className="flex items-center justify-between px-0.5">
           <div>
-            <p className="text-[13px] font-extrabold text-ink">🔔 지금 들썩이는 상자</p>
+            <p className="flex items-center gap-1.5 text-[13px] font-extrabold text-ink">
+              <Icon name="bell" size={15} />
+              지금 들썩이는 상자
+            </p>
             <p className="mt-0.5 text-[11px] text-[#99885B]">새로운 소식이 있는 상자예요</p>
           </div>
           {items.length > 0 && (

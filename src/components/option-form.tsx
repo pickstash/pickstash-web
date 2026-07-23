@@ -2,7 +2,8 @@
 
 import { useRef, useState } from 'react'
 import { uploadOptionImage } from '@/lib/api/options'
-import { cleanBlocks, type OptionBlock } from '@/lib/domain/option-content'
+import { fetchLinkPreview } from '@/lib/api/unfurl'
+import { cleanBlocks, LINK_KINDS, linkKindOf, type OptionBlock } from '@/lib/domain/option-content'
 
 interface OptionFormProps {
   boxId: string
@@ -35,12 +36,13 @@ export function OptionForm({
   const [blocks, setBlocks] = useState<OptionBlock[]>(initialContent)
   const [uploading, setUploading] = useState(false)
   const [imageError, setImageError] = useState<string | null>(null)
+  const [linkLoading, setLinkLoading] = useState<Record<string, boolean>>({})
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const imageCount = blocks.filter(b => b.type === 'image').length
   const atBlockLimit = blocks.length >= MAX_BLOCKS
 
-  function updateBlock(id: string, patch: Partial<OptionBlock>) {
+  function updateBlock(id: string, patch: Record<string, unknown>) {
     setBlocks(prev => prev.map(b => (b.id === id ? ({ ...b, ...patch } as OptionBlock) : b)))
   }
 
@@ -65,7 +67,28 @@ export function OptionForm({
 
   function addLink() {
     if (atBlockLimit) return
-    setBlocks(prev => [...prev, { type: 'link', id: newId(), label: '', url: '' }])
+    setBlocks(prev => [...prev, { type: 'link', id: newId(), url: '', label: '' }])
+  }
+
+  // 링크 URL 확정 시 OG 미리보기를 가져와 블록에 저장
+  async function loadLinkPreview(id: string, url: string) {
+    const trimmed = url.trim()
+    if (!trimmed) {
+      updateBlock(id, { title: undefined, description: undefined, image: undefined })
+      return
+    }
+    setLinkLoading(prev => ({ ...prev, [id]: true }))
+    const preview = await fetchLinkPreview(trimmed)
+    updateBlock(id, {
+      title: preview.title,
+      description: preview.description,
+      image: preview.image,
+    })
+    setLinkLoading(prev => {
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
   }
 
   async function handleAddImages(e: React.ChangeEvent<HTMLInputElement>) {
@@ -131,7 +154,7 @@ export function OptionForm({
 
         {blocks.length === 0 ? (
           <p className="rounded-field border border-dashed border-[#D9D6C2] bg-paper/60 px-4 py-6 text-center text-[12.5px] text-ink-faint">
-            아래 버튼으로 글·사진·링크를 자유롭게 배치하세요.
+            글·사진·링크를 자유롭게 배치하세요. 유튜브·지도·쇼핑 링크는 붙여넣으면 미리보기가 떠요.
           </p>
         ) : (
           <div className="space-y-2.5">
@@ -196,18 +219,57 @@ export function OptionForm({
                 {block.type === 'link' && (
                   <div className="space-y-2">
                     <input
+                      type="url"
+                      value={block.url}
+                      onChange={e => updateBlock(block.id, { url: e.target.value })}
+                      onBlur={e => loadLinkPreview(block.id, e.target.value)}
+                      placeholder="https:// (지도·쇼핑 등 링크를 붙여넣으세요)"
+                      className="w-full rounded-field border-[1.5px] border-line bg-paper px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none"
+                    />
+                    {linkLoading[block.id] && (
+                      <p className="text-[11.5px] text-ink-faint">미리보기 불러오는 중…</p>
+                    )}
+                    {!linkLoading[block.id] && (block.title || block.image) && (
+                      <div className="flex gap-2.5 rounded-[12px] border border-line bg-cream/40 p-2">
+                        {block.image && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={block.image} alt="" className="h-12 w-12 shrink-0 rounded-[8px] border border-line object-cover" />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[12.5px] font-bold text-ink">{block.title}</p>
+                          {block.description && (
+                            <p className="line-clamp-1 text-[11px] text-ink-soft">{block.description}</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    <div>
+                      <p className="mb-1 text-[11px] font-semibold text-ink-faint">아이콘</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {LINK_KINDS.map(k => {
+                          const active = linkKindOf(block) === k.kind
+                          return (
+                            <button
+                              key={k.kind}
+                              type="button"
+                              onClick={() => updateBlock(block.id, { icon: k.kind })}
+                              className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11.5px] font-bold transition-colors ${
+                                active ? 'border-butter-dark bg-butter-tint text-ink' : 'border-line bg-paper text-ink-soft'
+                              }`}
+                            >
+                              <span>{k.emoji}</span>
+                              {k.label}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                    <input
                       type="text"
                       value={block.label}
                       onChange={e => updateBlock(block.id, { label: e.target.value })}
                       maxLength={30}
-                      placeholder="라벨 (예: 최저가, 리뷰)"
-                      className="w-full rounded-field border-[1.5px] border-line bg-paper px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none"
-                    />
-                    <input
-                      type="url"
-                      value={block.url}
-                      onChange={e => updateBlock(block.id, { url: e.target.value })}
-                      placeholder="https://"
+                      placeholder="라벨(선택) — 예: 최저가, 리뷰"
                       className="w-full rounded-field border-[1.5px] border-line bg-paper px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none"
                     />
                   </div>
@@ -223,7 +285,7 @@ export function OptionForm({
             type="button"
             onClick={addText}
             disabled={atBlockLimit}
-            className="flex items-center gap-1 rounded-full border-[1.5px] border-line bg-paper px-3.5 py-2 text-[12.5px] font-bold text-ink active:bg-cream disabled:opacity-40"
+            className="rounded-full border-[1.5px] border-line bg-paper px-3.5 py-2 text-[12.5px] font-bold text-ink active:bg-cream disabled:opacity-40"
           >
             ＋ 글
           </button>
@@ -231,7 +293,7 @@ export function OptionForm({
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading || imageCount >= MAX_IMAGES || atBlockLimit}
-            className="flex items-center gap-1 rounded-full border-[1.5px] border-line bg-paper px-3.5 py-2 text-[12.5px] font-bold text-ink active:bg-cream disabled:opacity-40"
+            className="rounded-full border-[1.5px] border-line bg-paper px-3.5 py-2 text-[12.5px] font-bold text-ink active:bg-cream disabled:opacity-40"
           >
             {uploading ? '올리는 중…' : '＋ 사진'}
           </button>
@@ -239,7 +301,7 @@ export function OptionForm({
             type="button"
             onClick={addLink}
             disabled={atBlockLimit}
-            className="flex items-center gap-1 rounded-full border-[1.5px] border-line bg-paper px-3.5 py-2 text-[12.5px] font-bold text-ink active:bg-cream disabled:opacity-40"
+            className="rounded-full border-[1.5px] border-line bg-paper px-3.5 py-2 text-[12.5px] font-bold text-ink active:bg-cream disabled:opacity-40"
           >
             ＋ 링크
           </button>

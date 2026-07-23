@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { subscribeToPush, getPushPermission } from '@/lib/api/push'
+import { Icon } from '@/components/icon'
 
 export function PushNotificationBanner() {
   const [show, setShow] = useState(false)
@@ -31,7 +32,7 @@ export function PushNotificationBanner() {
 
   return (
     <div className="mx-5 mt-4 flex items-center gap-3 rounded-card bg-ink px-4 py-3.5 text-cream">
-      <span className="shrink-0 text-xl">🔔</span>
+      <Icon name="bell" size={22} className="shrink-0" />
       <div className="min-w-0 flex-1">
         <p className="text-sm font-bold">들썩이는 상자 알림 받기</p>
         <p className="mt-0.5 text-xs text-[#B4B2A2]">친구가 업데이트하면 바로 알려드려요</p>

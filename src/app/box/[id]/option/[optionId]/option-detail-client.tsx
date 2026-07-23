@@ -9,7 +9,15 @@ import { useRealtimeVotes } from '@/hooks/use-realtime-votes'
 import { useDeleteOption } from '@/hooks/use-options'
 import { useComments, useCreateComment, useDeleteComment } from '@/hooks/use-comments'
 import { useRealtimeComments } from '@/hooks/use-realtime-comments'
-import { parseBlocks, linkDisplayLabel, linkHref } from '@/lib/domain/option-content'
+import {
+  parseBlocks,
+  linkDisplayLabel,
+  linkHref,
+  linkKindOf,
+  linkKindEmoji,
+  parseYouTubeId,
+} from '@/lib/domain/option-content'
+import { YouTubeEmbed } from '@/components/youtube-embed'
 import type { Option } from '@/lib/api/options'
 
 interface OptionDetailClientProps {
@@ -97,7 +105,7 @@ export function OptionDetailClient({
               }
               if (block.type === 'image') {
                 return (
-                  <a key={block.id} href={block.url} target="_blank" rel="noopener noreferrer" className="block">
+                  <a key={block.id} href={linkHref(block.url)} target="_blank" rel="noopener noreferrer" className="block">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={block.url}
@@ -107,20 +115,58 @@ export function OptionDetailClient({
                   </a>
                 )
               }
+              // link — 유튜브면 인라인 플레이어, 아니면 미리보기 카드
+              const ytId = parseYouTubeId(block.url)
+              if (ytId) {
+                return (
+                  <div key={block.id} className="space-y-1.5">
+                    {block.label && (
+                      <span className="inline-block rounded-full bg-butter-tint px-1.5 py-0.5 text-[10.5px] font-bold text-ink">
+                        {block.label}
+                      </span>
+                    )}
+                    <YouTubeEmbed videoId={ytId} />
+                  </div>
+                )
+              }
+              const emoji = linkKindEmoji(linkKindOf(block))
               return (
                 <a
                   key={block.id}
                   href={linkHref(block.url)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 rounded-field border border-line bg-cream/50 px-3.5 py-2.5 active:bg-cream"
+                  className="flex gap-3 rounded-[14px] border border-line bg-cream/40 p-3 active:bg-cream"
                 >
-                  <span className="shrink-0 rounded-full bg-butter-tint px-2 py-0.5 text-[11px] font-bold text-ink">
-                    {linkDisplayLabel(block.label, block.url)}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-[12.5px] text-ink-soft underline decoration-butter-dark underline-offset-2">
-                    {block.url}
-                  </span>
+                  <div className="relative h-14 w-14 shrink-0">
+                    {block.image ? (
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={block.image} alt="" className="h-14 w-14 rounded-[10px] border border-line object-cover" />
+                        <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full border border-line bg-paper text-[11px]">
+                          {emoji}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="flex h-14 w-14 items-center justify-center rounded-[10px] border border-line bg-paper text-2xl">
+                        {emoji}
+                      </span>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    {block.label && (
+                      <span className="inline-block rounded-full bg-butter-tint px-1.5 py-0.5 text-[10.5px] font-bold text-ink">
+                        {block.label}
+                      </span>
+                    )}
+                    <p className="mt-0.5 truncate text-[13px] font-bold text-ink">
+                      {block.title || linkDisplayLabel(block.label, block.url)}
+                    </p>
+                    {block.description && (
+                      <p className="line-clamp-1 text-[11.5px] text-ink-soft">{block.description}</p>
+                    )}
+                    <p className="truncate text-[11px] text-ink-faint">{block.url}</p>
+                  </div>
                 </a>
               )
             })}
