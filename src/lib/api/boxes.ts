@@ -102,6 +102,15 @@ export async function updateBoxDeadline(id: string, deadline_at: string): Promis
   if (error) throw error
 }
 
+export async function updateBoxMemo(id: string, memo: string | null): Promise<void> {
+  const supabase = createClient()
+  const { error } = await supabase
+    .from('boxes')
+    .update({ memo, updated_at: new Date().toISOString() })
+    .eq('id', id)
+  if (error) throw error
+}
+
 export async function closeBox(id: string): Promise<void> {
   const supabase = createClient()
   const { error } = await supabase.rpc('close_box', { p_box_id: id })

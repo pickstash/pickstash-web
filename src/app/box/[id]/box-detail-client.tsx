@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import {
   useUpdateBoxTitle,
+  useUpdateBoxMemo,
   useUpdateBoxDeadline,
   useCloseBox,
   useDeleteBox,
@@ -46,6 +47,8 @@ export function BoxDetailClient({ box: initialBox, isOwner, currentUserId, initi
   const [box, setBox] = useState(initialBox)
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleInput, setTitleInput] = useState(box.title)
+  const [editingMemo, setEditingMemo] = useState(false)
+  const [memoInput, setMemoInput] = useState(box.memo ?? '')
   const [sheetPurpose, setSheetPurpose] = useState<SheetPurpose | null>(null)
   const [confirmDeleteBox, setConfirmDeleteBox] = useState(false)
   const [confirmReopen, setConfirmReopen] = useState(false)
@@ -53,6 +56,7 @@ export function BoxDetailClient({ box: initialBox, isOwner, currentUserId, initi
   const [isFavorite, setIsFavorite] = useState(initialIsFavorite)
 
   const updateTitle = useUpdateBoxTitle(box.id)
+  const updateMemo = useUpdateBoxMemo(box.id)
   const updateDeadline = useUpdateBoxDeadline(box.id)
   const closeBox = useCloseBox(box.id)
   const deleteBox = useDeleteBox()
@@ -89,6 +93,20 @@ export function BoxDetailClient({ box: initialBox, isOwner, currentUserId, initi
       onSuccess: () => {
         setBox(prev => ({ ...prev, title: titleInput.trim() }))
         setEditingTitle(false)
+      },
+    })
+  }
+
+  function handleSaveMemo() {
+    const next = memoInput.trim() || null
+    if (next === (box.memo ?? null)) {
+      setEditingMemo(false)
+      return
+    }
+    updateMemo.mutate(next, {
+      onSuccess: () => {
+        setBox(prev => ({ ...prev, memo: next }))
+        setEditingMemo(false)
       },
     })
   }
@@ -252,6 +270,12 @@ export function BoxDetailClient({ box: initialBox, isOwner, currentUserId, initi
                           제목 수정
                         </button>
                         <button
+                          onClick={() => { setMenuOpen(false); setEditingMemo(true); setMemoInput(box.memo ?? '') }}
+                          className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-ink active:bg-cream"
+                        >
+                          {box.memo ? '메모 수정' : '메모 추가'}
+                        </button>
+                        <button
                           onClick={() => { setMenuOpen(false); setConfirmDeleteBox(true) }}
                           className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-tomato active:bg-tomato-tint"
                         >
@@ -265,11 +289,31 @@ export function BoxDetailClient({ box: initialBox, isOwner, currentUserId, initi
             </div>
           )}
 
-          {box.memo && (
+          {editingMemo ? (
+            <div className="space-y-1.5">
+              <textarea
+                value={memoInput}
+                onChange={e => setMemoInput(e.target.value)}
+                rows={2}
+                maxLength={500}
+                autoFocus
+                placeholder="메모를 입력하세요 (예: 예산, 조건)"
+                className="w-full resize-none rounded-[14px] border-[1.5px] border-butter-dark bg-paper px-3 py-2.5 text-[12.5px] text-ink placeholder:text-ink-faint focus:outline-none"
+              />
+              <div className="flex justify-end gap-3">
+                <button onClick={() => setEditingMemo(false)} className="text-[12px] font-bold text-ink-soft">
+                  취소
+                </button>
+                <button onClick={handleSaveMemo} disabled={updateMemo.isPending} className="text-[12px] font-bold text-ink disabled:opacity-50">
+                  저장
+                </button>
+              </div>
+            </div>
+          ) : box.memo ? (
             <p className="rounded-[14px] border border-dashed border-[#D9D6C2] bg-paper px-3 py-2.5 text-[12.5px] text-ink-soft">
               ✏️ {box.memo}
             </p>
-          )}
+          ) : null}
 
           <div className="flex flex-wrap items-center gap-2">
             {isOwner && !isDone ? (

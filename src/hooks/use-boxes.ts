@@ -7,6 +7,7 @@ import {
   getBox,
   getMessyBoxes,
   updateBoxTitle,
+  updateBoxMemo,
   updateBoxDeadline,
   closeBox,
   reopenBox,
@@ -49,6 +50,17 @@ export function useUpdateBoxTitle(boxId: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (title: string) => updateBoxTitle(boxId, title),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['box', boxId] })
+      queryClient.invalidateQueries({ queryKey: ['boxes'] })
+    },
+  })
+}
+
+export function useUpdateBoxMemo(boxId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (memo: string | null) => updateBoxMemo(boxId, memo),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['box', boxId] })
       queryClient.invalidateQueries({ queryKey: ['boxes'] })
