@@ -39,10 +39,12 @@ export default function RootLayout({
           });
         `}} />
       </head>
-      <body className="min-h-full bg-background text-foreground antialiased">
+      <body className="min-h-full bg-background text-foreground antialiased xl:bg-[#e6e4db]">
         <Providers>
-          {/* 모바일 우선 — 큰 화면에서는 430px 중앙 정렬 (spec: 390px 기준 설계) */}
-          <div className="mx-auto w-full max-w-[430px] min-h-dvh">{children}</div>
+          {/* 모바일·태블릿은 가로 100%, PC(xl+)에선 모바일 앱을 중앙 폰 프레임(상하 여백 + 내부 스크롤)으로 */}
+          <div className="app-frame mx-auto min-h-dvh w-full bg-cream xl:my-10 xl:h-[calc(100dvh-5rem)] xl:min-h-0 xl:max-w-[430px] xl:overflow-y-auto xl:rounded-[30px] xl:border xl:border-line xl:shadow-[0_20px_60px_rgba(42,42,39,0.16)]">
+            {children}
+          </div>
         </Providers>
       </body>
     </html>

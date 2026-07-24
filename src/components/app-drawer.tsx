@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { signOut } from '@/lib/api/auth'
@@ -70,10 +71,10 @@ export function AppDrawer({ nickname }: AppDrawerProps) {
         <Icon name="menu" size={22} strokeWidth={2} />
       </button>
 
-      {open && (
-        <div className="fixed inset-0 z-50 flex">
+      {open && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[100] xl:inset-y-10 xl:left-1/2 xl:w-full xl:max-w-[430px] xl:-translate-x-1/2 xl:overflow-hidden xl:rounded-[30px]">
           <div className="absolute inset-0 bg-ink/40" onClick={() => setOpen(false)} />
-          <div className="relative ml-auto flex h-full w-72 flex-col rounded-l-sheet bg-paper shadow-[-8px_0_24px_rgba(42,42,39,0.1)]">
+          <div className="absolute inset-y-0 right-0 flex w-72 flex-col rounded-l-sheet bg-paper shadow-[-8px_0_24px_rgba(42,42,39,0.1)]">
             <div className="border-b border-[#F1EFE0] px-5 pt-12 pb-5">
               <p className="text-[13px] text-ink-faint">안녕하세요</p>
               <p className="mt-0.5 text-[17px] font-extrabold tracking-tight text-ink">{nickname}님</p>
@@ -173,7 +174,8 @@ export function AppDrawer({ nickname }: AppDrawerProps) {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   )

@@ -23,6 +23,7 @@ export type IconName =
   | 'bell'
   | 'more'
   | 'calendar'
+  | 'edit'
 
 function inner(name: IconName): ReactNode {
   switch (name) {
@@ -135,6 +136,13 @@ function inner(name: IconName): ReactNode {
           <line x1="3" y1="9" x2="21" y2="9" />
           <line x1="8" y1="2.5" x2="8" y2="6" />
           <line x1="16" y1="2.5" x2="16" y2="6" />
+        </>
+      )
+    case 'edit':
+      return (
+        <>
+          <path d="M12 20h9" />
+          <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
         </>
       )
   }

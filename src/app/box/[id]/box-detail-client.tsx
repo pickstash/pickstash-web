@@ -16,6 +16,7 @@ import { useBoxVotes } from '@/hooks/use-votes'
 import { DeadlineBottomSheet } from '@/components/deadline-bottom-sheet'
 import { OptionsSection } from '@/components/options-section'
 import { Icon } from '@/components/icon'
+import { AppDrawer } from '@/components/app-drawer'
 import { PageHeader } from '@/components/page-header'
 import { getBoxStatus, isDoneStatus, BOX_STATUS_LABEL, type BoxStatus } from '@/lib/domain/box-status'
 import { getVoteResult } from '@/lib/domain/winner'
@@ -41,7 +42,7 @@ const STATUS_BADGE_CLASS: Record<BoxStatus, string> = {
 
 type SheetPurpose = 'deadline' | 'rematch' | 'reopen'
 
-export function BoxDetailClient({ box: initialBox, isOwner, initialOptions, initialIsFavorite }: BoxDetailClientProps) {
+export function BoxDetailClient({ box: initialBox, isOwner, currentUserId, initialOptions, initialIsFavorite }: BoxDetailClientProps) {
   const [box, setBox] = useState(initialBox)
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleInput, setTitleInput] = useState(box.title)
@@ -62,6 +63,7 @@ export function BoxDetailClient({ box: initialBox, isOwner, initialOptions, init
   const { data: options = initialOptions } = useOptions(box.id)
   const { data: votes = {} } = useBoxVotes(box.id, box.current_round)
   const hasLinks = options.some(o => linkBlocksOf(parseBlocks(o.content)).length > 0)
+  const myNickname = box.box_participants.find(p => p.user_id === currentUserId)?.profiles?.nickname ?? ''
 
   const status = getBoxStatus(box)
   const isDone = isDoneStatus(status)
@@ -148,6 +150,15 @@ export function BoxDetailClient({ box: initialBox, isOwner, initialOptions, init
         fallbackHref={isDone ? '/done' : '/messy'}
         right={
           <div className="flex items-center gap-0.5">
+            {hasLinks && (
+              <Link
+                href={`/box/${box.id}/links`}
+                aria-label="링크 모아보기"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink active:bg-butter-tint"
+              >
+                <Icon name="link" size={20} />
+              </Link>
+            )}
             <button
               onClick={handleToggleFavorite}
               aria-label="즐겨찾기"
@@ -155,49 +166,16 @@ export function BoxDetailClient({ box: initialBox, isOwner, initialOptions, init
             >
               <Icon
                 name="star"
-                size={23}
+                size={22}
                 strokeWidth={1.6}
                 className={isFavorite ? undefined : 'text-ink-faint'}
                 style={isFavorite ? { fill: 'var(--color-butter)', stroke: 'var(--color-butter-dark)' } : undefined}
               />
             </button>
-            {isOwner && (
-              <button
-                onClick={() => setMenuOpen(true)}
-                aria-label="더보기"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink active:bg-butter-tint"
-              >
-                <Icon name="more" size={20} />
-              </button>
-            )}
+            <AppDrawer nickname={myNickname} />
           </div>
         }
       />
-
-      {/* ⋯ 오버플로 메뉴 */}
-      {menuOpen && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-          <div className="fixed right-4 top-[calc(env(safe-area-inset-top)+3.1rem)] z-50 w-44 overflow-hidden rounded-[16px] border border-line bg-paper py-1 shadow-[0_8px_28px_rgba(42,42,39,0.16)]">
-            {isOwner && !isDone && (
-              <button
-                onClick={() => { setMenuOpen(false); setEditingTitle(true); setTitleInput(box.title) }}
-                className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-ink active:bg-cream"
-              >
-                제목 수정
-              </button>
-            )}
-            {isOwner && (
-              <button
-                onClick={() => { setMenuOpen(false); setConfirmDeleteBox(true) }}
-                className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-tomato active:bg-tomato-tint"
-              >
-                상자 삭제
-              </button>
-            )}
-          </div>
-        </>
-      )}
 
       {/* 상자 삭제 확인 */}
       {confirmDeleteBox && (
@@ -252,7 +230,39 @@ export function BoxDetailClient({ box: initialBox, isOwner, initialOptions, init
               </button>
             </div>
           ) : (
-            <h1 className="text-[22px] font-extrabold leading-tight tracking-tight text-ink">{box.title}</h1>
+            <div className="flex items-start justify-between gap-2">
+              <h1 className="min-w-0 text-[22px] font-extrabold leading-tight tracking-tight text-ink">{box.title}</h1>
+              {isOwner && !isDone && (
+                <div className="relative shrink-0">
+                  <button
+                    onClick={() => setMenuOpen(v => !v)}
+                    className="mt-1 flex items-center gap-1 text-[12.5px] font-semibold text-ink-faint active:text-ink"
+                  >
+                    <Icon name="edit" size={13} />
+                    편집
+                  </button>
+                  {menuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+                      <div className="absolute right-0 top-full z-50 mt-1.5 w-36 overflow-hidden rounded-[14px] border border-line bg-paper py-1 shadow-[0_8px_24px_rgba(42,42,39,0.16)]">
+                        <button
+                          onClick={() => { setMenuOpen(false); setEditingTitle(true); setTitleInput(box.title) }}
+                          className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-ink active:bg-cream"
+                        >
+                          제목 수정
+                        </button>
+                        <button
+                          onClick={() => { setMenuOpen(false); setConfirmDeleteBox(true) }}
+                          className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-tomato active:bg-tomato-tint"
+                        >
+                          상자 삭제
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           )}
 
           {box.memo && (
@@ -397,7 +407,6 @@ export function BoxDetailClient({ box: initialBox, isOwner, initialOptions, init
           round={box.current_round}
           initialOptions={initialOptions}
           canVote={status === 'OPEN' || status === 'SHOWDOWN'}
-          linksHref={hasLinks ? `/box/${box.id}/links` : undefined}
         />
 
         {!isDone && (

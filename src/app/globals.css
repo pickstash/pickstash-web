@@ -59,3 +59,10 @@ body {
   background: var(--background);
   color: var(--foreground);
 }
+
+/* PC(≥1280) 폰 프레임: 페이지가 100dvh 대신 프레임(부모) 높이를 채우도록 */
+@media (min-width: 1280px) {
+  .app-frame > * {
+    min-height: 100% !important;
+  }
+}
