@@ -11,7 +11,7 @@
 
 ## 절대 규칙 (아키텍처)
 
-- 상자 상태(OPEN/SHOWDOWN/EXPIRED/RESOLVED)를 DB 컬럼으로 저장하지 않는다. `deadline_at`·`closed_at`·`current_round`에서 조회 시 파생한다 (spec 3-1).
+- 상자 상태(OPEN/RESOLVED = 정리중/정리완료) 2종을 DB 컬럼으로 저장하지 않는다. `closed_at` 하나에서 조회 시 파생한다 (spec §3-1, v2). *(v1의 SHOWDOWN/EXPIRED/current_round·시간만료 자동결정·재투표는 폐기.)*
 - 컴포넌트·페이지에서 supabase 클라이언트를 직접 import하지 않는다. 모든 Supabase 호출은 `src/lib/api/*`에만 두고, UI는 TanStack Query 훅으로만 데이터에 접근한다.
 - 웹과 앱(RN)이 공유할 서버 로직은 Next.js Route Handler에 쓰지 않는다. Postgres RPC 또는 Edge Function으로 작성한다. Route Handler에는 OG 렌더링·OAuth 콜백 등 웹 전용 관심사만.
 - 순수 계산 로직(getBoxStatus·득표 집계·선택지 정렬/블록 파싱 등)은 `src/lib/domain/`에 프레임워크·API 의존성 없는 TS로 작성한다.
