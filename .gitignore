@@ -51,3 +51,6 @@ next-env.d.ts
 supabase/.temp/
 
 certificates
+
+# oh-my-claudecode 운영 상태 (커밋 대상 아님)
+.omc/

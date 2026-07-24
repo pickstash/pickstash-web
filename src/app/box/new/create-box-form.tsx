@@ -7,8 +7,8 @@ import { defaultDeadline, formatKoreanDateTime } from '@/lib/utils'
 import type { DecisionMode } from '@/lib/api/boxes'
 
 const MODES: { value: DecisionMode; label: string; sub: string }[] = [
-  { value: 'manual', label: '직접 정하기', sub: '내가(우리가) 직접 골라 정해요' },
-  { value: 'auto_deadline', label: '마감 투표', sub: '마감 때 좋아요 최다가 자동 결정돼요' },
+  { value: 'manual', label: '직접 정하기', sub: '원할 때 직접 골라 정해요 (안 정하고 모아두기만 해도 돼요)' },
+  { value: 'auto_deadline', label: '마감 투표', sub: '마감 때 좋아요 최다가 자동으로 정해져요' },
 ]
 
 export function CreateBoxForm() {

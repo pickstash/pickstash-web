@@ -9,7 +9,7 @@ export function getBoxStatus(box: { closed_at: string | null }): BoxStatus {
 /** 정리상태 라벨 2종 — 카드마다 정확히 1개 표시 (spec §3-6) */
 export const BOX_STATUS_LABEL: Record<BoxStatus, string> = {
   RESOLVED: '정리완료!',
-  OPEN: '정리 미완료',
+  OPEN: '정리중',
 }
 
 export function isMessyStatus(status: BoxStatus): boolean {

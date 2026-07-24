@@ -9,6 +9,7 @@ import {
   updateBoxTitle,
   updateBoxMemo,
   updateBoxDeadline,
+  updateBoxDecisionMode,
   decideBox,
   reopenBox,
   autoDecideBox,
@@ -17,6 +18,7 @@ import {
   markAllSeen,
   getShakingBoxes,
   type CreateBoxInput,
+  type DecisionMode,
 } from '@/lib/api/boxes'
 
 export function useCreateBox() {
@@ -73,6 +75,18 @@ export function useUpdateBoxDeadline(boxId: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (deadline_at: string | null) => updateBoxDeadline(boxId, deadline_at),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['box', boxId] })
+      queryClient.invalidateQueries({ queryKey: ['boxes'] })
+    },
+  })
+}
+
+export function useUpdateBoxDecisionMode(boxId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (arg: { mode: DecisionMode; deadline_at: string | null }) =>
+      updateBoxDecisionMode(boxId, arg.mode, arg.deadline_at),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['box', boxId] })
       queryClient.invalidateQueries({ queryKey: ['boxes'] })

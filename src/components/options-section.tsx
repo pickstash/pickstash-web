@@ -8,7 +8,6 @@ import { useRealtimeVotes } from '@/hooks/use-realtime-votes'
 import { useInfiniteReveal } from '@/hooks/use-infinite-reveal'
 import { sortOptions, OPTION_SORT_MODES, OPTION_SORT_LABELS, type OptionSortMode } from '@/lib/domain/option-sort'
 import { parseBlocks, getOptionPreview } from '@/lib/domain/option-content'
-import { getLeaderKey } from '@/lib/domain/winner'
 import { VoteButtons } from './vote-buttons'
 import { Icon } from './icon'
 import type { Option } from '@/lib/api/options'
@@ -37,16 +36,13 @@ export function OptionsSection({ boxId, round, initialOptions, canVote, showLike
   const { visibleCount, sentinelRef, hasMore } = useInfiniteReveal(sorted.length, PAGE_SIZE, sortMode)
   const visible = sorted.slice(0, visibleCount)
 
-  // 1위 강조: 선택지가 2개 이상일 때만, 좋아요 단독 최다인 항목
-  const leaderId =
-    sorted.length > 1
-      ? getLeaderKey(
-          sorted.map(o => {
-            const c = votes[o.id] ?? { like: 0, dislike: 0, myVote: null }
-            return { key: o.id, like: c.like }
-          }),
-        )
-      : null
+  // 1위 강조: 선택지 2개 이상 + 좋아요 최다(공동 1위 전부 포함)
+  const leaderIds = (() => {
+    if (sorted.length <= 1) return new Set<string>()
+    const max = Math.max(...sorted.map(o => votes[o.id]?.like ?? 0))
+    if (max <= 0) return new Set<string>()
+    return new Set(sorted.filter(o => (votes[o.id]?.like ?? 0) === max).map(o => o.id))
+  })()
 
   return (
     <section className="space-y-2.5">
@@ -91,7 +87,7 @@ export function OptionsSection({ boxId, round, initialOptions, canVote, showLike
           {visible.map(option => {
             const counts = votes[option.id] ?? { like: 0, dislike: 0, myVote: null }
             const preview = getOptionPreview(parseBlocks(option.content))
-            const isLead = option.id === leaderId
+            const isLead = leaderIds.has(option.id)
             return (
               <div
                 key={option.id}
@@ -113,12 +109,14 @@ export function OptionsSection({ boxId, round, initialOptions, canVote, showLike
                   {/* 왼쪽: (1위) · 이름 · 스니펫(항상 1줄) · 좋아요 */}
                   <div className="min-w-0 flex-1 space-y-1.5">
                     <div className="flex items-center gap-1.5">
-                      {option.decided_at ? (
-                        <span className="shrink-0 rounded-md bg-leaf-tint px-1.5 py-0.5 text-[10px] font-extrabold text-[#37714A]">
+                      {option.decided_at && (
+                        <span className="flex shrink-0 items-center gap-0.5 rounded-full bg-ink pl-1 pr-1.5 py-0.5 text-[10px] font-extrabold text-cream">
+                          <Icon name="check" size={10} strokeWidth={3} />
                           결정
                         </span>
-                      ) : isLead && showLikes && (
-                        <span className="shrink-0 rounded-md bg-butter-tint px-1.5 py-0.5 text-[10px] font-extrabold text-butter-dark">
+                      )}
+                      {isLead && showLikes && (
+                        <span className="shrink-0 rounded-md bg-butter px-1.5 py-0.5 text-[10px] font-extrabold text-ink shadow-[0_1px_0_#E3B93A]">
                           1위
                         </span>
                       )}

@@ -105,6 +105,20 @@ export async function updateBoxDeadline(id: string, deadline_at: string | null):
   if (error) throw error
 }
 
+/** 결정 방식 변경 (방장). 마감 투표면 deadline_at 필수, 직접 정하기면 마감 제거. */
+export async function updateBoxDecisionMode(id: string, mode: DecisionMode, deadline_at: string | null): Promise<void> {
+  const supabase = createClient()
+  const { error } = await supabase
+    .from('boxes')
+    .update({
+      decision_mode: mode,
+      deadline_at: mode === 'auto_deadline' ? deadline_at : null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id)
+  if (error) throw error
+}
+
 export async function updateBoxMemo(id: string, memo: string | null): Promise<void> {
   const supabase = createClient()
   const { error } = await supabase

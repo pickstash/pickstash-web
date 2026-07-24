@@ -6,6 +6,7 @@ import {
   useUpdateBoxTitle,
   useUpdateBoxMemo,
   useUpdateBoxDeadline,
+  useUpdateBoxDecisionMode,
   useDecideBox,
   useDeleteBox,
   useLeaveBox,
@@ -22,7 +23,7 @@ import { PageHeader } from '@/components/page-header'
 import { getBoxStatus, isDoneStatus, BOX_STATUS_LABEL, type BoxStatus } from '@/lib/domain/box-status'
 import { parseBlocks, linkBlocksOf } from '@/lib/domain/option-content'
 import { formatDeadlineCompact, defaultDeadline } from '@/lib/utils'
-import type { BoxWithParticipants, BoxParticipant } from '@/lib/api/boxes'
+import type { BoxWithParticipants, BoxParticipant, DecisionMode } from '@/lib/api/boxes'
 import type { Option } from '@/lib/api/options'
 
 interface BoxDetailClientProps {
@@ -37,6 +38,11 @@ const STATUS_BADGE_CLASS: Record<BoxStatus, string> = {
   RESOLVED: 'bg-leaf-tint text-[#37714A]',
   OPEN: 'border border-[#D9D6C2] bg-paper text-ink-soft',
 }
+
+const DECISION_MODES: { value: DecisionMode; label: string; sub: string }[] = [
+  { value: 'manual', label: '직접 정하기', sub: '원할 때 직접 골라 정해요' },
+  { value: 'auto_deadline', label: '마감 투표', sub: '마감 때 좋아요 최다가 자동으로' },
+]
 
 /** 겹쳐진 참여자 아바타 스택 (트리플 스타일). trailing으로 스택 끝에 초대 버튼 등을 겹쳐 넣는다. */
 function ParticipantAvatars({ participants, max = 5, trailing }: { participants: BoxParticipant[]; max?: number; trailing?: ReactNode }) {
@@ -105,6 +111,8 @@ export function BoxDetailClient({ box: initialBox, isOwner, currentUserId, initi
   const [editingMemo, setEditingMemo] = useState(false)
   const [memoInput, setMemoInput] = useState(box.memo ?? '')
   const [deadlineSheet, setDeadlineSheet] = useState(false)
+  const [modeModal, setModeModal] = useState(false)
+  const [switchingToAuto, setSwitchingToAuto] = useState(false)
   const [confirmDeleteBox, setConfirmDeleteBox] = useState(false)
   const [confirmLeave, setConfirmLeave] = useState(false)
   const [confirmReopen, setConfirmReopen] = useState(false)
@@ -116,6 +124,7 @@ export function BoxDetailClient({ box: initialBox, isOwner, currentUserId, initi
   const updateTitle = useUpdateBoxTitle(box.id)
   const updateMemo = useUpdateBoxMemo(box.id)
   const updateDeadline = useUpdateBoxDeadline(box.id)
+  const updateDecisionMode = useUpdateBoxDecisionMode(box.id)
   const decideBox = useDecideBox(box.id)
   const deleteBox = useDeleteBox()
   const leaveBox = useLeaveBox()
@@ -210,15 +219,42 @@ export function BoxDetailClient({ box: initialBox, isOwner, currentUserId, initi
     })
   }
 
-  // 마감 투표 상자 마감일 변경
+  // 마감일 확정 — 마감 투표로 전환 중이면 결정 방식까지 변경, 아니면 마감일만 수정
   function handleDeadlineConfirm(date: Date) {
     const deadline_at = date.toISOString()
-    updateDeadline.mutate(deadline_at, {
-      onSuccess: () => {
-        setBox(prev => ({ ...prev, deadline_at }))
-        setDeadlineSheet(false)
-      },
-    })
+    if (switchingToAuto) {
+      updateDecisionMode.mutate({ mode: 'auto_deadline', deadline_at }, {
+        onSuccess: () => {
+          setBox(prev => ({ ...prev, decision_mode: 'auto_deadline', deadline_at }))
+          setSwitchingToAuto(false)
+          setDeadlineSheet(false)
+        },
+      })
+    } else {
+      updateDeadline.mutate(deadline_at, {
+        onSuccess: () => {
+          setBox(prev => ({ ...prev, deadline_at }))
+          setDeadlineSheet(false)
+        },
+      })
+    }
+  }
+
+  // 결정 방식 변경 (방장): 직접 정하기는 즉시, 마감 투표는 마감일 시트를 거쳐 적용
+  function chooseMode(mode: DecisionMode) {
+    if (mode === box.decision_mode) { setModeModal(false); return }
+    if (mode === 'manual') {
+      updateDecisionMode.mutate({ mode: 'manual', deadline_at: null }, {
+        onSuccess: () => {
+          setBox(prev => ({ ...prev, decision_mode: 'manual', deadline_at: null }))
+          setModeModal(false)
+        },
+      })
+    } else {
+      setModeModal(false)
+      setSwitchingToAuto(true)
+      setDeadlineSheet(true)
+    }
   }
 
   // 번복(다시 정리하기): 정리완료·결정 표시 해제 → 정리중 (참여자 누구나)
@@ -347,6 +383,44 @@ export function BoxDetailClient({ box: initialBox, isOwner, currentUserId, initi
         </div>
       )}
 
+      {/* 결정 방식 변경 (방장) */}
+      {modeModal && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end">
+          <div className="absolute inset-0 bg-ink/45" onClick={() => setModeModal(false)} />
+          <div className="relative mx-auto w-full max-w-[430px] rounded-t-sheet bg-paper px-5 pb-10 pt-3">
+            <div className="mx-auto mb-4 h-1 w-9 rounded-full bg-line" />
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-base font-extrabold tracking-tight text-ink">결정 방식 변경</h3>
+              <button onClick={() => setModeModal(false)} className="text-[13px] text-ink-faint">닫기</button>
+            </div>
+            <div className="space-y-2">
+              {DECISION_MODES.map(m => {
+                const active = box.decision_mode === m.value
+                return (
+                  <button
+                    key={m.value}
+                    onClick={() => chooseMode(m.value)}
+                    disabled={updateDecisionMode.isPending}
+                    className={`flex w-full items-start gap-2.5 rounded-field border-[1.5px] px-4 py-3 text-left transition-colors disabled:opacity-50 ${
+                      active ? 'border-butter-dark bg-butter-tint' : 'border-line bg-paper'
+                    }`}
+                  >
+                    <span className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-[1.5px] ${active ? 'border-butter-dark bg-butter' : 'border-[#C9C7B6]'}`}>
+                      {active && <span className="h-1.5 w-1.5 rounded-full bg-ink" />}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-sm font-bold text-ink">{m.label}</span>
+                      <span className="block text-[12px] text-ink-soft">{m.sub}</span>
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+            <p className="mt-3 text-[11.5px] text-ink-faint">마감 투표로 바꾸면 마감일을 정하게 돼요.</p>
+          </div>
+        </div>
+      )}
+
       {/* 결정 모달 (직접 정하기) */}
       {deciding && (
         <div className="fixed inset-0 z-50 flex flex-col justify-end">
@@ -451,6 +525,14 @@ export function BoxDetailClient({ box: initialBox, isOwner, currentUserId, initi
                         >
                           {box.memo ? '메모 수정' : '메모 추가'}
                         </button>
+                        {!isDone && (
+                          <button
+                            onClick={() => { setMenuOpen(false); setModeModal(true) }}
+                            className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-ink active:bg-cream"
+                          >
+                            결정 방식 변경
+                          </button>
+                        )}
                         <button
                           onClick={() => { setMenuOpen(false); setConfirmDeleteBox(true) }}
                           className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-tomato active:bg-tomato-tint"
@@ -581,7 +663,7 @@ export function BoxDetailClient({ box: initialBox, isOwner, currentUserId, initi
             onClick={openDecide}
             className="w-full rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80"
           >
-            이걸로 정하기
+            최종 결정하기
           </button>
         </div>
       )}
@@ -589,7 +671,7 @@ export function BoxDetailClient({ box: initialBox, isOwner, currentUserId, initi
       <DeadlineBottomSheet
         open={deadlineSheet}
         defaultValue={box.deadline_at ? new Date(box.deadline_at) : defaultDeadline()}
-        onClose={() => setDeadlineSheet(false)}
+        onClose={() => { setDeadlineSheet(false); setSwitchingToAuto(false) }}
         onConfirm={handleDeadlineConfirm}
       />
     </main>

@@ -26,7 +26,7 @@ export function VoteButtons({ optionId, boxId, round, counts, disabled, compact 
   const size = compact ? 'px-2.5 py-1 text-[12.5px]' : 'px-3.5 py-1.5 text-[13.5px]'
   const state = liked
     ? 'border-butter-dark bg-butter-tint text-ink'
-    : 'border-line bg-paper text-ink-soft active:bg-cream'
+    : 'border-line bg-transparent text-ink-soft active:bg-cream'
 
   return (
     <button
