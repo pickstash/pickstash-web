@@ -19,10 +19,13 @@ export interface BoxWithParticipants extends Box {
   box_participants: BoxParticipant[]
 }
 
+export type DecisionMode = 'manual' | 'auto_deadline'
+
 export interface CreateBoxInput {
   title: string
   memo?: string
-  deadline_at: string | null // null = 마감 없는 상자 (혼자 고민 보드)
+  decision_mode: DecisionMode          // 직접 정하기 / 마감 투표
+  deadline_at: string | null           // auto_deadline일 때만 값, manual이면 null
 }
 
 export async function createBox(input: CreateBoxInput): Promise<Box> {
@@ -37,7 +40,8 @@ export async function createBox(input: CreateBoxInput): Promise<Box> {
       owner_id: user.id,
       title: input.title,
       memo: input.memo ?? null,
-      deadline_at: input.deadline_at,
+      decision_mode: input.decision_mode,
+      deadline_at: input.decision_mode === 'auto_deadline' ? input.deadline_at : null,
     })
     .select()
     .single()
@@ -77,7 +81,6 @@ export async function getMessyBoxes(): Promise<Box[]> {
     .from('boxes')
     .select('*')
     .is('closed_at', null)
-    .or(`deadline_at.is.null,deadline_at.gte.${new Date().toISOString()}`)
     .order('updated_at', { ascending: false })
 
   if (error) throw error
@@ -93,7 +96,7 @@ export async function updateBoxTitle(id: string, title: string): Promise<void> {
   if (error) throw error
 }
 
-export async function updateBoxDeadline(id: string, deadline_at: string): Promise<void> {
+export async function updateBoxDeadline(id: string, deadline_at: string | null): Promise<void> {
   const supabase = createClient()
   const { error } = await supabase
     .from('boxes')
@@ -111,9 +114,10 @@ export async function updateBoxMemo(id: string, memo: string | null): Promise<vo
   if (error) throw error
 }
 
-export async function closeBox(id: string): Promise<void> {
+/** 결정: 선택한 선택지(들)를 결정으로 표시 + 정리완료 (참여자 누구나). optionIds는 1개 이상. */
+export async function decideBox(id: string, optionIds: string[]): Promise<void> {
   const supabase = createClient()
-  const { error } = await supabase.rpc('close_box', { p_box_id: id })
+  const { error } = await supabase.rpc('decide_box', { p_box_id: id, p_option_ids: optionIds })
   if (error) throw error
 
   // 결정 확정은 참여자에게 푸시 (실패 무시)
@@ -125,27 +129,36 @@ export async function closeBox(id: string): Promise<void> {
   }
 }
 
-export async function reopenBox(id: string, newDeadline?: string | null): Promise<void> {
+/** 번복(다시 정리하기): 정리완료·결정 표시 해제 → 정리중 */
+export async function reopenBox(id: string): Promise<void> {
   const supabase = createClient()
-  const { error } = await supabase.rpc('reopen_box', {
-    p_box_id: id,
-    p_deadline: newDeadline ?? null,
-  })
+  const { error } = await supabase.rpc('reopen_box', { p_box_id: id })
   if (error) throw error
 }
 
-export async function startRematch(id: string, newDeadline: string): Promise<void> {
+/** 마감 투표 자동 결정 (lazy commit용). 조건 안 맞으면 서버에서 no-op. */
+export async function autoDecideBox(id: string): Promise<void> {
   const supabase = createClient()
-  const { error } = await supabase.rpc('start_rematch', {
-    p_box_id: id,
-    p_deadline: newDeadline,
-  })
+  const { error } = await supabase.rpc('auto_decide_box', { p_box_id: id })
   if (error) throw error
 }
 
 export async function deleteBox(id: string): Promise<void> {
   const supabase = createClient()
   const { error } = await supabase.from('boxes').delete().eq('id', id)
+  if (error) throw error
+}
+
+/** 참여자가 상자에서 나가기 — 본인 참여 행만 삭제 (RLS: box_participants 본인 삭제). 방장은 삭제를 써야 함. */
+export async function leaveBox(id: string): Promise<void> {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  const { error } = await supabase
+    .from('box_participants')
+    .delete()
+    .eq('box_id', id)
+    .eq('user_id', user.id)
   if (error) throw error
 }
 

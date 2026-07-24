@@ -103,9 +103,7 @@ export function AppDrawer({ nickname }: AppDrawerProps) {
                 <Link href="/profile" onClick={() => setOpen(false)} className="flex items-center rounded-[14px] px-3 py-2.5 text-sm font-semibold text-ink hover:bg-cream active:bg-butter-tint">
                   프로필 관리
                 </Link>
-                <Link href="/groups" onClick={() => setOpen(false)} className="flex items-center rounded-[14px] px-3 py-2.5 text-sm font-semibold text-ink hover:bg-cream active:bg-butter-tint">
-                  그룹 관리
-                </Link>
+                {/* 그룹 개념 정립 전까지 '그룹 관리' 숨김 */}
               </div>
             </nav>
 

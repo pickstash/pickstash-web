@@ -9,10 +9,11 @@ import {
   updateBoxTitle,
   updateBoxMemo,
   updateBoxDeadline,
-  closeBox,
+  decideBox,
   reopenBox,
+  autoDecideBox,
   deleteBox,
-  startRematch,
+  leaveBox,
   markAllSeen,
   getShakingBoxes,
   type CreateBoxInput,
@@ -71,7 +72,7 @@ export function useUpdateBoxMemo(boxId: string) {
 export function useUpdateBoxDeadline(boxId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (deadline_at: string) => updateBoxDeadline(boxId, deadline_at),
+    mutationFn: (deadline_at: string | null) => updateBoxDeadline(boxId, deadline_at),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['box', boxId] })
       queryClient.invalidateQueries({ queryKey: ['boxes'] })
@@ -79,13 +80,27 @@ export function useUpdateBoxDeadline(boxId: string) {
   })
 }
 
-export function useCloseBox(boxId: string) {
+/** 결정: 선택한 선택지(들)로 정리완료 */
+export function useDecideBox(boxId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: () => closeBox(boxId),
+    mutationFn: (optionIds: string[]) => decideBox(boxId, optionIds),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['box', boxId] })
       queryClient.invalidateQueries({ queryKey: ['boxes'] })
+      queryClient.invalidateQueries({ queryKey: ['options', boxId] })
+    },
+  })
+}
+
+/** 마감 투표 자동 결정 (lazy commit) */
+export function useAutoDecideBox(boxId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => autoDecideBox(boxId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['box', boxId] })
+      queryClient.invalidateQueries({ queryKey: ['options', boxId] })
     },
   })
 }
@@ -102,13 +117,14 @@ export function useDeleteBox() {
   })
 }
 
-export function useStartRematch(boxId: string) {
+export function useLeaveBox() {
+  const router = useRouter()
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (newDeadline: string) => startRematch(boxId, newDeadline),
+    mutationFn: (boxId: string) => leaveBox(boxId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['box', boxId] })
       queryClient.invalidateQueries({ queryKey: ['boxes'] })
+      router.push('/')
     },
   })
 }
@@ -116,10 +132,11 @@ export function useStartRematch(boxId: string) {
 export function useReopenBox(boxId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (newDeadline?: string | null) => reopenBox(boxId, newDeadline),
+    mutationFn: () => reopenBox(boxId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['box', boxId] })
       queryClient.invalidateQueries({ queryKey: ['boxes'] })
+      queryClient.invalidateQueries({ queryKey: ['options', boxId] })  // 번복 시 decided_at 해제 반영
     },
   })
 }

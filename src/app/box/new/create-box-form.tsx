@@ -4,32 +4,38 @@ import { useState } from 'react'
 import { useCreateBox } from '@/hooks/use-boxes'
 import { DeadlineBottomSheet } from '@/components/deadline-bottom-sheet'
 import { defaultDeadline, formatKoreanDateTime } from '@/lib/utils'
+import type { DecisionMode } from '@/lib/api/boxes'
+
+const MODES: { value: DecisionMode; label: string; sub: string }[] = [
+  { value: 'manual', label: '직접 정하기', sub: '내가(우리가) 직접 골라 정해요' },
+  { value: 'auto_deadline', label: '마감 투표', sub: '마감 때 좋아요 최다가 자동 결정돼요' },
+]
 
 export function CreateBoxForm() {
   const [title, setTitle] = useState('')
   const [memo, setMemo] = useState('')
-  const [hasDeadline, setHasDeadline] = useState(false)
+  const [mode, setMode] = useState<DecisionMode>('manual')
   const [deadline, setDeadline] = useState<Date | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
 
   const createBox = useCreateBox()
 
-  function handleDeadlineCheck(checked: boolean) {
-    setHasDeadline(checked)
-    if (checked && !deadline) {
-      setDeadline(defaultDeadline())
-    }
+  const needsDeadline = mode === 'auto_deadline'
+  const canSubmit = !!title.trim() && (!needsDeadline || !!deadline)
+
+  function handleSelectMode(next: DecisionMode) {
+    setMode(next)
+    if (next === 'auto_deadline' && !deadline) setDeadline(defaultDeadline())
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!title.trim()) return
-
-    // 마감을 켜지 않으면 마감 없는 상자 (혼자 고민 보드 용도)
+    if (!canSubmit) return
     createBox.mutate({
       title: title.trim(),
       memo: memo.trim() || undefined,
-      deadline_at: hasDeadline && deadline ? deadline.toISOString() : null,
+      decision_mode: mode,
+      deadline_at: needsDeadline && deadline ? deadline.toISOString() : null,
     })
   }
 
@@ -59,29 +65,41 @@ export function CreateBoxForm() {
         />
       </div>
 
+      {/* 결정 방식 */}
       <div>
-        <label className="mb-2 flex cursor-pointer items-center gap-2">
-          <input
-            type="checkbox"
-            checked={hasDeadline}
-            onChange={e => handleDeadlineCheck(e.target.checked)}
-            className="h-[17px] w-[17px] rounded accent-ink"
-          />
-          <span className="text-sm font-semibold text-ink">마감 기한 설정</span>
-        </label>
+        <label className="mb-2 block text-[13px] font-semibold text-ink-soft">결정 방식</label>
+        <div className="space-y-2">
+          {MODES.map(m => {
+            const active = mode === m.value
+            return (
+              <button
+                key={m.value}
+                type="button"
+                onClick={() => handleSelectMode(m.value)}
+                className={`flex w-full items-start gap-2.5 rounded-field border-[1.5px] px-4 py-3 text-left transition-colors ${
+                  active ? 'border-butter-dark bg-butter-tint' : 'border-line bg-paper'
+                }`}
+              >
+                <span className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-[1.5px] ${active ? 'border-butter-dark bg-butter' : 'border-[#C9C7B6]'}`}>
+                  {active && <span className="h-1.5 w-1.5 rounded-full bg-ink" />}
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-bold text-ink">{m.label}</span>
+                  <span className="block text-[12px] text-ink-soft">{m.sub}</span>
+                </span>
+              </button>
+            )
+          })}
+        </div>
 
-        {hasDeadline && deadline ? (
+        {needsDeadline && (
           <button
             type="button"
             onClick={() => setSheetOpen(true)}
-            className="w-full rounded-field border-[1.5px] border-line bg-paper px-4 py-3 text-left text-sm text-ink"
+            className="mt-2 w-full rounded-field border-[1.5px] border-line bg-paper px-4 py-3 text-left text-sm text-ink"
           >
-            {formatKoreanDateTime(deadline.toISOString())}까지
+            {deadline ? `${formatKoreanDateTime(deadline.toISOString())}까지` : '마감일시 선택'}
           </button>
-        ) : (
-          <p className="text-[12px] text-ink-faint">
-            마감 없이 두면 혼자 고민을 정리하기 좋아요. 언제든 결정할 수 있어요.
-          </p>
         )}
       </div>
 
@@ -92,7 +110,7 @@ export function CreateBoxForm() {
       <div className="mt-auto">
         <button
           type="submit"
-          disabled={!title.trim() || createBox.isPending}
+          disabled={!canSubmit || createBox.isPending}
           className="w-full rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80 disabled:opacity-40"
         >
           {createBox.isPending ? '만드는 중...' : '상자 만들기'}

@@ -39,6 +39,7 @@ export interface Database {
           deadline_at: string | null
           closed_at: string | null
           current_round: number
+          decision_mode: string
           invite_code: string
           created_at: string
           updated_at: string
@@ -51,6 +52,7 @@ export interface Database {
           deadline_at?: string | null
           closed_at?: string | null
           current_round?: number
+          decision_mode?: string
           invite_code?: string
           created_at?: string
           updated_at?: string
@@ -63,6 +65,7 @@ export interface Database {
           deadline_at?: string | null
           closed_at?: string | null
           current_round?: number
+          decision_mode?: string
           invite_code?: string
           created_at?: string
           updated_at?: string
@@ -79,6 +82,7 @@ export interface Database {
           images: Json
           content: Json
           memo: string | null
+          decided_at: string | null
           created_by: string
           created_at: string
         }
@@ -91,6 +95,7 @@ export interface Database {
           images?: Json
           content?: Json
           memo?: string | null
+          decided_at?: string | null
           created_by: string
           created_at?: string
         }
@@ -103,6 +108,7 @@ export interface Database {
           images?: Json
           content?: Json
           memo?: string | null
+          decided_at?: string | null
           created_by?: string
           created_at?: string
         }
@@ -364,11 +370,15 @@ export interface Database {
         Returns: undefined
       }
       reopen_box: {
-        Args: { p_box_id: string; p_deadline?: string | null }
+        Args: { p_box_id: string }
         Returns: undefined
       }
-      start_rematch: {
-        Args: { p_box_id: string; p_deadline: string }
+      decide_box: {
+        Args: { p_box_id: string; p_option_ids: string[] }
+        Returns: undefined
+      }
+      auto_decide_box: {
+        Args: { p_box_id: string }
         Returns: undefined
       }
       get_box_preview_by_invite_code: {

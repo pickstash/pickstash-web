@@ -1,15 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import {
   useUpdateBoxTitle,
   useUpdateBoxMemo,
   useUpdateBoxDeadline,
-  useCloseBox,
+  useDecideBox,
   useDeleteBox,
+  useLeaveBox,
   useReopenBox,
-  useStartRematch,
 } from '@/hooks/use-boxes'
 import { useToggleFavorite } from '@/hooks/use-favorites'
 import { useOptions } from '@/hooks/use-options'
@@ -20,10 +20,9 @@ import { Icon } from '@/components/icon'
 import { AppDrawer } from '@/components/app-drawer'
 import { PageHeader } from '@/components/page-header'
 import { getBoxStatus, isDoneStatus, BOX_STATUS_LABEL, type BoxStatus } from '@/lib/domain/box-status'
-import { getVoteResult } from '@/lib/domain/winner'
 import { parseBlocks, linkBlocksOf } from '@/lib/domain/option-content'
-import { formatKoreanDate, formatDeadline, defaultDeadline } from '@/lib/utils'
-import type { BoxWithParticipants } from '@/lib/api/boxes'
+import { formatDeadlineCompact, defaultDeadline } from '@/lib/utils'
+import type { BoxWithParticipants, BoxParticipant } from '@/lib/api/boxes'
 import type { Option } from '@/lib/api/options'
 
 interface BoxDetailClientProps {
@@ -36,12 +35,68 @@ interface BoxDetailClientProps {
 
 const STATUS_BADGE_CLASS: Record<BoxStatus, string> = {
   RESOLVED: 'bg-leaf-tint text-[#37714A]',
-  EXPIRED: 'bg-[#EDEBDD] text-ink-soft',
-  SHOWDOWN: 'bg-tangerine text-[#FFF7EC]',
   OPEN: 'border border-[#D9D6C2] bg-paper text-ink-soft',
 }
 
-type SheetPurpose = 'deadline' | 'rematch' | 'reopen'
+/** 겹쳐진 참여자 아바타 스택 (트리플 스타일). trailing으로 스택 끝에 초대 버튼 등을 겹쳐 넣는다. */
+function ParticipantAvatars({ participants, max = 5, trailing }: { participants: BoxParticipant[]; max?: number; trailing?: ReactNode }) {
+  const shown = participants.slice(0, max)
+  const extra = participants.length - shown.length
+  return (
+    <div className="flex -space-x-2">
+      {shown.map(p => (
+        <div key={p.user_id} className="h-7 w-7 overflow-hidden rounded-full border-2 border-cream bg-butter-tint">
+          {p.profiles?.avatar_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={p.profiles.avatar_url} alt={p.profiles.nickname} className="h-full w-full object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-ink">
+              {p.profiles?.nickname?.[0] ?? '?'}
+            </div>
+          )}
+        </div>
+      ))}
+      {extra > 0 && (
+        <div className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-cream bg-cream text-[10px] font-extrabold text-ink-soft">
+          +{extra}
+        </div>
+      )}
+      {trailing}
+    </div>
+  )
+}
+
+/** 색연필로 슥슥 그린 듯한 손그림 동그라미 스탬프 (정리완료!) */
+function PencilCircle({ children }: { children: ReactNode }) {
+  return (
+    <span className="relative inline-flex -rotate-3 items-center justify-center px-4 py-1.5">
+      <svg
+        className="pointer-events-none absolute inset-0 h-full w-full overflow-visible"
+        viewBox="0 0 120 48"
+        preserveAspectRatio="none"
+        fill="none"
+        aria-hidden="true"
+      >
+        <path
+          d="M62 6C34 4 12 11 8 22C5 33 30 43 60 43C90 43 116 34 112 21C109 10 84 4 52 8"
+          stroke="var(--color-tangerine)"
+          strokeWidth="2.4"
+          strokeLinecap="round"
+          vectorEffect="non-scaling-stroke"
+        />
+        <path
+          d="M56 10C36 10 17 15 14 22C12 30 33 39 59 39C85 39 108 32 107 23"
+          stroke="var(--color-tangerine)"
+          strokeWidth="1.3"
+          strokeLinecap="round"
+          strokeOpacity="0.5"
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+      <span className="relative text-[12.5px] font-extrabold tracking-wide text-tangerine">{children}</span>
+    </span>
+  )
+}
 
 export function BoxDetailClient({ box: initialBox, isOwner, currentUserId, initialOptions, initialIsFavorite }: BoxDetailClientProps) {
   const [box, setBox] = useState(initialBox)
@@ -49,19 +104,22 @@ export function BoxDetailClient({ box: initialBox, isOwner, currentUserId, initi
   const [titleInput, setTitleInput] = useState(box.title)
   const [editingMemo, setEditingMemo] = useState(false)
   const [memoInput, setMemoInput] = useState(box.memo ?? '')
-  const [sheetPurpose, setSheetPurpose] = useState<SheetPurpose | null>(null)
+  const [deadlineSheet, setDeadlineSheet] = useState(false)
   const [confirmDeleteBox, setConfirmDeleteBox] = useState(false)
+  const [confirmLeave, setConfirmLeave] = useState(false)
   const [confirmReopen, setConfirmReopen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [isFavorite, setIsFavorite] = useState(initialIsFavorite)
+  const [deciding, setDeciding] = useState(false)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
 
   const updateTitle = useUpdateBoxTitle(box.id)
   const updateMemo = useUpdateBoxMemo(box.id)
   const updateDeadline = useUpdateBoxDeadline(box.id)
-  const closeBox = useCloseBox(box.id)
+  const decideBox = useDecideBox(box.id)
   const deleteBox = useDeleteBox()
+  const leaveBox = useLeaveBox()
   const reopenBox = useReopenBox(box.id)
-  const startRematch = useStartRematch(box.id)
   const toggleFavorite = useToggleFavorite(box.id)
 
   const { data: options = initialOptions } = useOptions(box.id)
@@ -72,16 +130,57 @@ export function BoxDetailClient({ box: initialBox, isOwner, currentUserId, initi
   const status = getBoxStatus(box)
   const isDone = isDoneStatus(status)
   const isSolo = box.box_participants.length === 1
+  const isAuto = box.decision_mode === 'auto_deadline'
+  const showLikes = !isSolo                          // 혼자 상자는 좋아요 미표시
 
-  const voteResult = getVoteResult(
-    options.map(o => {
-      const c = votes[o.id] ?? { like: 0, dislike: 0, myVote: null }
-      return { name: o.name, like: c.like }
-    })
+  const decidedOptions = options.filter(o => o.decided_at)
+  const likeOf = (id: string) => votes[id]?.like ?? 0
+  const maxLikes = options.reduce((m, o) => Math.max(m, likeOf(o.id)), 0)
+  const leaderIds = maxLikes > 0 ? options.filter(o => likeOf(o.id) === maxLikes).map(o => o.id) : []
+  const leaderNames = options.filter(o => leaderIds.includes(o.id)).map(o => o.name)
+
+  const inviteButton = (
+    <div className="flex h-7 items-center gap-0.5 rounded-full border-2 border-cream bg-butter pl-1.5 pr-2.5 text-[12px] font-extrabold text-ink shadow-[0_1px_0_#E3B93A]">
+      <Icon name="plus" size={13} strokeWidth={2.4} />
+      초대
+    </div>
   )
 
-  // 마감이 이미 지난 상자를 다시 열려면 새 마감이 필요하다 (reopen_box RPC 규칙)
-  const reopenNeedsDeadline = !!box.deadline_at && new Date(box.deadline_at) <= new Date()
+  // 마감 칩은 '마감 투표' 상자에서만 (직접 정하기 상자는 마감 없음)
+  const deadlineNode = !isAuto ? null : isOwner && !isDone ? (
+    <button
+      onClick={() => setDeadlineSheet(true)}
+      className="flex items-center gap-1.5 rounded-full border border-line bg-paper px-3 py-1.5 text-[12px] font-bold text-ink-soft active:bg-cream"
+    >
+      <Icon name="calendar" size={14} />
+      {box.deadline_at ? `마감 ${formatDeadlineCompact(box.deadline_at)}` : '마감일 정하기'}
+    </button>
+  ) : (
+    <span className="flex items-center gap-1.5 rounded-full border border-line bg-cream px-3 py-1.5 text-[12px] font-bold text-ink-faint">
+      <Icon name="calendar" size={14} />
+      {box.deadline_at ? `마감 ${formatDeadlineCompact(box.deadline_at)}` : '마감 없음'}
+    </span>
+  )
+
+  // 혼자 상자: 아바타 숨기고 초대 버튼만 (마감된 혼자 상자는 아무것도 안 보임)
+  const participantsNode = isSolo ? (
+    isDone ? null : (
+      <Link href={`/box/${box.id}/invite`} aria-label="친구 초대" className="inline-flex rounded-full active:opacity-70">
+        {inviteButton}
+      </Link>
+    )
+  ) : (
+    <Link
+      href={`/box/${box.id}/invite`}
+      aria-label={isDone ? '함께한 사람 보기' : '친구 초대'}
+      className="inline-flex rounded-full active:opacity-70"
+    >
+      <ParticipantAvatars
+        participants={box.box_participants}
+        trailing={isDone ? undefined : inviteButton}
+      />
+    </Link>
+  )
 
   function handleSaveTitle() {
     if (!titleInput.trim() || titleInput === box.title) {
@@ -111,46 +210,47 @@ export function BoxDetailClient({ box: initialBox, isOwner, currentUserId, initi
     })
   }
 
-  function handleSheetConfirm(date: Date) {
+  // 마감 투표 상자 마감일 변경
+  function handleDeadlineConfirm(date: Date) {
     const deadline_at = date.toISOString()
-    if (sheetPurpose === 'deadline') {
-      updateDeadline.mutate(deadline_at, {
-        onSuccess: () => {
-          setBox(prev => ({ ...prev, deadline_at }))
-          setSheetPurpose(null)
-        },
-      })
-    } else if (sheetPurpose === 'rematch') {
-      startRematch.mutate(deadline_at, {
-        onSuccess: () => {
-          setBox(prev => ({
-            ...prev,
-            current_round: prev.current_round + 1,
-            deadline_at,
-            closed_at: null,
-          }))
-          setSheetPurpose(null)
-        },
-      })
-    } else if (sheetPurpose === 'reopen') {
-      reopenBox.mutate(deadline_at, {
-        onSuccess: () => {
-          setBox(prev => ({ ...prev, closed_at: null, deadline_at }))
-          setSheetPurpose(null)
-        },
-      })
-    }
+    updateDeadline.mutate(deadline_at, {
+      onSuccess: () => {
+        setBox(prev => ({ ...prev, deadline_at }))
+        setDeadlineSheet(false)
+      },
+    })
   }
 
+  // 번복(다시 정리하기): 정리완료·결정 표시 해제 → 정리중 (참여자 누구나)
   function handleReopen() {
-    if (reopenNeedsDeadline) {
-      setSheetPurpose('reopen')
-      return
-    }
-    reopenBox.mutate(null, {
+    reopenBox.mutate(undefined, {
       onSuccess: () => {
         setBox(prev => ({ ...prev, closed_at: null }))
         setConfirmReopen(false)
+      },
+    })
+  }
+
+  // 결정: 선택지 1개 이상 골라 확정
+  function openDecide() {
+    setSelected(new Set(leaderIds))   // 좋아요 1위 미리 선택
+    setDeciding(true)
+  }
+  function toggleSelect(id: string) {
+    setSelected(prev => {
+      const n = new Set(prev)
+      if (n.has(id)) n.delete(id)
+      else n.add(id)
+      return n
+    })
+  }
+  function handleDecide() {
+    const ids = [...selected]
+    if (ids.length === 0) return
+    decideBox.mutate(ids, {
+      onSuccess: () => {
+        setBox(prev => ({ ...prev, closed_at: new Date().toISOString() }))
+        setDeciding(false)
       },
     })
   }
@@ -221,11 +321,87 @@ export function BoxDetailClient({ box: initialBox, isOwner, currentUserId, initi
         </div>
       )}
 
+      {/* 상자 나가기 확인 (참여자) */}
+      {confirmLeave && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-8">
+          <div className="absolute inset-0 bg-ink/40" onClick={() => setConfirmLeave(false)} />
+          <div className="relative w-full max-w-[300px] rounded-[20px] bg-paper p-5 shadow-[0_16px_40px_rgba(42,42,39,0.25)]">
+            <p className="text-[15px] font-extrabold text-ink">상자에서 나갈까요?</p>
+            <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-soft">내 목록에서 사라져요. 다시 참여하려면 초대가 필요해요.</p>
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={() => setConfirmLeave(false)}
+                className="flex-1 rounded-field border border-line py-3 text-[13px] font-bold text-ink-soft"
+              >
+                취소
+              </button>
+              <button
+                onClick={() => leaveBox.mutate(box.id)}
+                disabled={leaveBox.isPending}
+                className="flex-1 rounded-field bg-tomato py-3 text-[13px] font-bold text-white disabled:opacity-50"
+              >
+                나가기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 결정 모달 (직접 정하기) */}
+      {deciding && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end">
+          <div className="absolute inset-0 bg-ink/45" onClick={() => setDeciding(false)} />
+          <div className="relative mx-auto flex max-h-[75vh] w-full max-w-[430px] flex-col rounded-t-sheet bg-paper px-5 pb-10 pt-3">
+            <div className="mx-auto mb-4 h-1 w-9 rounded-full bg-line" />
+            <div className="mb-1 flex items-center justify-between">
+              <h3 className="text-base font-extrabold tracking-tight text-ink">무엇으로 정할까요?</h3>
+              <button onClick={() => setDeciding(false)} className="text-[13px] text-ink-faint">닫기</button>
+            </div>
+            <p className="mb-3 text-[12px] text-ink-soft">
+              여러 개 골라도 돼요{showLikes && leaderNames.length > 0 ? ' · 좋아요 1위를 미리 골라놨어요' : ''}.
+            </p>
+            <div className="flex-1 space-y-2 overflow-y-auto">
+              {options.length === 0 ? (
+                <p className="py-6 text-center text-sm text-ink-faint">선택지를 먼저 추가해주세요.</p>
+              ) : (
+                options.map(o => {
+                  const on = selected.has(o.id)
+                  return (
+                    <button
+                      key={o.id}
+                      onClick={() => toggleSelect(o.id)}
+                      className={`flex w-full items-center justify-between gap-2 rounded-field border-[1.5px] px-4 py-3 text-left transition-colors ${
+                        on ? 'border-butter-dark bg-butter-tint' : 'border-line bg-paper'
+                      }`}
+                    >
+                      <span className="min-w-0 truncate text-sm font-bold text-ink">{o.name}</span>
+                      <span className="flex shrink-0 items-center gap-2">
+                        {showLikes && <span className="text-[12px] font-bold text-ink-faint">♥ {likeOf(o.id)}</span>}
+                        <span className={`flex h-5 w-5 items-center justify-center rounded-[6px] border-[1.5px] ${on ? 'border-butter-dark bg-butter text-ink' : 'border-[#C9C7B6]'}`}>
+                          {on && <Icon name="check" size={12} strokeWidth={3} />}
+                        </span>
+                      </span>
+                    </button>
+                  )
+                })
+              )}
+            </div>
+            <button
+              onClick={handleDecide}
+              disabled={selected.size === 0 || decideBox.isPending}
+              className="mt-4 w-full rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80 disabled:opacity-40"
+            >
+              {decideBox.isPending ? '정하는 중...' : `이걸로 정하기${selected.size > 0 ? ` (${selected.size}개)` : ''}`}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="flex-1 space-y-4 px-5 pb-5 pt-1">
         {/* 히어로: 상태 · 질문 · 메모 · 메타 · 참여 */}
         <div className="space-y-3">
           <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-bold ${STATUS_BADGE_CLASS[status]}`}>
-            {status === 'SHOWDOWN' ? `🔥 결판 중 · ${box.current_round}라운드` : BOX_STATUS_LABEL[status]}
+            {BOX_STATUS_LABEL[status]}
           </span>
 
           {editingTitle ? (
@@ -250,7 +426,7 @@ export function BoxDetailClient({ box: initialBox, isOwner, currentUserId, initi
           ) : (
             <div className="flex items-start justify-between gap-2">
               <h1 className="min-w-0 text-[22px] font-extrabold leading-tight tracking-tight text-ink">{box.title}</h1>
-              {isOwner && !isDone && (
+              {isOwner ? (
                 <div className="relative shrink-0">
                   <button
                     onClick={() => setMenuOpen(v => !v)}
@@ -285,6 +461,13 @@ export function BoxDetailClient({ box: initialBox, isOwner, currentUserId, initi
                     </>
                   )}
                 </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmLeave(true)}
+                  className="mt-1 shrink-0 text-[12.5px] font-semibold text-ink-faint active:text-tomato"
+                >
+                  나가기
+                </button>
               )}
             </div>
           )}
@@ -315,174 +498,99 @@ export function BoxDetailClient({ box: initialBox, isOwner, currentUserId, initi
             </p>
           ) : null}
 
-          <div className="flex flex-wrap items-center gap-2">
-            {isOwner && !isDone ? (
-              <button
-                onClick={() => setSheetPurpose('deadline')}
-                className="flex items-center gap-1.5 rounded-full border border-line bg-paper px-3 py-1.5 text-[12px] font-bold text-ink-soft active:bg-cream"
-              >
-                <Icon name="calendar" size={14} />
-                {box.deadline_at ? formatDeadline(box.deadline_at) : '마감 없음 · 정하기'}
-              </button>
-            ) : (
-              <span className="flex items-center gap-1.5 text-[12px] text-ink-faint">
-                <Icon name="calendar" size={14} />
-                마감 {formatDeadline(box.deadline_at)}
-              </span>
-            )}
-            <span className="text-[11px] text-ink-faint">생성 {formatKoreanDate(box.created_at)}</span>
-          </div>
-
-          {/* 참여 (가벼운 스트립) */}
-          <div className="flex items-center justify-between gap-2 rounded-[14px] bg-cream/70 px-3.5 py-2.5">
-            {isSolo ? (
-              <p className="min-w-0 text-[12px] leading-relaxed text-ink-soft">
-                <span className="font-bold text-ink">혼자 정리 중</span>이에요.<br />
-                함께 정하고 싶으면 친구를 초대해보세요.
-              </p>
-            ) : (
-              <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1.5">
-                <span className="text-[12px] font-bold text-ink">친구 {box.box_participants.length}명</span>
-                {box.box_participants.map(p => (
-                  <div key={p.user_id} className="flex items-center gap-1.5">
-                    <div className="h-6 w-6 overflow-hidden rounded-full border border-paper bg-butter-tint">
-                      {p.profiles?.avatar_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={p.profiles.avatar_url} alt={p.profiles.nickname} className="h-full w-full object-cover" />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-ink">
-                          {p.profiles?.nickname?.[0] ?? '?'}
-                        </div>
-                      )}
-                    </div>
-                    <span className="text-[11.5px] font-semibold text-ink">{p.profiles?.nickname}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-            <Link
-              href={`/box/${box.id}/invite`}
-              className="shrink-0 rounded-full border-[1.5px] border-dashed border-[#C9C7B6] bg-paper px-2.5 py-1 text-[11.5px] font-bold text-ink-soft active:bg-cream"
-            >
-              + 초대
-            </Link>
+          {/* 마감(마감 투표만) + 참여자 */}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            {deadlineNode}
+            {participantsNode}
           </div>
         </div>
 
-        {/* 결정 결과 (정리된 상자) */}
+        {/* 결정 결과 (정리완료) — 들썩이는 상자처럼 버터 톤 */}
         {isDone && (
-          <div className="space-y-3 rounded-card border border-[#ECEADC] bg-paper p-5">
-            <div className="flex items-center gap-3">
-              <span className="inline-flex rotate-[-7deg] items-center justify-center rounded-[46%_54%_50%_50%/58%_46%_54%_42%] border-[2.5px] border-tangerine px-3 py-1.5 text-xs font-extrabold tracking-wide text-tangerine">
-                {status === 'RESOLVED' ? '정리완료!' : '시간만료'}
-              </span>
-              <div className="min-w-0 flex-1">
-                {voteResult.winner ? (
-                  <p className="text-[15px] font-extrabold text-ink">
-                    <span className="[box-shadow:inset_0_-8px_0_#FFD84A]">{voteResult.winner}</span>
-                    (으)로 결정!
-                  </p>
-                ) : voteResult.coLeaders.length >= 2 ? (
-                  <p className="text-[13.5px] font-bold text-ink">
-                    공동 1등 — {voteResult.coLeaders.join(', ')}
-                  </p>
-                ) : (
-                  <p className="text-[13px] text-ink-soft">투표 없이 마무리됐어요</p>
-                )}
-              </div>
+          <div className="space-y-4 rounded-card bg-butter-tint p-5">
+            <div className="flex flex-col items-start gap-2.5 text-left">
+              <PencilCircle>정리완료!</PencilCircle>
+              {decidedOptions.length > 0 ? (
+                <p className="text-[18px] font-extrabold leading-snug text-ink">
+                  <span className="[box-shadow:inset_0_-9px_0_#FFD84A]">{decidedOptions.map(o => o.name).join(', ')}</span>
+                  (으)로 결정!
+                </p>
+              ) : (
+                <p className="text-[13.5px] text-ink-soft">결정 없이 마무리됐어요</p>
+              )}
             </div>
 
-            {/* 동점 재투표 제안 (spec 6장) */}
-            {status === 'EXPIRED' && voteResult.coLeaders.length >= 2 && (
-              <div className="rounded-field bg-butter-tint px-4 py-3.5">
-                <p className="text-[13px] font-extrabold text-ink">공동 1등이 나왔어요!</p>
-                <p className="mt-0.5 text-[12px] text-ink-soft">
-                  {isOwner ? '1등끼리 결승전으로 정해볼까요?' : '방장이 결승전을 시작할 수 있어요'}
-                </p>
-                {isOwner && (
+            {/* 다시 정리하기 (번복) — 참여자 누구나 */}
+            {confirmReopen ? (
+              <div className="space-y-2.5 rounded-field bg-paper/70 p-3.5">
+                <p className="text-center text-[12.5px] leading-relaxed text-ink-soft">상자를 다시 열까요? 결정이 해제돼요.</p>
+                <div className="flex gap-2">
                   <button
-                    onClick={() => setSheetPurpose('rematch')}
-                    disabled={startRematch.isPending}
-                    className="mt-2.5 w-full rounded-field bg-butter py-3 text-[13px] font-extrabold text-ink shadow-[0_1.5px_0_#E3B93A] active:opacity-80 disabled:opacity-50"
+                    onClick={() => setConfirmReopen(false)}
+                    className="flex-1 rounded-field border border-line bg-paper py-2.5 text-[13px] font-bold text-ink-soft active:bg-cream"
                   >
-                    🔥 결승전 시작하기
+                    취소
                   </button>
-                )}
-              </div>
-            )}
-
-            {/* 다시 정리하기 */}
-            {isOwner && (
-              confirmReopen ? (
-                <div className="space-y-2">
-                  <p className="text-center text-[12.5px] text-ink-soft">
-                    상자를 다시 열까요?{reopenNeedsDeadline && ' 새 마감 기한을 정해야 해요.'}
-                  </p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setConfirmReopen(false)}
-                      className="flex-1 rounded-field border border-line py-3 text-[13px] font-bold text-ink-soft"
-                    >
-                      취소
-                    </button>
-                    <button
-                      onClick={handleReopen}
-                      disabled={reopenBox.isPending}
-                      className="flex-1 rounded-field border-[1.5px] border-ink py-3 text-[13px] font-bold text-ink disabled:opacity-50"
-                    >
-                      다시 열기
-                    </button>
-                  </div>
+                  <button
+                    onClick={handleReopen}
+                    disabled={reopenBox.isPending}
+                    className="flex-1 rounded-field bg-ink py-2.5 text-[13px] font-bold text-cream active:opacity-80 disabled:opacity-50"
+                  >
+                    다시 열기
+                  </button>
                 </div>
-              ) : (
-                <button
-                  onClick={() => setConfirmReopen(true)}
-                  className="w-full rounded-field border-[1.5px] border-ink bg-paper py-3 text-[13px] font-bold text-ink active:bg-cream"
-                >
-                  다시 정리하기
-                </button>
-              )
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirmReopen(true)}
+                className="w-full rounded-field bg-ink py-3 text-[13px] font-bold text-cream active:opacity-80"
+              >
+                다시 정리하기
+              </button>
             )}
           </div>
+        )}
+
+        {/* 지금 1위 (진행 중 · 여럿 상자) */}
+        {!isDone && showLikes && leaderNames.length > 0 && (
+          <p className="text-[12.5px] font-bold text-ink-soft">
+            지금 1위 · <span className="text-ink">{leaderNames.join(', ')}</span>
+          </p>
         )}
 
         <OptionsSection
           boxId={box.id}
           round={box.current_round}
           initialOptions={initialOptions}
-          canVote={status === 'OPEN' || status === 'SHOWDOWN'}
+          canVote={showLikes}
+          showLikes={showLikes}
         />
 
-        {!isDone && (
-          <Link href={`/box/${box.id}/option/new`} className="block">
-            <div className="flex items-center justify-center gap-1.5 rounded-[18px] border border-dashed border-[#D9D6C2] bg-paper/50 py-4 text-[13px] font-bold text-ink-soft active:bg-cream">
-              <Icon name="plus" size={16} />
-              선택지 추가하기
-            </div>
-          </Link>
-        )}
+        <Link href={`/box/${box.id}/option/new`} className="block">
+          <div className="flex items-center justify-center gap-1.5 rounded-[18px] border border-dashed border-[#D9D6C2] bg-paper/50 py-4 text-[13px] font-bold text-ink-soft active:bg-cream">
+            <Icon name="plus" size={16} />
+            선택지 추가하기
+          </div>
+        </Link>
       </div>
 
-      {/* 하단: 결정 (방장) */}
-      {isOwner && !isDone && (
+      {/* 하단: 이걸로 정하기 (직접 정하기 · 진행 중) */}
+      {!isDone && !isAuto && (
         <div className="px-5 pb-10">
           <button
-            onClick={() => closeBox.mutate(undefined, {
-              onSuccess: () => setBox(prev => ({ ...prev, closed_at: new Date().toISOString() })),
-            })}
-            disabled={closeBox.isPending}
-            className="w-full rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80 disabled:opacity-50"
+            onClick={openDecide}
+            className="w-full rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80"
           >
-            {closeBox.isPending ? '결정하는 중...' : '이대로 결정하기'}
+            이걸로 정하기
           </button>
         </div>
       )}
 
       <DeadlineBottomSheet
-        open={sheetPurpose !== null}
+        open={deadlineSheet}
         defaultValue={box.deadline_at ? new Date(box.deadline_at) : defaultDeadline()}
-        onClose={() => setSheetPurpose(null)}
-        onConfirm={handleSheetConfirm}
+        onClose={() => setDeadlineSheet(false)}
+        onConfirm={handleDeadlineConfirm}
       />
     </main>
   )

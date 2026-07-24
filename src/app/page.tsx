@@ -18,7 +18,6 @@ export default async function HomePage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const now = new Date().toISOString()
   const [
     { data: profile },
     { count: messyCount },
@@ -27,10 +26,9 @@ export default async function HomePage() {
   ] = await Promise.all([
     supabase.from('profiles').select('nickname').eq('id', user.id).single(),
     supabase.from('boxes').select('*', { count: 'exact', head: true })
-      .is('closed_at', null)
-      .or(`deadline_at.is.null,deadline_at.gte.${now}`),
+      .is('closed_at', null),
     supabase.from('boxes').select('*', { count: 'exact', head: true })
-      .or(`closed_at.not.is.null,deadline_at.lt.${now}`),
+      .not('closed_at', 'is', null),
     supabase.from('favorites').select('*', { count: 'exact', head: true })
       .eq('user_id', user.id),
   ])

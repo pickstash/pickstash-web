@@ -2,7 +2,6 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { BoxCard } from '@/components/box-card'
 import { PageHeader } from '@/components/page-header'
-import { getVoteResult, buildOptionVoteSummaries } from '@/lib/domain/winner'
 import type { Box } from '@/lib/api/boxes'
 
 export default async function DonePage() {
@@ -13,8 +12,8 @@ export default async function DonePage() {
   const [{ data: rawBoxes }, { data: participations }, { data: favs }] = await Promise.all([
     supabase
       .from('boxes')
-      .select(`*, box_participants(user_id), options(id, name, votes(vote_type, round))`)
-      .or(`closed_at.not.is.null,deadline_at.lt.${new Date().toISOString()}`)
+      .select(`*, box_participants(user_id, profiles(avatar_url, nickname)), options(id, name, decided_at)`)
+      .not('closed_at', 'is', null)
       .order('updated_at', { ascending: false }),
     supabase.from('box_participants').select('box_id, last_seen_at').eq('user_id', user.id),
     supabase.from('favorites').select('box_id').eq('user_id', user.id),
@@ -24,8 +23,8 @@ export default async function DonePage() {
   const favoriteSet = new Set((favs ?? []).map(f => f.box_id))
 
   type RawBox = Box & {
-    box_participants: { user_id: string }[]
-    options: { id: string; name: string; votes: { vote_type: string; round: number }[] }[]
+    box_participants: { user_id: string; profiles: { avatar_url: string | null; nickname: string } | null }[]
+    options: { id: string; name: string; decided_at: string | null }[]
   }
 
   const boxes = (rawBoxes ?? []) as unknown as RawBox[]
@@ -41,14 +40,14 @@ export default async function DonePage() {
       <div className="flex-1 space-y-2.5 px-5 pb-10">
         {boxes.length > 0 ? (
           boxes.map(box => {
-            const result = getVoteResult(buildOptionVoteSummaries(box.options, box.current_round))
+            const decided = box.options.filter(o => o.decided_at)
+            const winnerName = decided.length ? decided.map(o => o.name).join(', ') : null
             return (
               <BoxCard
                 key={box.id}
                 box={box}
-                participantCount={box.box_participants.length}
-                winnerName={result.winner}
-                coLeaderCount={result.coLeaders.length}
+                participants={box.box_participants}
+                winnerName={winnerName}
                 isNew={new Date(box.updated_at) > new Date(lastSeenMap.get(box.id) ?? 0)}
                 isFavorite={favoriteSet.has(box.id)}
               />

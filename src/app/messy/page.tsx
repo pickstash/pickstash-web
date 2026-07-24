@@ -10,14 +10,11 @@ export default async function MessyPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const now = new Date().toISOString()
-
   const [{ data: rawBoxes }, { data: participations }, { data: favs }] = await Promise.all([
     supabase
       .from('boxes')
-      .select('*, box_participants(user_id)')
+      .select('*, box_participants(user_id, profiles(avatar_url, nickname))')
       .is('closed_at', null)
-      .or(`deadline_at.is.null,deadline_at.gte.${now}`)
       .order('updated_at', { ascending: false }),
     supabase.from('box_participants').select('box_id, last_seen_at').eq('user_id', user.id),
     supabase.from('favorites').select('box_id').eq('user_id', user.id),
@@ -25,7 +22,7 @@ export default async function MessyPage() {
 
   const lastSeenMap = new Map((participations ?? []).map(p => [p.box_id, p.last_seen_at]))
   const favoriteSet = new Set((favs ?? []).map(f => f.box_id))
-  type RawBox = Box & { box_participants: { user_id: string }[] }
+  type RawBox = Box & { box_participants: { user_id: string; profiles: { avatar_url: string | null; nickname: string } | null }[] }
   const boxes = (rawBoxes ?? []) as unknown as RawBox[]
 
   return (
@@ -42,7 +39,7 @@ export default async function MessyPage() {
             <BoxCard
               key={box.id}
               box={box}
-              participantCount={box.box_participants.length}
+              participants={box.box_participants}
               isNew={new Date(box.updated_at) > new Date(lastSeenMap.get(box.id) ?? 0)}
               isFavorite={favoriteSet.has(box.id)}
             />

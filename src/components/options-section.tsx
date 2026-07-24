@@ -20,11 +20,13 @@ interface OptionsSectionProps {
   round: number
   initialOptions: Option[]
   canVote: boolean
+  /** 좋아요(선호 표시) 노출 여부 — 혼자 상자는 false */
+  showLikes?: boolean
   /** 있으면 '선택지 N개' 옆에 링크 모아보기 칩 표시 */
   linksHref?: string
 }
 
-export function OptionsSection({ boxId, round, initialOptions, canVote, linksHref }: OptionsSectionProps) {
+export function OptionsSection({ boxId, round, initialOptions, canVote, showLikes = true, linksHref }: OptionsSectionProps) {
   const { data: options = initialOptions } = useOptions(boxId)
   const { data: votes = {} } = useBoxVotes(boxId, round)
   const [sortMode, setSortMode] = useState<OptionSortMode>('latest')
@@ -61,7 +63,7 @@ export function OptionsSection({ boxId, round, initialOptions, canVote, linksHre
             </Link>
           )}
         </div>
-        {options.length > 1 && (
+        {showLikes && options.length > 1 && (
           <div className="flex items-center gap-0.5 rounded-full bg-[#EDEBDD] p-0.5">
             {OPTION_SORT_MODES.map(mode => (
               <button
@@ -93,7 +95,13 @@ export function OptionsSection({ boxId, round, initialOptions, canVote, linksHre
             return (
               <div
                 key={option.id}
-                className={`relative rounded-[18px] border bg-paper p-3.5 ${isLead ? 'border-butter-dark' : 'border-[#ECEADC]'}`}
+                className={`relative rounded-[18px] border p-3.5 ${
+                  option.decided_at
+                    ? 'border-butter-dark bg-butter-tint'
+                    : isLead
+                      ? 'border-butter-dark bg-paper'
+                      : 'border-[#ECEADC] bg-paper'
+                }`}
               >
                 <Link
                   href={`/box/${boxId}/option/${option.id}`}
@@ -105,7 +113,11 @@ export function OptionsSection({ boxId, round, initialOptions, canVote, linksHre
                   {/* 왼쪽: (1위) · 이름 · 스니펫(항상 1줄) · 좋아요 */}
                   <div className="min-w-0 flex-1 space-y-1.5">
                     <div className="flex items-center gap-1.5">
-                      {isLead && (
+                      {option.decided_at ? (
+                        <span className="shrink-0 rounded-md bg-leaf-tint px-1.5 py-0.5 text-[10px] font-extrabold text-[#37714A]">
+                          결정
+                        </span>
+                      ) : isLead && showLikes && (
                         <span className="shrink-0 rounded-md bg-butter-tint px-1.5 py-0.5 text-[10px] font-extrabold text-butter-dark">
                           1위
                         </span>
@@ -119,16 +131,18 @@ export function OptionsSection({ boxId, round, initialOptions, canVote, linksHre
                       {preview.snippet || ' '}
                     </p>
 
-                    <div className="relative z-10 w-fit">
-                      <VoteButtons
-                        optionId={option.id}
-                        boxId={boxId}
-                        round={round}
-                        counts={counts}
-                        disabled={!canVote}
-                        compact
-                      />
-                    </div>
+                    {showLikes && (
+                      <div className="relative z-10 w-fit">
+                        <VoteButtons
+                          optionId={option.id}
+                          boxId={boxId}
+                          round={round}
+                          counts={counts}
+                          disabled={!canVote}
+                          compact
+                        />
+                      </div>
+                    )}
                   </div>
 
                   {/* 오른쪽: 56px 썸네일 (없으면 플레이스홀더로 공간 유지) */}

@@ -4,25 +4,51 @@ import { formatKoreanDate, formatDeadline } from '@/lib/utils'
 import { Icon } from '@/components/icon'
 import type { Box } from '@/lib/api/boxes'
 
+type CardParticipant = { user_id: string; profiles: { avatar_url: string | null; nickname: string } | null }
+
 interface BoxCardProps {
   box: Box
-  participantCount?: number
+  participants?: CardParticipant[]
   winnerName?: string | null
-  /** 공동 1등 개수 (2 이상이면 동점 상태 표시) */
-  coLeaderCount?: number
   isNew?: boolean
   isFavorite?: boolean
 }
 
+/** 카드용 작은 겹침 아바타 스택 */
+function CardAvatars({ participants, max = 4 }: { participants: CardParticipant[]; max?: number }) {
+  const shown = participants.slice(0, max)
+  const extra = participants.length - shown.length
+  return (
+    <div className="flex -space-x-1.5">
+      {shown.map(p => (
+        <div key={p.user_id} className="h-5 w-5 overflow-hidden rounded-full border border-paper bg-butter-tint">
+          {p.profiles?.avatar_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={p.profiles.avatar_url} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-[8px] font-bold text-ink">
+              {p.profiles?.nickname?.[0] ?? '?'}
+            </div>
+          )}
+        </div>
+      ))}
+      {extra > 0 && (
+        <div className="flex h-5 w-5 items-center justify-center rounded-full border border-paper bg-cream text-[8px] font-extrabold text-ink-soft">
+          +{extra}
+        </div>
+      )}
+    </div>
+  )
+}
+
 const STATUS_BADGE_CLASS: Record<BoxStatus, string> = {
   RESOLVED: 'bg-leaf-tint text-[#37714A]',
-  EXPIRED: 'bg-[#EDEBDD] text-ink-soft',
-  SHOWDOWN: 'bg-tangerine text-[#FFF7EC]',
   OPEN: 'border border-[#D9D6C2] bg-paper text-ink-soft',
 }
 
-export function BoxCard({ box, participantCount, winnerName, coLeaderCount, isNew, isFavorite }: BoxCardProps) {
+export function BoxCard({ box, participants, winnerName, isNew, isFavorite }: BoxCardProps) {
   const status = getBoxStatus(box)
+  const isAuto = box.decision_mode === 'auto_deadline'
 
   return (
     <Link href={`/box/${box.id}`} className="block">
@@ -48,7 +74,7 @@ export function BoxCard({ box, participantCount, winnerName, coLeaderCount, isNe
               />
             )}
             <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${STATUS_BADGE_CLASS[status]}`}>
-              {status === 'SHOWDOWN' ? '🔥 결판 중' : BOX_STATUS_LABEL[status]}
+              {BOX_STATUS_LABEL[status]}
             </span>
           </div>
         </div>
@@ -59,19 +85,24 @@ export function BoxCard({ box, participantCount, winnerName, coLeaderCount, isNe
             (으)로 결정!
           </p>
         )}
-        {!winnerName && coLeaderCount !== undefined && coLeaderCount >= 2 && (
-          <p className="mt-2 text-[12.5px] font-bold text-tangerine">
-            공동 1등 {coLeaderCount}개 — 재투표로 정해보세요
-          </p>
-        )}
 
         <div className="mt-2 space-y-0.5 text-[11.5px] leading-relaxed text-ink-faint">
           <p>생성일 {formatKoreanDate(box.created_at)}</p>
-          <p>마감일 {formatDeadline(box.deadline_at)}</p>
+          {isAuto && <p>마감일 {formatDeadline(box.deadline_at)}</p>}
         </div>
 
-        {participantCount !== undefined && (
-          <p className="mt-2 text-[11.5px] text-ink-faint">{participantCount}명 참여 중</p>
+        {participants && participants.length > 0 && (
+          participants.length === 1 ? (
+            <p className="mt-2 flex items-center gap-1 text-[11.5px] text-ink-faint">
+              <Icon name="box" size={12} />
+              혼자 쓰는 상자
+            </p>
+          ) : (
+            <div className="mt-2 flex items-center gap-1.5">
+              <CardAvatars participants={participants} />
+              <span className="text-[11.5px] text-ink-faint">{participants.length}명 참여 중</span>
+            </div>
+          )
         )}
       </div>
     </Link>

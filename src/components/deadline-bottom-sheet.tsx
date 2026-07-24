@@ -8,9 +8,11 @@ interface DeadlineBottomSheetProps {
   defaultValue?: Date
   onClose: () => void
   onConfirm: (date: Date) => void
+  /** 제공되면 "마감 없음으로 변경" 액션을 노출한다 (마감일 편집 시). */
+  onClear?: () => void
 }
 
-export function DeadlineBottomSheet({ open, defaultValue, onClose, onConfirm }: DeadlineBottomSheetProps) {
+export function DeadlineBottomSheet({ open, defaultValue, onClose, onConfirm, onClear }: DeadlineBottomSheetProps) {
   const [date, setDate] = useState('')
   const [time, setTime] = useState('')
   const [error, setError] = useState('')
@@ -102,6 +104,15 @@ export function DeadlineBottomSheet({ open, defaultValue, onClose, onConfirm }: 
         >
           확인
         </button>
+
+        {onClear && (
+          <button
+            onClick={onClear}
+            className="mt-2.5 w-full py-2 text-[13px] font-semibold text-ink-soft active:text-ink"
+          >
+            마감 없이 진행하기
+          </button>
+        )}
       </div>
     </div>
   )

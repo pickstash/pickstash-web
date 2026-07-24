@@ -10,6 +10,10 @@ export default async function BoxDetailPage({ params }: { params: Promise<{ id: 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  // 마감 투표 자동 결정 (lazy commit): 마감 지난 auto_deadline 상자면 서버에서 확정. 조건 안 맞으면 no-op.
+  // 상자 조회 '전에' 호출해 최신 상태(결정·정리완료)를 그대로 렌더한다.
+  await supabase.rpc('auto_decide_box', { p_box_id: id })
+
   const [{ data, error }, { data: optionsData }] = await Promise.all([
     supabase
       .from('boxes')

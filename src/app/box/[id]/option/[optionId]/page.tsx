@@ -30,8 +30,8 @@ export default async function OptionDetailPage({
   if (!myParticipant) redirect('/')
 
   const status = getBoxStatus(box)
-  const canVote = status === 'OPEN' || status === 'SHOWDOWN'
-  const isDone = status === 'RESOLVED' || status === 'EXPIRED'
+  const canVote = status === 'OPEN'
+  const isDone = status === 'RESOLVED'
 
   return (
     <OptionDetailClient

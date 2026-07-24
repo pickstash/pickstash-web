@@ -2,7 +2,6 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { BoxCard } from '@/components/box-card'
 import { PageHeader } from '@/components/page-header'
-import { getVoteResult, buildOptionVoteSummaries } from '@/lib/domain/winner'
 import { getBoxStatus, isDoneStatus } from '@/lib/domain/box-status'
 import type { Box } from '@/lib/api/boxes'
 
@@ -14,7 +13,7 @@ export default async function FavoritesPage() {
   const [{ data: rawFavs }, { data: participations }] = await Promise.all([
     supabase
       .from('favorites')
-      .select(`box_id, boxes(*, box_participants(user_id), options(id, name, votes(vote_type, round)))`)
+      .select(`box_id, boxes(*, box_participants(user_id, profiles(avatar_url, nickname)), options(id, name, decided_at))`)
       .eq('user_id', user.id)
       .order('created_at', { ascending: false }),
     supabase.from('box_participants').select('box_id, last_seen_at').eq('user_id', user.id),
@@ -23,8 +22,8 @@ export default async function FavoritesPage() {
   const lastSeenMap = new Map((participations ?? []).map(p => [p.box_id, p.last_seen_at]))
 
   type FavBox = Box & {
-    box_participants: { user_id: string }[]
-    options: { id: string; name: string; votes: { vote_type: string; round: number }[] }[]
+    box_participants: { user_id: string; profiles: { avatar_url: string | null; nickname: string } | null }[]
+    options: { id: string; name: string; decided_at: string | null }[]
   }
 
   const boxes = (rawFavs ?? [])
@@ -43,16 +42,13 @@ export default async function FavoritesPage() {
         {boxes.length > 0 ? (
           boxes.map(box => {
             const isDone = isDoneStatus(getBoxStatus(box))
-            const result = isDone
-              ? getVoteResult(buildOptionVoteSummaries(box.options, box.current_round))
-              : null
+            const decided = isDone ? box.options.filter(o => o.decided_at) : []
             return (
               <BoxCard
                 key={box.id}
                 box={box}
-                participantCount={box.box_participants.length}
-                winnerName={result?.winner ?? null}
-                coLeaderCount={result?.coLeaders.length}
+                participants={box.box_participants}
+                winnerName={decided.length ? decided.map(o => o.name).join(', ') : null}
                 isNew={new Date(box.updated_at) > new Date(lastSeenMap.get(box.id) ?? 0)}
                 isFavorite
               />
