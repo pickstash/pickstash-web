@@ -18,7 +18,7 @@ export default async function OptionDetailPage({
     supabase.from('options').select('*').eq('id', optionId).single(),
     supabase
       .from('boxes')
-      .select('*, box_participants(user_id, role, profiles(id, nickname, avatar_url))')
+      .select('*, box_participants(user_id, profiles(id, nickname, avatar_url))')
       .eq('id', boxId)
       .single(),
     supabase.from('profiles').select('nickname').eq('id', user.id).single(),
@@ -29,7 +29,6 @@ export default async function OptionDetailPage({
   const box = boxData as typeof boxData & {
     box_participants: {
       user_id: string
-      role: string
       profiles: { id: string; nickname: string; avatar_url: string | null } | null
     }[]
   }

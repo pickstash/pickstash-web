@@ -33,7 +33,6 @@ export interface Database {
       boxes: {
         Row: {
           id: string
-          owner_id: string
           title: string
           memo: string | null
           deadline_at: string | null
@@ -46,7 +45,6 @@ export interface Database {
         }
         Insert: {
           id?: string
-          owner_id: string
           title: string
           memo?: string | null
           deadline_at?: string | null
@@ -59,7 +57,6 @@ export interface Database {
         }
         Update: {
           id?: string
-          owner_id?: string
           title?: string
           memo?: string | null
           deadline_at?: string | null
@@ -145,21 +142,18 @@ export interface Database {
         Row: {
           box_id: string
           user_id: string
-          role: string
           last_seen_at: string
           joined_at: string
         }
         Insert: {
           box_id: string
           user_id: string
-          role?: string
           last_seen_at?: string
           joined_at?: string
         }
         Update: {
           box_id?: string
           user_id?: string
-          role?: string
           last_seen_at?: string
           joined_at?: string
         }
@@ -221,6 +215,51 @@ export interface Database {
         Update: {
           user_id?: string
           box_id?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      folders: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          sort: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          sort?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          sort?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
+      box_folders: {
+        Row: {
+          user_id: string
+          box_id: string
+          folder_id: string
+          created_at: string
+        }
+        Insert: {
+          user_id: string
+          box_id: string
+          folder_id: string
+          created_at?: string
+        }
+        Update: {
+          user_id?: string
+          box_id?: string
+          folder_id?: string
           created_at?: string
         }
         Relationships: []
@@ -411,7 +450,6 @@ export interface Database {
           id: string
           title: string
           memo: string | null
-          owner_nickname: string
           participant_count: number
           option_names: string[]
         }[]

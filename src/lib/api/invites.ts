@@ -10,7 +10,6 @@ export interface BoxInvitePreview {
   id: string
   title: string
   memo: string | null
-  owner_nickname: string
   participant_count: number
   option_names: string[]
 }

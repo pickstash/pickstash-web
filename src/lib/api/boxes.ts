@@ -5,7 +5,6 @@ export type Box = Database['public']['Tables']['boxes']['Row']
 
 export interface BoxParticipant {
   user_id: string
-  role: string
   joined_at: string
   last_seen_at: string
   profiles: {
@@ -37,7 +36,6 @@ export async function createBox(input: CreateBoxInput): Promise<Box> {
   const { data: box, error: boxError } = await supabase
     .from('boxes')
     .insert({
-      owner_id: user.id,
       title: input.title,
       memo: input.memo ?? null,
       decision_mode: input.decision_mode,
@@ -50,7 +48,7 @@ export async function createBox(input: CreateBoxInput): Promise<Box> {
 
   const { error: participantError } = await supabase
     .from('box_participants')
-    .insert({ box_id: box.id, user_id: user.id, role: 'owner' })
+    .insert({ box_id: box.id, user_id: user.id })
 
   if (participantError) throw participantError
 
@@ -64,7 +62,7 @@ export async function getBox(id: string): Promise<BoxWithParticipants | null> {
     .select(`
       *,
       box_participants(
-        user_id, role, joined_at, last_seen_at,
+        user_id, joined_at, last_seen_at,
         profiles(id, nickname, avatar_url)
       )
     `)
@@ -105,7 +103,7 @@ export async function updateBoxDeadline(id: string, deadline_at: string | null):
   if (error) throw error
 }
 
-/** 결정 방식 변경 (방장). 마감 투표면 deadline_at 필수, 직접 정하기면 마감 제거. */
+/** 결정 방식 변경 (참여자 누구나). 마감 투표면 deadline_at 필수, 직접 정하기면 마감 제거. */
 export async function updateBoxDecisionMode(id: string, mode: DecisionMode, deadline_at: string | null): Promise<void> {
   const supabase = createClient()
   const { error } = await supabase
@@ -163,7 +161,7 @@ export async function deleteBox(id: string): Promise<void> {
   if (error) throw error
 }
 
-/** 참여자가 상자에서 나가기 — 본인 참여 행만 삭제 (RLS: box_participants 본인 삭제). 방장은 삭제를 써야 함. */
+/** 참여자가 상자에서 나가기 — 본인 참여 행만 삭제 (RLS: box_participants 본인 삭제). 마지막 1명이 나가면 트리거가 상자 자동 삭제. */
 export async function leaveBox(id: string): Promise<void> {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()

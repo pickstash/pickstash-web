@@ -20,7 +20,7 @@ export default async function BoxDetailPage({ params }: { params: Promise<{ id: 
       .select(`
         *,
         box_participants(
-          user_id, role, joined_at, last_seen_at,
+          user_id, joined_at, last_seen_at,
           profiles(id, nickname, avatar_url)
         )
       `)

@@ -16,7 +16,7 @@ export default async function InvitePage({ params }: { params: Promise<{ id: str
     .select(`
       id, title, invite_code,
       box_participants(
-        user_id, role,
+        user_id,
         profiles(id, nickname, avatar_url)
       )
     `)
@@ -70,9 +70,6 @@ export default async function InvitePage({ params }: { params: Promise<{ id: str
                   )}
                 </div>
                 <span className="text-sm font-semibold text-ink">{p.profiles?.nickname}</span>
-                {p.role === 'owner' && (
-                  <span className="text-[10.5px] text-ink-faint">(방장)</span>
-                )}
               </div>
             ))}
           </div>

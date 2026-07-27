@@ -61,7 +61,7 @@ export default async function InviteLandingPage({ params }: Props) {
         <div className="flex flex-col items-center gap-2 text-center">
           <Image src="/icons/icon-192.png" alt="" width={56} height={56} className="rounded-[18px]" />
           <p className="text-[12px] font-semibold text-ink-faint">
-            {preview.owner_nickname}님이 함께 정하자고 초대했어요
+            함께 정하자고 초대했어요
           </p>
         </div>
 
