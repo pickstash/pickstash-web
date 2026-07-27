@@ -70,6 +70,14 @@ export function OptionForm({
     setBlocks(prev => [...prev, { type: 'link', id: newId(), url: '', label: '' }])
   }
 
+  // URL이 정해진 채로 링크 블록을 추가하고 바로 미리보기·이름 자동채움을 태운다.
+  function addLinkWithUrl(url: string, label = '') {
+    if (atBlockLimit) return
+    const id = newId()
+    setBlocks(prev => [...prev, { type: 'link', id, url, label }])
+    loadLinkPreview(id, url, label)
+  }
+
   // "라벨 URL" 형태로 붙여넣어진 링크를 URL/라벨로 분리해 블록에 채운다. 분리했으면 정리된 URL 반환.
   function normalizePastedLink(id: string, currentLabel: string, raw: string): string {
     const split = splitPastedLink(raw)
@@ -95,6 +103,10 @@ export function OptionForm({
       description: preview.description,
       image: preview.image,
     })
+    // 선택지 이름이 비어 있으면 링크 제목으로 자동 채움 (쇼핑처럼 링크=이름인 경우)
+    if (preview.title) {
+      setName(prev => (prev.trim() ? prev : preview.title!.slice(0, 50)))
+    }
     setLinkLoading(prev => {
       const next = { ...prev }
       delete next[id]
@@ -152,11 +164,20 @@ export function OptionForm({
           type="text"
           value={name}
           onChange={e => setName(e.target.value)}
+          onPaste={e => {
+            // "네이버 https://..." 처럼 글씨+링크가 섞여 복사됐으면 이름/링크로 자동 분리
+            const split = splitPastedLink(e.clipboardData.getData('text'))
+            if (!split) return // 순수 텍스트면 일반 붙여넣기
+            e.preventDefault()
+            if (split.label && !name.trim()) setName(split.label.slice(0, 50))
+            addLinkWithUrl(split.url, split.label)
+          }}
           maxLength={50}
           placeholder="선택지 이름을 입력하세요"
           className="w-full rounded-field border-[1.5px] border-line bg-paper px-4 py-3 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none focus:ring-[3px] focus:ring-butter-tint"
           required
         />
+        <p className="mt-1 text-[11.5px] text-ink-faint">링크를 붙여넣으면 이름·링크가 자동으로 채워져요.</p>
       </div>
 
       {/* 본문 블록 */}
