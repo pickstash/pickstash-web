@@ -139,20 +139,34 @@ export function linkDisplayLabel(label: string, url: string): string {
  * - URL을 뺀 나머지를 라벨 후보로 정리.
  * - URL이 없으면 null.
  */
+// 링크로 오인하면 안 되는 흔한 파일 확장자(코드·문서·미디어). 경로 없는 맨 "이름.확장자" 오탐 방지.
+const FILE_EXT_RE =
+  /\.(tsx?|jsx?|mjs|cjs|py|rb|go|rs|java|kt|swift|php|c|cpp|cc|h|hpp|css|scss|sass|less|html?|xml|json|ya?ml|toml|ini|env|sh|sql|md|mdx|txt|csv|tsv|log|pdf|docx?|xlsx?|pptx?|hwp|zip|tar|gz|rar|7z|dmg|exe|apk|png|jpe?g|gif|svg|webp|ico|bmp|mp[34]|m4a|mov|avi|mkv|webm)$/i
+
 export function splitPastedLink(raw: string): { url: string; label: string } | null {
   const text = raw.trim()
   if (!text) return null
-  // http(s):// · www. · 스킴 없는 맨 도메인(예: test.com, coupang.com/vp/...) 모두 인식.
-  // 맨 도메인은 "라벨.TLD(2글자+)" 형태 + 선택적 경로. 한글·숫자만 있는 문자열은 매칭 안 됨.
-  const m = text.match(
-    /(https?:\/\/[^\s]+|www\.[^\s]+|(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}(?:\/[^\s]*)?)/i,
-  )
-  if (!m || m.index === undefined) return null
-  const url = m[0].replace(/[.,;:)\]}"'»]+$/, '') // 끝에 붙은 구두점 제거
-  const label = (text.slice(0, m.index) + text.slice(m.index + m[0].length))
-    .replace(/\s+/g, ' ')
-    .trim()
-  return { url, label }
+
+  // 1) 명시적 URL(http(s):// 또는 www.)은 큰 텍스트에 섞여 있어도 추출하고 나머지를 라벨로.
+  //    (공유 버튼이 "네이버 https://www.naver.com/"처럼 복사해주는 경우 대응)
+  const explicit = text.match(/(https?:\/\/[^\s]+|www\.[^\s]+)/i)
+  if (explicit && explicit.index !== undefined) {
+    const url = explicit[0].replace(/[.,;:)\]}"'»]+$/, '') // 끝 구두점 제거
+    const label = (text.slice(0, explicit.index) + text.slice(explicit.index + explicit[0].length))
+      .replace(/\s+/g, ' ')
+      .trim()
+    return { url, label }
+  }
+
+  // 2) 스킴 없는 맨 도메인(naver.com, coupang.com/vp/...)은 '입력 전체가 URL 하나'일 때만 인정.
+  //    문장·코드·파일명 속의 word.ext(예: option-form.tsx)를 링크로 오탐하지 않기 위함.
+  const bare = text.replace(/[.,;:)\]}"'»]+$/, '') // 끝 구두점 제거 후 통짜 검사
+  const looksLikeDomain = /^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}(?:\/[^\s]*)?$/i.test(bare)
+  if (looksLikeDomain && !(!bare.includes('/') && FILE_EXT_RE.test(bare))) {
+    return { url: bare, label: '' }
+  }
+
+  return null
 }
 
 /** 스킴 없는 링크(예: 레거시 "naver.com")에 https://를 붙여 안전한 href로 만든다. */

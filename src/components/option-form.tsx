@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react'
 import { uploadOptionImage } from '@/lib/api/options'
 import { fetchLinkPreview } from '@/lib/api/unfurl'
-import { cleanBlocks, LINK_KINDS, linkHref, linkKindOf, splitPastedLink, type OptionBlock } from '@/lib/domain/option-content'
+import { cleanBlocks, LINK_KINDS, linkBlocksOf, linkHref, linkKindOf, splitPastedLink, type OptionBlock } from '@/lib/domain/option-content'
 
 interface OptionFormProps {
   boxId: string
@@ -46,6 +46,15 @@ export function OptionForm({
 
   const imageCount = blocks.filter(b => b.type === 'image').length
   const atBlockLimit = blocks.length >= MAX_BLOCKS
+
+  // 링크는 추가됐지만(URL 있음) OG 미리보기(제목)를 못 가져와 이름이 비어있는 상태.
+  // 쿠팡·피그마처럼 봇 미리보기를 막는 사이트 → 이름 자동채움이 안 되므로 직접 입력하라고 안내.
+  const urlLinks = linkBlocksOf(blocks).filter(b => b.url.trim() !== '')
+  const showNoPreviewHint =
+    !name.trim() &&
+    Object.keys(linkLoading).length === 0 &&
+    urlLinks.length > 0 &&
+    urlLinks.every(b => !b.title)
 
   function updateBlock(id: string, patch: Record<string, unknown>) {
     setBlocks(prev => prev.map(b => (b.id === id ? ({ ...b, ...patch } as OptionBlock) : b)))
@@ -190,6 +199,12 @@ export function OptionForm({
           className="w-full rounded-field border-[1.5px] border-line bg-paper px-4 py-3 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none focus:ring-[3px] focus:ring-butter-tint"
           required
         />
+        {showNoPreviewHint && (
+          <p className="mt-1.5 flex items-start gap-1 text-[11.5px] leading-relaxed text-tangerine">
+            <span aria-hidden>💡</span>
+            <span>이 링크는 미리보기를 막아둔 사이트라 이름을 자동으로 못 가져왔어요.<br />선택지 이름을 직접 적어주세요.</span>
+          </p>
+        )}
       </div>
 
       {/* 본문 블록 */}
