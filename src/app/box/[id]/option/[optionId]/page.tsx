@@ -14,13 +14,14 @@ export default async function OptionDetailPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: option }, { data: boxData }] = await Promise.all([
+  const [{ data: option }, { data: boxData }, { data: me }] = await Promise.all([
     supabase.from('options').select('*').eq('id', optionId).single(),
     supabase
       .from('boxes')
       .select('*, box_participants(user_id, role)')
       .eq('id', boxId)
       .single(),
+    supabase.from('profiles').select('nickname').eq('id', user.id).single(),
   ])
 
   if (!option || !boxData) notFound()
@@ -29,16 +30,25 @@ export default async function OptionDetailPage({
   const myParticipant = box.box_participants.find(p => p.user_id === user.id)
   if (!myParticipant) redirect('/')
 
+  // 선택지 생성자 프로필 (상단 히어로 메타에 표시)
+  const { data: creator } = await supabase
+    .from('profiles')
+    .select('nickname, avatar_url')
+    .eq('id', option.created_by)
+    .single()
+
   const status = getBoxStatus(box)
   const canVote = status === 'OPEN'
 
   return (
     <OptionDetailClient
       option={option}
+      creator={creator}
       boxId={boxId}
       round={box.current_round}
       canVote={canVote}
       currentUserId={user.id}
+      myNickname={me?.nickname ?? ''}
     />
   )
 }

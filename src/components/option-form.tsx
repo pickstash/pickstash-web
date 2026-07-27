@@ -45,7 +45,6 @@ export function OptionForm({
   nameRef.current = name
 
   const imageCount = blocks.filter(b => b.type === 'image').length
-  const linkCount = blocks.filter(b => b.type === 'link').length
   const atBlockLimit = blocks.length >= MAX_BLOCKS
 
   function updateBlock(id: string, patch: Record<string, unknown>) {
@@ -76,34 +75,28 @@ export function OptionForm({
     setBlocks(prev => [...prev, { type: 'link', id: newId(), url: '', label: '' }])
   }
 
-  // 이 링크가 '첫 번째 링크 블록'이고 선택지 이름이 비어 있으면, 라벨을 선택지 이름으로도 채운다.
-  // (링크 여러 개면 첫 링크의 라벨만 이름에 반영)
-  function maybeSyncNameFromLabel(blockId: string, label: string) {
-    if (!label.trim() || name.trim()) return
+  // 이 링크가 '첫 번째 링크 블록'이고 선택지 이름이 비어 있으면, 주어진 텍스트를 선택지 이름으로 채운다.
+  // (OG 제목·붙여넣은 글씨 → 선택지 이름 자동채움용. 라벨=메모와는 무관.)
+  function maybeFillNameFrom(blockId: string, text: string) {
+    if (!text.trim() || name.trim()) return
     const firstLinkId = blocks.find(b => b.type === 'link')?.id
-    if (blockId === firstLinkId) setName(label.slice(0, 50))
-  }
-
-  // 링크 라벨 변경 — 블록에 반영 + 첫 링크면 선택지 이름 동기화
-  function updateLinkLabel(id: string, label: string) {
-    updateBlock(id, { label })
-    maybeSyncNameFromLabel(id, label)
+    if (blockId === firstLinkId) setName(text.slice(0, 50))
   }
 
   // URL이 정해진 채로 링크 블록을 추가하고 바로 미리보기·이름 자동채움을 태운다.
-  function addLinkWithUrl(url: string, label = '') {
+  function addLinkWithUrl(url: string) {
     if (atBlockLimit) return
     const id = newId()
-    setBlocks(prev => [...prev, { type: 'link', id, url, label }])
+    setBlocks(prev => [...prev, { type: 'link', id, url, label: '' }])
     loadLinkPreview(id, url)
   }
 
-  // "글씨 URL" 형태로 붙여넣어졌으면 URL/라벨로 분리한다. 정리된 URL 반환.
+  // "글씨 URL" 형태로 붙여넣어졌으면 URL만 취한다. 섞인 글씨는 '이름' 후보로만 쓰고 라벨(메모)엔 안 넣는다.
   function normalizePastedLink(id: string, raw: string): string {
     const split = splitPastedLink(raw)
     if (!split) return raw.trim()
-    updateBlock(id, split.label ? { url: split.url, label: split.label } : { url: split.url })
-    if (split.label) maybeSyncNameFromLabel(id, split.label)
+    updateBlock(id, { url: split.url })
+    if (split.label) maybeFillNameFrom(id, split.label)
     return split.url
   }
 
@@ -122,14 +115,10 @@ export function OptionForm({
       description: preview.description,
       image: preview.image,
     })
-    // 라벨이 비어 있으면(=글씨가 섞여 있지 않았으면) OG 제목을 라벨로 채우고,
-    // 첫 링크면 선택지 이름에도 반영한다. (붙여넣은 글씨 라벨이 있으면 그대로 둠)
-    const cur = blocksRef.current.find(b => b.id === id)
-    if (preview.title && cur?.type === 'link' && !cur.label.trim()) {
-      const lbl = preview.title.slice(0, 50)
-      updateBlock(id, { label: lbl })
+    // OG 제목은 '선택지 이름'에만 자동 반영(첫 링크 & 이름 비었을 때). 라벨(메모)은 사용자가 직접 쓴다.
+    if (preview.title) {
       const firstLinkId = blocksRef.current.find(b => b.type === 'link')?.id
-      if (id === firstLinkId && !nameRef.current.trim()) setName(lbl)
+      if (id === firstLinkId && !nameRef.current.trim()) setName(preview.title.slice(0, 50))
     }
     setLinkLoading(prev => {
       const next = { ...prev }
@@ -194,16 +183,13 @@ export function OptionForm({
             if (!split) return // 순수 텍스트면 일반 붙여넣기
             e.preventDefault()
             if (split.label && !name.trim()) setName(split.label.slice(0, 50))
-            addLinkWithUrl(split.url, split.label)
+            addLinkWithUrl(split.url)
           }}
           maxLength={50}
           placeholder="링크 붙여넣기 또는 이름 입력"
           className="w-full rounded-field border-[1.5px] border-line bg-paper px-4 py-3 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none focus:ring-[3px] focus:ring-butter-tint"
           required
         />
-        <p className="mt-1 text-[11.5px] text-ink-faint">
-          쇼핑·유튜브·지도 링크를 여기 붙여넣으면 이름·미리보기가 자동으로 채워져요.
-        </p>
       </div>
 
       {/* 본문 블록 */}
@@ -212,7 +198,7 @@ export function OptionForm({
 
         {blocks.length === 0 ? (
           <p className="rounded-field border border-dashed border-[#D9D6C2] bg-paper/60 px-4 py-6 text-center text-[12.5px] text-ink-faint">
-            글·사진·링크를 자유롭게 배치하세요. 유튜브·지도·쇼핑 링크는 붙여넣으면 미리보기가 떠요.
+            글·사진·링크를 자유롭게 배치하세요.
           </p>
         ) : (
           <div className="space-y-2.5">
@@ -291,7 +277,7 @@ export function OptionForm({
                         loadLinkPreview(block.id, text)
                       }}
                       onBlur={e => loadLinkPreview(block.id, e.target.value)}
-                      placeholder="링크 주소 (naver.com 처럼 https:// 없어도 돼요)"
+                      placeholder="링크 주소 붙여넣기"
                       className="w-full rounded-field border-[1.5px] border-line bg-paper px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none"
                     />
                     {linkLoading[block.id] && (
@@ -311,38 +297,42 @@ export function OptionForm({
                         </div>
                       </div>
                     )}
-                    <div>
-                      <p className="mb-1 text-[11px] font-semibold text-ink-faint">아이콘</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {LINK_KINDS.map(k => {
-                          const active = linkKindOf(block) === k.kind
-                          return (
-                            <button
-                              key={k.kind}
-                              type="button"
-                              onClick={() => updateBlock(block.id, { icon: k.kind })}
-                              className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11.5px] font-bold transition-colors ${
-                                active ? 'border-butter-dark bg-butter-tint text-ink' : 'border-line bg-paper text-ink-soft'
-                              }`}
-                            >
-                              <span>{k.emoji}</span>
-                              {k.label}
-                            </button>
-                          )
-                        })}
+                    {/* 아이콘(셀렉트) + 라벨을 한 줄로 */}
+                    <div className="flex gap-2">
+                      <div className="relative shrink-0">
+                        <select
+                          value={linkKindOf(block)}
+                          onChange={e => updateBlock(block.id, { icon: e.target.value })}
+                          aria-label="링크 종류"
+                          className="h-full appearance-none rounded-field border-[1.5px] border-line bg-paper py-2.5 pl-3 pr-7 text-sm font-bold text-ink focus:border-butter-dark focus:outline-none"
+                        >
+                          {LINK_KINDS.map(k => (
+                            <option key={k.kind} value={k.kind}>
+                              {k.emoji} {k.label}
+                            </option>
+                          ))}
+                        </select>
+                        <svg
+                          className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-ink-faint"
+                          width="12"
+                          height="12"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.4"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" />
+                        </svg>
                       </div>
-                    </div>
-                    {/* 라벨은 한 선택지에 링크가 2개 이상일 때만 (구분이 실제로 필요할 때). */}
-                    {linkCount >= 2 && (
                       <input
                         type="text"
                         value={block.label}
-                        onChange={e => updateLinkLabel(block.id, e.target.value)}
+                        onChange={e => updateBlock(block.id, { label: e.target.value })}
                         maxLength={50}
-                        placeholder="이 링크가 뭔지 (예: 최저가, 공식몰, 리뷰)"
-                        className="w-full rounded-field border-[1.5px] border-line bg-paper px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none"
+                        placeholder="메모 (예: 최저가·후기 좋음)"
+                        className="min-w-0 flex-1 rounded-field border-[1.5px] border-line bg-paper px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none"
                       />
-                    )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -388,26 +378,24 @@ export function OptionForm({
         {imageError && <p className="mt-1.5 text-xs text-tomato">{imageError}</p>}
       </div>
 
-      {/* 버튼 — 하단 고정 2단 (취소 · 저장) */}
-      <div className="fixed inset-x-0 bottom-0 z-20 mx-auto max-w-[430px] border-t border-line bg-paper/95 px-5 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 backdrop-blur">
-        <div className="grid grid-cols-2 gap-2.5">
-          {onCancel && (
-            <button
-              type="button"
-              onClick={onCancel}
-              className="rounded-field border border-line py-3.5 text-sm font-bold text-ink-soft active:bg-cream"
-            >
-              취소
-            </button>
-          )}
+      {/* 버튼 — 하단 고정(fixed) 2단 (취소 · 저장). 모바일=화면 하단 풀폭, PC=폰 프레임 하단에 430px 정렬 */}
+      <div className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-2 gap-2.5 bg-cream px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] xl:inset-x-auto xl:bottom-10 xl:left-1/2 xl:w-[430px] xl:-translate-x-1/2 xl:rounded-b-[30px]">
+        {onCancel && (
           <button
-            type="submit"
-            disabled={isPending || uploading || !name.trim()}
-            className={`rounded-field bg-ink py-3.5 text-sm font-bold text-cream active:opacity-80 disabled:opacity-50 ${onCancel ? '' : 'col-span-2'}`}
+            type="button"
+            onClick={onCancel}
+            className="rounded-field border border-line py-3.5 text-sm font-bold text-ink-soft active:opacity-70"
           >
-            {isPending ? '저장 중...' : uploading ? '사진 올리는 중...' : submitLabel}
+            취소
           </button>
-        </div>
+        )}
+        <button
+          type="submit"
+          disabled={isPending || uploading || !name.trim()}
+          className={`rounded-field bg-ink py-3.5 text-sm font-bold text-cream active:opacity-80 disabled:opacity-50 ${onCancel ? '' : 'col-span-2'}`}
+        >
+          {isPending ? '저장 중...' : uploading ? '사진 올리는 중...' : submitLabel}
+        </button>
       </div>
     </form>
   )

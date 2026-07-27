@@ -78,10 +78,17 @@ export function OptionsSection({ boxId, round, initialOptions, canVote, showLike
       </div>
 
       {options.length === 0 ? (
-        <div className="rounded-card border border-dashed border-[#D9D6C2] bg-paper/60 px-6 py-10 text-center">
+        // 빈 상태 = 그 자체가 추가 버튼 (점선 CTA 중복 제거)
+        <Link
+          href={`/box/${boxId}/option/new`}
+          className="block rounded-card border border-dashed border-[#D9D6C2] bg-paper/60 px-6 py-10 text-center active:bg-cream"
+        >
+          <span className="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-butter-tint text-ink">
+            <Icon name="plus" size={18} />
+          </span>
           <p className="text-[13px] font-bold text-ink">아직 선택지가 없어요</p>
           <p className="mt-1 text-[12px] text-ink-soft">떠오르는 후보를 먼저 담아보세요!</p>
-        </div>
+        </Link>
       ) : (
         <div className="space-y-2.5">
           {visible.map(option => {

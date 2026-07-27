@@ -20,7 +20,7 @@ export default function NewOptionPage({ params }: { params: Promise<{ id: string
         <h1 className="text-[17px] font-extrabold tracking-tight text-ink">선택지 추가</h1>
       </header>
 
-      <div className="flex-1 px-5 pb-10 pt-1">
+      <div className="flex-1 px-5 pt-1">
         <OptionForm
           boxId={boxId}
           isPending={createOption.isPending}

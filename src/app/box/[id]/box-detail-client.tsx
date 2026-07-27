@@ -447,7 +447,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
         </div>
       )}
 
-      <div className="flex-1 space-y-4 px-5 pb-5 pt-1">
+      <div className={`flex-1 space-y-4 px-5 pt-1 ${options.length > 0 ? 'pb-28' : 'pb-5'}`}>
         {/* 히어로: 상태 · 질문 · 메모 · 메타 · 참여 */}
         <div className="space-y-3">
           <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-bold ${STATUS_BADGE_CLASS[status]}`}>
@@ -615,24 +615,27 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
           canVote={showLikes}
           showLikes={showLikes}
         />
-
-        <Link href={`/box/${box.id}/option/new`} className="block">
-          <div className="flex items-center justify-center gap-1.5 rounded-[18px] border border-dashed border-[#D9D6C2] bg-paper/50 py-4 text-[13px] font-bold text-ink-soft active:bg-cream">
-            <Icon name="plus" size={16} />
-            선택지 추가하기
-          </div>
-        </Link>
       </div>
 
-      {/* 하단: 이걸로 정하기 (직접 정하기 · 진행 중) */}
-      {!isDone && !isAuto && (
-        <div className="px-5 pb-10">
-          <button
-            onClick={openDecide}
-            className="w-full rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80"
+      {/* 하단 고정 2단: ＋선택지 추가하기 · 최종 결정하기. 목록 안 내려도 상시 추가(스크롤 불편 해소).
+          결정 없을 때(마감투표·정리완료)는 추가가 풀폭. 0개면 목록 빈상태 CTA가 대체. */}
+      {options.length > 0 && (
+        <div className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-2 gap-2.5 bg-cream px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] xl:inset-x-auto xl:bottom-10 xl:left-1/2 xl:w-[430px] xl:-translate-x-1/2 xl:rounded-b-[30px]">
+          {!isDone && !isAuto && (
+            <button
+              onClick={openDecide}
+              className="rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80"
+            >
+              최종 결정하기
+            </button>
+          )}
+          <Link
+            href={`/box/${box.id}/option/new`}
+            className={`flex items-center justify-center gap-1.5 rounded-field border border-dashed border-[#D9D6C2] bg-paper/50 py-4 text-[13px] font-bold text-ink-soft active:bg-cream ${!isDone && !isAuto ? '' : 'col-span-2'}`}
           >
-            최종 결정하기
-          </button>
+            <Icon name="plus" size={16} />
+            선택지 추가하기
+          </Link>
         </div>
       )}
 

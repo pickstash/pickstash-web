@@ -43,7 +43,7 @@ export default function EditOptionPage({
         <h1 className="text-[17px] font-extrabold tracking-tight text-ink">선택지 수정</h1>
       </header>
 
-      <div className="flex-1 px-5 pb-10 pt-1">
+      <div className="flex-1 px-5 pt-1">
         <OptionForm
           boxId={boxId}
           initialName={option.name}
