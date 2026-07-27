@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react'
 import { uploadOptionImage } from '@/lib/api/options'
 import { fetchLinkPreview } from '@/lib/api/unfurl'
-import { cleanBlocks, LINK_KINDS, linkKindOf, splitPastedLink, type OptionBlock } from '@/lib/domain/option-content'
+import { cleanBlocks, LINK_KINDS, linkHref, linkKindOf, splitPastedLink, type OptionBlock } from '@/lib/domain/option-content'
 
 interface OptionFormProps {
   boxId: string
@@ -115,7 +115,8 @@ export function OptionForm({
       return
     }
     setLinkLoading(prev => ({ ...prev, [id]: true }))
-    const preview = await fetchLinkPreview(url)
+    // 스킴 없는 맨 도메인(naver.com)도 https://를 붙여 절대 URL로 조회
+    const preview = await fetchLinkPreview(linkHref(url))
     updateBlock(id, {
       title: preview.title,
       description: preview.description,
@@ -177,7 +178,7 @@ export function OptionForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} className="space-y-5 pb-32">
       {/* 이름 */}
       <div>
         <label className="mb-1.5 block text-[13px] font-semibold text-ink-soft">
@@ -275,8 +276,10 @@ export function OptionForm({
 
                 {block.type === 'link' && (
                   <div className="space-y-2">
+                    {/* type=text: naver.com 처럼 스킴 없는 도메인도 막지 않음(제출 시 브라우저가 반려하지 않게) */}
                     <input
-                      type="url"
+                      type="text"
+                      inputMode="url"
                       value={block.url}
                       onChange={e => updateBlock(block.id, { url: e.target.value })}
                       onPaste={e => {
@@ -288,7 +291,7 @@ export function OptionForm({
                         loadLinkPreview(block.id, text)
                       }}
                       onBlur={e => loadLinkPreview(block.id, e.target.value)}
-                      placeholder="https://"
+                      placeholder="링크 주소 (naver.com 처럼 https:// 없어도 돼요)"
                       className="w-full rounded-field border-[1.5px] border-line bg-paper px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none"
                     />
                     {linkLoading[block.id] && (
@@ -385,24 +388,26 @@ export function OptionForm({
         {imageError && <p className="mt-1.5 text-xs text-tomato">{imageError}</p>}
       </div>
 
-      {/* 버튼 */}
-      <div className="space-y-2 pt-2">
-        <button
-          type="submit"
-          disabled={isPending || uploading || !name.trim()}
-          className="w-full rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80 disabled:opacity-50"
-        >
-          {isPending ? '저장 중...' : uploading ? '사진 올리는 중...' : submitLabel}
-        </button>
-        {onCancel && (
+      {/* 버튼 — 하단 고정 2단 (취소 · 저장) */}
+      <div className="fixed inset-x-0 bottom-0 z-20 mx-auto max-w-[430px] border-t border-line bg-paper/95 px-5 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 backdrop-blur">
+        <div className="grid grid-cols-2 gap-2.5">
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="rounded-field border border-line py-3.5 text-sm font-bold text-ink-soft active:bg-cream"
+            >
+              취소
+            </button>
+          )}
           <button
-            type="button"
-            onClick={onCancel}
-            className="w-full rounded-field border border-line py-3.5 text-sm font-bold text-ink-soft"
+            type="submit"
+            disabled={isPending || uploading || !name.trim()}
+            className={`rounded-field bg-ink py-3.5 text-sm font-bold text-cream active:opacity-80 disabled:opacity-50 ${onCancel ? '' : 'col-span-2'}`}
           >
-            취소
+            {isPending ? '저장 중...' : uploading ? '사진 올리는 중...' : submitLabel}
           </button>
-        )}
+        </div>
       </div>
     </form>
   )

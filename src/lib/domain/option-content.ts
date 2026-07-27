@@ -142,7 +142,11 @@ export function linkDisplayLabel(label: string, url: string): string {
 export function splitPastedLink(raw: string): { url: string; label: string } | null {
   const text = raw.trim()
   if (!text) return null
-  const m = text.match(/(https?:\/\/[^\s]+|www\.[^\s]+)/i)
+  // http(s):// · www. · 스킴 없는 맨 도메인(예: test.com, coupang.com/vp/...) 모두 인식.
+  // 맨 도메인은 "라벨.TLD(2글자+)" 형태 + 선택적 경로. 한글·숫자만 있는 문자열은 매칭 안 됨.
+  const m = text.match(
+    /(https?:\/\/[^\s]+|www\.[^\s]+|(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}(?:\/[^\s]*)?)/i,
+  )
   if (!m || m.index === undefined) return null
   const url = m[0].replace(/[.,;:)\]}"'»]+$/, '') // 끝에 붙은 구두점 제거
   const label = (text.slice(0, m.index) + text.slice(m.index + m[0].length))
