@@ -71,27 +71,24 @@ export function OptionForm({
   }
 
   // URL이 정해진 채로 링크 블록을 추가하고 바로 미리보기·이름 자동채움을 태운다.
-  function addLinkWithUrl(url: string, label = '') {
+  function addLinkWithUrl(url: string) {
     if (atBlockLimit) return
     const id = newId()
-    setBlocks(prev => [...prev, { type: 'link', id, url, label }])
-    loadLinkPreview(id, url, label)
+    setBlocks(prev => [...prev, { type: 'link', id, url, label: '' }])
+    loadLinkPreview(id, url)
   }
 
-  // "라벨 URL" 형태로 붙여넣어진 링크를 URL/라벨로 분리해 블록에 채운다. 분리했으면 정리된 URL 반환.
-  function normalizePastedLink(id: string, currentLabel: string, raw: string): string {
+  // "글씨 URL" 형태로 붙여넣어졌으면 URL만 뽑아 정리한다. 정리된 URL 반환.
+  function normalizePastedLink(id: string, raw: string): string {
     const split = splitPastedLink(raw)
     if (!split) return raw.trim()
-    updateBlock(id, {
-      url: split.url,
-      ...(split.label && !currentLabel.trim() ? { label: split.label } : {}),
-    })
+    updateBlock(id, { url: split.url })
     return split.url
   }
 
-  // 링크 URL 확정 시 OG 미리보기를 가져와 블록에 저장 (섞여 들어온 라벨은 먼저 분리)
-  async function loadLinkPreview(id: string, rawUrl: string, currentLabel = '') {
-    const url = normalizePastedLink(id, currentLabel, rawUrl)
+  // 링크 URL 확정 시 OG 미리보기를 가져와 블록에 저장 (섞여 들어온 글씨는 먼저 정리)
+  async function loadLinkPreview(id: string, rawUrl: string) {
+    const url = normalizePastedLink(id, rawUrl)
     if (!url) {
       updateBlock(id, { title: undefined, description: undefined, image: undefined })
       return
@@ -170,7 +167,7 @@ export function OptionForm({
             if (!split) return // 순수 텍스트면 일반 붙여넣기
             e.preventDefault()
             if (split.label && !name.trim()) setName(split.label.slice(0, 50))
-            addLinkWithUrl(split.url, split.label)
+            addLinkWithUrl(split.url)
           }}
           maxLength={50}
           placeholder="선택지 이름을 입력하세요"
@@ -255,14 +252,15 @@ export function OptionForm({
                       value={block.url}
                       onChange={e => updateBlock(block.id, { url: e.target.value })}
                       onPaste={e => {
-                        // "네이버 https://..." 처럼 이름이 섞여 복사됐으면 URL/라벨로 자동 분리
-                        const split = splitPastedLink(e.clipboardData.getData('text'))
-                        if (!split || !split.label) return // 순수 URL이면 기본 붙여넣기
+                        // "네이버 https://..." 처럼 글씨가 섞여 복사됐으면 URL만 깔끔히 정리
+                        const text = e.clipboardData.getData('text')
+                        const split = splitPastedLink(text)
+                        if (!split || split.url === text.trim()) return // 순수 URL이면 기본 붙여넣기
                         e.preventDefault()
-                        loadLinkPreview(block.id, e.clipboardData.getData('text'), block.label)
+                        loadLinkPreview(block.id, text)
                       }}
-                      onBlur={e => loadLinkPreview(block.id, e.target.value, block.label)}
-                      placeholder="https:// (이름째 붙여넣어도 자동 분리돼요)"
+                      onBlur={e => loadLinkPreview(block.id, e.target.value)}
+                      placeholder="https:// (글씨가 섞여 있어도 자동 정리돼요)"
                       className="w-full rounded-field border-[1.5px] border-line bg-paper px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none"
                     />
                     {linkLoading[block.id] && (
@@ -303,14 +301,6 @@ export function OptionForm({
                         })}
                       </div>
                     </div>
-                    <input
-                      type="text"
-                      value={block.label}
-                      onChange={e => updateBlock(block.id, { label: e.target.value })}
-                      maxLength={30}
-                      placeholder="라벨(선택) — 예: 최저가, 리뷰"
-                      className="w-full rounded-field border-[1.5px] border-line bg-paper px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none"
-                    />
                   </div>
                 )}
               </div>
