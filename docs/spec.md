@@ -12,7 +12,7 @@
 **타겟**: 카톡을 쓰는 2030. **대체 대상은 카톡 톡게시판** — 톡게시판의 4가지 불편(①투표 없음 ②알림 없음 ③게시판 무한 생성 ④댓글 사진 첨부 불가)을 해결한다. 새 기능 판단 잣대: "이게 ①~④ 중 무엇을 해결하나?"
 
 **두 가지 사용 모드 (둘 다 1급)**:
-- **모드 A. 친구와 결정**: 방장(총무형, 앱을 제대로 쓰는 한 명) + 참여자(설치·학습 의지 낮음 — 링크 클릭→카카오 로그인 1번→투표까지 마찰 제로, 창고·들썩임 등 용어 지식 제로로 완주 가능해야 함)
+- **모드 A. 친구와 결정**: 총무형 한 명(앱을 제대로 챙기는 사람 — 별도 권한 없음, 참여자 모두 동등) + 참여자(설치·학습 의지 낮음 — 링크 클릭→카카오 로그인 1번→투표까지 마찰 제로, 창고·들썩임 등 용어 지식 제로로 완주 가능해야 함)
 - **모드 B. 혼자 쓰기**: 고민 후보를 메모해두고 스스로 결정하는 개인 고민 보드. 마감 없는 상자가 자연스러움. 고민이 커지면 친구 초대로 전환(콜드 스타트 해소 루프)
 
 도메인 구조는 3계층:
@@ -94,7 +94,7 @@ function getBoxStatus(box: { closedAt: Date | null }): BoxStatus {
 
 | 방식 | 마감 | 결정이 일어나는 순간 |
 |---|---|---|
-| **직접 정하기** (`manual`, 기본) | 없음 | 사람이 후보 **1개 이상** 선택 → 확정. 여럿 상자는 방장 아니어도 누구나 가능(되돌리기 쉬움 + 활동 알림) |
+| **직접 정하기** (`manual`, 기본) | 없음 | 사람이 후보 **1개 이상** 선택 → 확정. 여럿 상자는 참여자 누구나 가능(되돌리기 쉬움 + 활동 알림) |
 | **마감 투표** (`auto_deadline`) | 있음 | 마감 시각에 **좋아요 최다 선택지(들)가 자동 결정** (동점이면 공동 결정) |
 
 - **중복(여러 개) 결정 가능** — 결정된 후보가 1개 이상일 수 있음.
@@ -140,11 +140,11 @@ function getBoxStatus(box: { closedAt: Date | null }): BoxStatus {
 사용자가 만든 **이름 있는 상자 묶음**. 예: "여행" 폴더에 *여행지·항공권·음식·숙소* 결정 상자를 모아둠. 상태(어질러진/정리된)·즐겨찾기에 이은 **세 번째 분류 축**(주제)이다.
 
 - **⚠️ 그룹(사람 묶음)과 다름**: `groups`/`group_members`는 *같이 초대할 친구 집합*(현재 UI 숨김). 폴더는 *상자 조직화*로 완전히 별개 축이다. 이름을 "그룹"으로 재사용하지 않는다.
-- **모델 (v1 = 단일 폴더)**: 상자 1개 = 폴더 **0~1개**. `boxes.folder_id` nullable. 폴더는 **방장 소유**(`folders.owner_id`), 방장이 지정. 공유 상자에선 방장의 분류가 상자 속성으로 보인다(개인별 폴더는 후순위 과제).
-- **상태 가로지름**: 폴더는 어질러진/정리된을 가로지른다(즐겨찾기처럼). 폴더 뷰(`/folder/[id]`)는 **상태 무관 전체** 노출(안에서 상태 필터 가능).
-- **미분류**(`folder_id IS NULL`) 상자는 기존 어질러진/정리된/즐겨찾는에 그대로 노출(폴더는 추가 뷰일 뿐 기존 뷰를 대체하지 않음).
-- **폴더 삭제 시 상자는 지우지 않는다** — `folder_id`를 null로(미분류 복귀). (FK `on delete set null`)
-- **진입**: 햄버거 드로어에 "폴더" 섹션(내 폴더 목록 + 새 폴더). 상자 상세 편집 메뉴에서 "폴더 지정".
+- **모델 (개인별 폴더링)**: 폴더는 **각자 자기 것**(`folders.user_id`). 상자를 폴더에 넣는 것도 **사람마다 독립**(`box_folders(user_id, box_id, folder_id)` 조인) — 같은 공유 상자를 나는 "여행", 친구는 "모임"에 따로 넣어도 안 부딪힌다. **방장 개념에 의존하지 않음**(011의 owner/role 폐기와 정합). 사용자별 상자당 폴더 **0~1개**(PK `(user_id, box_id)`로 단일 보장).
+- **상태 가로지름**: 폴더는 어질러진/정리된을 가로지른다(즐겨찾기처럼). 폴더 뷰(`/folder/[id]`)는 내가 그 폴더에 넣은 상자 전체를 **상태 무관** 노출.
+- **미분류**(내 `box_folders` 행 없음) 상자는 기존 어질러진/정리된/즐겨찾는에 그대로 노출(폴더는 추가 뷰일 뿐 기존 뷰를 대체하지 않음).
+- **폴더 삭제 시 상자는 지우지 않는다** — 분류(`box_folders`)만 FK cascade로 사라지고 상자는 그대로(미분류 복귀).
+- **진입**: 햄버거 드로어에 "폴더" 섹션(내 폴더 목록 + 새 폴더). 상자 상세 편집 메뉴 "폴더 지정"(참여자 누구나 자기 폴더에).
 
 ## 4. 라우트 맵
 
@@ -183,7 +183,7 @@ function getBoxStatus(box: { closedAt: Date | null }): BoxStatus {
 > - **RLS**: "정리된 상자 쓰기 가드" **폐기** — 정리완료 상자에서도 선택지·좋아요·댓글 편집 허용(§3-4). 참여자면 상태 무관.
 > - **RPC**: `start_rematch` **삭제**. `close_box` → **`decide_box(p_box_id, p_option_ids uuid[])`**(선택 옵션 `decided_at` + `closed_at` 세팅)로 대체. `reopen_box(p_box_id)`는 마감 인자 없이 `closed_at`·`decided_at` 해제만.
 >
-> **폴더 델타 (2026-07-28 — 마이그레이션 `009_folders.sql`):** `folders` 테이블 신규 + `boxes.folder_id uuid references folders(id) on delete set null` 추가. 주제별 상자 묶음(사용자 정의), 그룹(사람)과 무관. 상세 §3-7. RLS: 폴더는 owner만 CRUD, 상자 폴더 지정은 기존 boxes update(방장) 권한 내.
+> **폴더 델타 (2026-07-28 — 마이그레이션 `012_folders.sql`):** `folders`(각자 자기 폴더) + `box_folders(user_id, box_id, folder_id)` 조인 신규. 개인별 폴더링 — 사람마다 독립 분류, 방장 무관. 상세 §3-7. RLS: 폴더·분류 모두 본인 행만.
 
 ```sql
 -- 프로필 (auth.users 1:1)
@@ -204,7 +204,6 @@ create table boxes (
   closed_at timestamptz,                 -- 수동 "이대로 결정하기" 시각. null이면 미완료
   current_round int not null default 1,  -- 끝장전 시작 시 +1
   invite_code text not null unique default substr(md5(random()::text), 1, 8),
-  folder_id uuid references folders(id) on delete set null,  -- 폴더(주제별 묶음, 0~1). 009에서 add(folders 생성 후). §3-7
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -266,13 +265,22 @@ create table favorites (
   primary key (user_id, box_id)
 );
 
--- 폴더 (주제별 상자 묶음, 사용자 정의). 그룹(사람 묶음)과 무관 — §3-7. boxes.folder_id로 연결(단일 폴더).
+-- 폴더 (주제별 상자 묶음, 사용자 정의). 그룹(사람 묶음)과 무관 — §3-7. 개인별: box_folders 조인으로 연결.
 create table folders (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references profiles(id) on delete cascade,
+  user_id uuid not null references profiles(id) on delete cascade,  -- 폴더 만든 사람(각자 자기 폴더)
   name text not null,
   sort int not null default 0,           -- 드로어 표시 순서
   created_at timestamptz not null default now()
+);
+
+-- 상자↔폴더 분류 (개인별). "이 사용자가 이 상자를 이 폴더에 넣음". 사용자별 상자당 0~1개.
+create table box_folders (
+  user_id uuid not null references profiles(id) on delete cascade,
+  box_id uuid not null references boxes(id) on delete cascade,
+  folder_id uuid not null references folders(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (user_id, box_id)
 );
 
 -- 댓글 (선택지에 달림). 답글은 플랫 2단계(parent_comment_id, 답글의 답글 금지)
@@ -396,7 +404,7 @@ create or replace function start_rematch(p_box_id uuid, p_deadline timestamptz) 
 3. 좋아요는 **참고용 인기 신호**다 — 결정권 없음. **혼자 상자에선 좋아요를 노출하지 않는다.**
 
 ### 결정 플로우 ① 직접 정하기 (`manual`)
-1. 누구나(여럿 상자는 방장 아니어도) "이걸로 정하기" → 선택지 **1개 이상** 선택 → 확정.
+1. 참여자 누구나 "이걸로 정하기" → 선택지 **1개 이상** 선택 → 확정.
 2. 확정 = 선택 옵션에 "결정됨" 표시 + `closed_at = now()` → 정리완료(정리된 창고). 활동 기록 + 참여자 알림("○○로 정리했어요").
 3. **번복**: 정리완료 상자에서 "다시 정리하기" → `closed_at = null` + 결정 표시 해제 → 정리중 복귀, 재결정 가능.
 
@@ -433,9 +441,9 @@ create or replace function start_rematch(p_box_id uuid, p_deadline timestamptz) 
 - 상자 이름 input (필수, 빈 값 검증)
 - 메모 input (선택)
 - **결정 방식 선택** (`decision_mode`):
-    - **직접 정하기** (기본) — 마감 없음. 부제: "원할 때 직접 골라 정해요 (안 정하고 모아두기만 해도 돼요)". 생성 후 편집 메뉴(방장)에서 결정 방식 변경 가능.
+    - **직접 정하기** (기본) — 마감 없음. 부제: "원할 때 직접 골라 정해요 (안 정하고 모아두기만 해도 돼요)". 생성 후 편집 메뉴(참여자 누구나)에서 결정 방식 변경 가능.
     - **마감 투표** — 선택 시 **마감일시 바텀시트**(날짜·시간, 과거 불가 검증). 부제: "마감 때 좋아요 최다가 자동 결정돼요"
-- "상자 만들기" 버튼 → 생성 후 상자 상세로 이동, 생성자는 owner로 box_participants에 자동 insert
+- "상자 만들기" 버튼 → 생성 후 상자 상세로 이동, 생성자는 box_participants에 자동 insert(첫 참여자 — 별도 role/owner 없음)
 
 ### 7-3. 상자 상세 `/box/[id]`
 - 헤더: 뒤로가기(**내비 스택 유지** — 진입한 창고로 복귀), 제목, 즐겨찾기 토글
