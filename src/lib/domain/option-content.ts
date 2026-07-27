@@ -122,9 +122,8 @@ export function getOptionPreview(blocks: OptionBlock[], maxLen = 60): OptionPrev
   return { image, snippet }
 }
 
-/** 링크 라벨이 비었으면 OG 제목 → 도메인명 순으로 대체 표시. */
-export function linkDisplayLabel(label: string, url: string): string {
-  if (label.trim()) return label.trim()
+/** OG 제목을 못 가져왔을 때 표시할 대체 제목(도메인명). 메모(라벨)는 별개로 표시하므로 여기 섞지 않는다. */
+export function linkFallbackTitle(url: string): string {
   try {
     return new URL(url).hostname.replace(/^www\./, '')
   } catch {
@@ -221,6 +220,10 @@ export function linkKindOf(link: { url: string; icon?: LinkKind }): LinkKind {
 
 export function linkKindEmoji(kind: LinkKind): string {
   return LINK_KINDS.find(k => k.kind === kind)?.emoji ?? '🔗'
+}
+
+export function linkKindLabel(kind: LinkKind): string {
+  return LINK_KINDS.find(k => k.kind === kind)?.label ?? '링크'
 }
 
 /** 블록 목록에서 링크 블록만 골라낸다(상자 링크 모아보기용). */

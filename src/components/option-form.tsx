@@ -2,8 +2,17 @@
 
 import { useRef, useState } from 'react'
 import { uploadOptionImage } from '@/lib/api/options'
-import { fetchLinkPreview } from '@/lib/api/unfurl'
-import { cleanBlocks, LINK_KINDS, linkBlocksOf, linkHref, linkKindOf, splitPastedLink, type OptionBlock } from '@/lib/domain/option-content'
+import { fetchLinkPreview, proxiedImageUrl } from '@/lib/api/unfurl'
+import {
+  cleanBlocks,
+  linkBlocksOf,
+  linkHref,
+  linkKindEmoji,
+  linkKindLabel,
+  linkKindOf,
+  splitPastedLink,
+  type OptionBlock,
+} from '@/lib/domain/option-content'
 
 interface OptionFormProps {
   boxId: string
@@ -89,7 +98,7 @@ export function OptionForm({
   function maybeFillNameFrom(blockId: string, text: string) {
     if (!text.trim() || name.trim()) return
     const firstLinkId = blocks.find(b => b.type === 'link')?.id
-    if (blockId === firstLinkId) setName(text.slice(0, 50))
+    if (blockId === firstLinkId) setName(text)
   }
 
   // URL이 정해진 채로 링크 블록을 추가하고 바로 미리보기·이름 자동채움을 태운다.
@@ -127,7 +136,7 @@ export function OptionForm({
     // OG 제목은 '선택지 이름'에만 자동 반영(첫 링크 & 이름 비었을 때). 라벨(메모)은 사용자가 직접 쓴다.
     if (preview.title) {
       const firstLinkId = blocksRef.current.find(b => b.type === 'link')?.id
-      if (id === firstLinkId && !nameRef.current.trim()) setName(preview.title.slice(0, 50))
+      if (id === firstLinkId && !nameRef.current.trim()) setName(preview.title)
     }
     setLinkLoading(prev => {
       const next = { ...prev }
@@ -136,9 +145,7 @@ export function OptionForm({
     })
   }
 
-  async function handleAddImages(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files ?? [])
-    e.target.value = ''
+  async function addImageFiles(files: File[]) {
     if (files.length === 0) return
     setImageError(null)
 
@@ -169,6 +176,23 @@ export function OptionForm({
     }
   }
 
+  function handleAddImages(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    e.target.value = ''
+    addImageFiles(files)
+  }
+
+  // 클립보드에 복사된 이미지(스크린샷 등) 붙여넣기 — 캡처 단계라 어느 필드에 포커스가 있어도 잡힌다.
+  function handlePasteImage(e: React.ClipboardEvent) {
+    const imageFiles = Array.from(e.clipboardData?.items ?? [])
+      .filter(item => item.kind === 'file' && item.type.startsWith('image/'))
+      .map(item => item.getAsFile())
+      .filter((f): f is File => f !== null)
+    if (imageFiles.length === 0) return
+    e.preventDefault()
+    addImageFiles(imageFiles)
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!name.trim()) return
@@ -176,29 +200,40 @@ export function OptionForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5 pb-32">
+    <form onSubmit={handleSubmit} onPasteCapture={handlePasteImage} className="space-y-5 pb-32">
       {/* 이름 */}
       <div>
         <label className="mb-1.5 block text-[13px] font-semibold text-ink-soft">
           선택지 이름 <span className="text-tomato">*</span>
         </label>
-        <input
-          type="text"
-          value={name}
-          onChange={e => setName(e.target.value)}
-          onPaste={e => {
-            // "네이버 https://..." 처럼 글씨+링크가 섞여 복사됐으면 이름/링크로 자동 분리
-            const split = splitPastedLink(e.clipboardData.getData('text'))
-            if (!split) return // 순수 텍스트면 일반 붙여넣기
-            e.preventDefault()
-            if (split.label && !name.trim()) setName(split.label.slice(0, 50))
-            addLinkWithUrl(split.url)
-          }}
-          maxLength={50}
-          placeholder="링크 붙여넣기 또는 이름 입력"
-          className="w-full rounded-field border-[1.5px] border-line bg-paper px-4 py-3 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none focus:ring-[3px] focus:ring-butter-tint"
-          required
-        />
+        <div className="relative">
+          <input
+            type="text"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            onPaste={e => {
+              // "네이버 https://..." 처럼 글씨+링크가 섞여 복사됐으면 이름/링크로 자동 분리
+              const split = splitPastedLink(e.clipboardData.getData('text'))
+              if (!split) return // 순수 텍스트면 일반 붙여넣기
+              e.preventDefault()
+              if (split.label && !name.trim()) setName(split.label)
+              addLinkWithUrl(split.url)
+            }}
+            placeholder="링크 붙여넣기 또는 이름 입력"
+            className="w-full rounded-field border-[1.5px] border-line bg-paper px-4 py-3 pr-10 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none focus:ring-[3px] focus:ring-butter-tint"
+            required
+          />
+          {name && (
+            <button
+              type="button"
+              onClick={() => setName('')}
+              aria-label="이름 지우기"
+              className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-ink-faint active:bg-cream"
+            >
+              <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          )}
+        </div>
         {showNoPreviewHint && (
           <p className="mt-1.5 flex items-start gap-1 text-[11.5px] leading-relaxed text-tangerine">
             <span aria-hidden>💡</span>
@@ -221,8 +256,13 @@ export function OptionForm({
               <div key={block.id} className="rounded-[16px] border border-line bg-paper p-3">
                 {/* 블록 컨트롤 */}
                 <div className="mb-2 flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-ink-faint">
+                  <span className="flex items-center gap-1.5 text-[11px] font-bold text-ink-faint">
                     {block.type === 'text' ? '글' : block.type === 'image' ? '사진' : '링크'}
+                    {block.type === 'link' && block.url.trim() && (
+                      <span className="inline-flex items-center gap-0.5 rounded-full border border-line bg-cream px-1.5 py-0.5 text-[10.5px] text-ink-soft">
+                        {linkKindEmoji(linkKindOf(block))} {linkKindLabel(linkKindOf(block))}
+                      </span>
+                    )}
                   </span>
                   <div className="flex items-center gap-0.5">
                     <button
@@ -271,7 +311,7 @@ export function OptionForm({
                   <img
                     src={block.url}
                     alt="첨부 사진"
-                    className="max-h-64 w-full rounded-[12px] border border-line object-cover"
+                    className="h-auto w-full rounded-[12px] border border-line"
                   />
                 )}
 
@@ -302,7 +342,7 @@ export function OptionForm({
                       <div className="flex gap-2.5 rounded-[12px] border border-line bg-cream/40 p-2">
                         {block.image && (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={block.image} alt="" className="h-12 w-12 shrink-0 rounded-[8px] border border-line object-cover" />
+                          <img src={proxiedImageUrl(block.image)} alt="" className="h-12 w-12 shrink-0 rounded-[8px] border border-line object-cover" />
                         )}
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-[12.5px] font-bold text-ink">{block.title}</p>
@@ -312,41 +352,25 @@ export function OptionForm({
                         </div>
                       </div>
                     )}
-                    {/* 아이콘(셀렉트) + 라벨을 한 줄로 */}
-                    <div className="flex gap-2">
-                      <div className="relative shrink-0">
-                        <select
-                          value={linkKindOf(block)}
-                          onChange={e => updateBlock(block.id, { icon: e.target.value })}
-                          aria-label="링크 종류"
-                          className="h-full appearance-none rounded-field border-[1.5px] border-line bg-paper py-2.5 pl-3 pr-7 text-sm font-bold text-ink focus:border-butter-dark focus:outline-none"
-                        >
-                          {LINK_KINDS.map(k => (
-                            <option key={k.kind} value={k.kind}>
-                              {k.emoji} {k.label}
-                            </option>
-                          ))}
-                        </select>
-                        <svg
-                          className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-ink-faint"
-                          width="12"
-                          height="12"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2.4"
-                          viewBox="0 0 24 24"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" />
-                        </svg>
-                      </div>
+                    {/* 메모 */}
+                    <div className="relative">
                       <input
                         type="text"
                         value={block.label}
                         onChange={e => updateBlock(block.id, { label: e.target.value })}
-                        maxLength={50}
                         placeholder="메모 (예: 최저가·후기 좋음)"
-                        className="min-w-0 flex-1 rounded-field border-[1.5px] border-line bg-paper px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none"
+                        className="w-full rounded-field border-[1.5px] border-line bg-paper px-3.5 py-2.5 pr-9 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none"
                       />
+                      {block.label && (
+                        <button
+                          type="button"
+                          onClick={() => updateBlock(block.id, { label: '' })}
+                          aria-label="메모 지우기"
+                          className="absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-ink-faint active:bg-cream"
+                        >
+                          <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}
@@ -390,6 +414,7 @@ export function OptionForm({
           className="hidden"
           onChange={handleAddImages}
         />
+        <p className="mt-1.5 text-[11px] text-ink-faint">이미지를 복사했다면 붙여넣기로도 추가할 수 있어요.</p>
         {imageError && <p className="mt-1.5 text-xs text-tomato">{imageError}</p>}
       </div>
 

@@ -8,6 +8,7 @@ import { useRealtimeVotes } from '@/hooks/use-realtime-votes'
 import { useInfiniteReveal } from '@/hooks/use-infinite-reveal'
 import { sortOptions, OPTION_SORT_MODES, OPTION_SORT_LABELS, type OptionSortMode } from '@/lib/domain/option-sort'
 import { parseBlocks, getOptionPreview } from '@/lib/domain/option-content'
+import { proxiedImageUrl } from '@/lib/api/unfurl'
 import { VoteButtons } from './vote-buttons'
 import { Icon } from './icon'
 import type { Option } from '@/lib/api/options'
@@ -154,7 +155,7 @@ export function OptionsSection({ boxId, round, initialOptions, canVote, showLike
                   {preview.image ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={preview.image}
+                      src={proxiedImageUrl(preview.image)}
                       alt=""
                       className="h-14 w-14 shrink-0 rounded-[12px] border border-line object-cover"
                     />

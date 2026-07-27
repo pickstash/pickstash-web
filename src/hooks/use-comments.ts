@@ -1,7 +1,7 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { getComments, createComment, deleteComment } from '@/lib/api/comments'
+import { getComments, createComment, updateComment, deleteComment } from '@/lib/api/comments'
 
 export function useComments(optionId: string) {
   return useQuery({
@@ -14,7 +14,16 @@ export function useComments(optionId: string) {
 export function useCreateComment(optionId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: string) => createComment(optionId, body),
+    mutationFn: ({ body, parentCommentId }: { body: string; parentCommentId?: string }) =>
+      createComment(optionId, body, { parentCommentId }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['comments', optionId] }),
+  })
+}
+
+export function useUpdateComment(optionId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: string }) => updateComment(id, body),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['comments', optionId] }),
   })
 }

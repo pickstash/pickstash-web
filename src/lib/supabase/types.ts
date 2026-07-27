@@ -231,6 +231,8 @@ export interface Database {
           option_id: string
           user_id: string
           body: string
+          parent_comment_id: string | null
+          edited_at: string | null
           created_at: string
         }
         Insert: {
@@ -238,6 +240,8 @@ export interface Database {
           option_id: string
           user_id: string
           body: string
+          parent_comment_id?: string | null
+          edited_at?: string | null
           created_at?: string
         }
         Update: {
@@ -245,6 +249,26 @@ export interface Database {
           option_id?: string
           user_id?: string
           body?: string
+          parent_comment_id?: string | null
+          edited_at?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      comment_likes: {
+        Row: {
+          comment_id: string
+          user_id: string
+          created_at: string
+        }
+        Insert: {
+          comment_id: string
+          user_id: string
+          created_at?: string
+        }
+        Update: {
+          comment_id?: string
+          user_id?: string
           created_at?: string
         }
         Relationships: []

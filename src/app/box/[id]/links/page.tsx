@@ -9,11 +9,12 @@ import {
   linkBlocksOf,
   linkKindOf,
   linkKindEmoji,
-  linkDisplayLabel,
+  linkFallbackTitle,
   linkHref,
   LINK_KINDS,
   type LinkKind,
 } from '@/lib/domain/option-content'
+import { proxiedImageUrl } from '@/lib/api/unfurl'
 
 export default function BoxLinksPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: boxId } = use(params)
@@ -78,7 +79,7 @@ export default function BoxLinksPage({ params }: { params: Promise<{ id: string 
                   {block.image ? (
                     <div className="relative h-12 w-12 shrink-0">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={block.image} alt="" className="h-12 w-12 rounded-[10px] border border-line object-cover" />
+                      <img src={proxiedImageUrl(block.image)} alt="" className="h-12 w-12 rounded-[10px] border border-line object-cover" />
                       <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full border border-line bg-paper text-[11px]">
                         {linkKindEmoji(kind)}
                       </span>
@@ -89,22 +90,22 @@ export default function BoxLinksPage({ params }: { params: Promise<{ id: string 
                     </span>
                   )}
                   <div className="min-w-0 flex-1">
-                    {block.label && (
-                      <span className="inline-block rounded-full bg-butter-tint px-1.5 py-0.5 text-[10.5px] font-bold text-ink">
-                        {block.label}
-                      </span>
-                    )}
-                    <p className="mt-0.5 truncate text-[13px] font-bold text-ink">
-                      {block.title || linkDisplayLabel(block.label, block.url)}
+                    <p className="truncate text-[13px] font-bold text-ink">
+                      {block.title || linkFallbackTitle(block.url)}
                     </p>
                     <p className="truncate text-[11px] text-ink-faint">{block.url}</p>
                   </div>
                 </a>
+                {block.label && (
+                  <p className="mt-2 border-t border-dashed border-line pt-2 text-[13px] text-ink-soft">
+                    📝 {block.label}
+                  </p>
+                )}
                 <Link
                   href={`/box/${boxId}/option/${optionId}`}
                   className="mt-1.5 inline-block text-[11px] font-semibold text-ink-soft active:text-ink"
                 >
-                  📁 {optionName}
+                  선택지 · {optionName}
                 </Link>
               </div>
             ))}

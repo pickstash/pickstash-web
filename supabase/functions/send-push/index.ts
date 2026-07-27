@@ -4,12 +4,15 @@ import webpush from 'npm:web-push'
 interface RequestBody {
   box_id: string
   triggered_by: string
+  // 특정 사용자에게만 보낼 때(예: 댓글 @멘션). 없으면 상자 참여자 전체 브로드캐스트.
+  target_user_ids?: string[]
+  message_key?: 'mention'
 }
 
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return new Response('Method Not Allowed', { status: 405 })
 
-  const { box_id, triggered_by }: RequestBody = await req.json()
+  const { box_id, triggered_by, target_user_ids, message_key }: RequestBody = await req.json()
 
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
@@ -25,16 +28,22 @@ Deno.serve(async (req) => {
 
   if (!box) return new Response('Box not found', { status: 404 })
 
-  // 나를 제외한 참여자 목록
-  const { data: participants } = await supabase
-    .from('box_participants')
-    .select('user_id')
-    .eq('box_id', box_id)
-    .neq('user_id', triggered_by)
+  let userIds: string[]
+  if (target_user_ids?.length) {
+    // 타겟 발송(예: 멘션) — 전체 참여자 조회를 건너뛰고 지정된 대상만
+    userIds = target_user_ids.filter(id => id !== triggered_by)
+  } else {
+    // 나를 제외한 참여자 전체 브로드캐스트 (기존 동작)
+    const { data: participants } = await supabase
+      .from('box_participants')
+      .select('user_id')
+      .eq('box_id', box_id)
+      .neq('user_id', triggered_by)
 
-  if (!participants?.length) return new Response('OK')
+    userIds = (participants ?? []).map(p => p.user_id)
+  }
 
-  const userIds = participants.map(p => p.user_id)
+  if (!userIds.length) return new Response('OK')
 
   // 참여자들의 push 구독 정보 조회
   const { data: subscriptions } = await supabase
@@ -50,9 +59,19 @@ Deno.serve(async (req) => {
     Deno.env.get('VAPID_PRIVATE_KEY')!,
   )
 
+  let bodyText = `${box.title}에 새로운 소식이 있어요!`
+  if (message_key === 'mention') {
+    const { data: actor } = await supabase
+      .from('profiles')
+      .select('nickname')
+      .eq('id', triggered_by)
+      .single()
+    bodyText = `${actor?.nickname ?? '누군가'}님이 댓글에서 회원님을 언급했어요`
+  }
+
   const payload = JSON.stringify({
     title: '결정창고',
-    body: `${box.title}에 새로운 소식이 있어요!`,
+    body: bodyText,
     url: `/box/${box_id}`,
   })
 

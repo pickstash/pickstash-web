@@ -251,13 +251,24 @@ create table favorites (
   primary key (user_id, box_id)
 );
 
--- 댓글 (선택지에 달림)
+-- 댓글 (선택지에 달림). 답글은 플랫 2단계(parent_comment_id, 답글의 답글 금지)
+-- 멘션은 별도 컬럼 없이 body에 `@[닉네임](userId)` 토큰으로 인라인 저장(닉네임 unique 아님 → id 기준)
 create table comments (
   id uuid primary key default gen_random_uuid(),
   option_id uuid not null references options(id) on delete cascade,
   user_id uuid not null references profiles(id) on delete cascade,
   body text not null,
+  parent_comment_id uuid references comments(id) on delete cascade,
+  edited_at timestamptz,
   created_at timestamptz not null default now()
+);
+
+-- 댓글 좋아요 (참여자 누구나 토글)
+create table comment_likes (
+  comment_id uuid not null references comments(id) on delete cascade,
+  user_id uuid not null references profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (comment_id, user_id)
 );
 
 -- 탈퇴 사유 (익명 수집, 유저 FK 없음 — 탈퇴 후 보관)
@@ -295,7 +306,9 @@ create index box_activities_box_created_idx on box_activities (box_id, created_a
 - `boxes` 수정(정리 완료, 재투표 시작, 마감일 변경, 제목 수정): `role = 'owner'`만
 - `votes`/`comments`/`favorites`: 본인 row만 insert/update/delete (`user_id = auth.uid()`)
 - `options` 수정/삭제: `created_by = auth.uid()` 또는 상자 owner
-- **정리된 상자 쓰기 가드 (서버 강제)**: 상자가 종결 상태(`closed_at IS NOT NULL` 또는 `deadline_at < now()`)면 `votes` insert/update/delete와 `options` insert/update/delete를 RLS에서 거부한다. UI disabled에만 의존하지 않는다. 예외: `comments`는 종결 상자에서도 허용(기록에 대한 대화), 본인 삭제도 허용
+- **정리된 상자 쓰기 가드 (서버 강제)**: 상자가 종결 상태(`closed_at IS NOT NULL` 또는 `deadline_at < now()`)면 `votes` insert/update/delete와 `options` insert/update/delete를 RLS에서 거부한다. UI disabled에만 의존하지 않는다. 예외: `comments`는 종결 상자에서도 허용(기록에 대한 대화), 본인 삭제·수정도 허용(상태 무관)
+- `comments`: 답글은 플랫 2단계로 서버 트리거가 강제한다(답글의 답글 insert는 거부). 댓글 수정 시 트리거가 `edited_at`을 자동 기록. `@[닉네임](userId)` 멘션이 포함된 댓글을 등록하면 멘션된 사용자에게 "OO님이 언급했어요" 타겟 push를 별도 발송(상자 참여자 전체 브로드캐스트와 별개)
+- `comment_likes`: `votes`처럼 참여자면 select 가능, insert/delete는 본인 row만(`favorites`처럼 update 없는 순수 토글)
 - `groups`: 멤버만 조회, owner만 수정. `group_members`: 본인 행 delete(그룹 나가기) 가능
 - 예외: `/invite/[code]`, `/group-invite/[code]` 랜딩은 비참여자도 이름 조회 필요 → invite_code 기반 조회용 RPC 함수(`security definer`)로 처리
 - 탈퇴: `auth.users` 삭제 → cascade로 전부 정리. 단 본인이 owner인 상자/그룹은 탈퇴 전 처리 정책 필요(가장 단순: 함께 삭제하고 탈퇴 화면에서 경고 문구 표시)
@@ -420,7 +433,9 @@ create or replace function start_rematch(p_box_id uuid, p_deadline timestamptz) 
 - 선택지 이름 + 편집(작성자 또는 owner) / 삭제(작성자만). **RESOLVED/EXPIRED 상자에서는 편집·삭제 UI를 숨긴다** (서버 가드 병행)
 - 좋아요 버튼 + 카운트 (현재 라운드 기준)
 - 본문: `content` 블록을 순서대로 렌더 — 글(문단)·사진·라벨 링크가 자유롭게 섞인다. 링크는 라벨 칩(비면 도메인명) + URL 형태로 표시
-- 댓글: 입력창("댓글을 입력하세요" + 등록) + 작성자 아바타·닉네임·내용 목록, Realtime 반영
+- 댓글: 입력창("댓글을 입력하세요" + 등록) + 작성자 아바타·닉네임·작성 시각(상대 시간)·내용 목록, Realtime 반영
+  - 답글(플랫 2단계, 부모 아래 들여쓰기), 좋아요(하트+카운트 토글), 본인 댓글 수정("· 수정됨" 표시)·삭제(답글도 함께 삭제)
+  - `@` 입력 시 상자 참여자 자동완성 → 멘션 강조 표시 + 멘션된 사람에게 타겟 push
 
 ### 7-6. 선택지 생성/수정 `/box/[id]/option/new`, `.../edit`
 - 동일 폼 컴포넌트 재사용. 상단: 취소 / 완료 버튼

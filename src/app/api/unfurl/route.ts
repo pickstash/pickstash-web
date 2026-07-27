@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server'
-import { lookup as dnsLookup } from 'node:dns/promises'
-import { isIP } from 'node:net'
 import { createClient } from '@/lib/supabase/server'
+import { safeFetch as safeFetchWithRedirects } from '@/lib/server/safe-fetch'
 
 // 링크 미리보기(OG 언퍼) — 웹 전용 유틸(외부 URL의 메타 태그를 서버에서 긁어온다).
 // RN은 이 HTTP 엔드포인트를 그대로 호출해 재사용한다.
 // SSRF 방지: 로그인 세션 필수 + http(s)만 + 호스트를 DNS로 해석해 모든 IP가 공인인지 검증
-//            + 리다이렉트 매 홉 재검증 + 바이트·시간 상한.
+//            + 리다이렉트 매 홉 재검증 + 바이트·시간 상한 (src/lib/server/safe-fetch.ts).
 // 잔여 위험: 능동적 DNS 리바인딩(해석 시점과 연결 시점 IP가 달라지는 경우)은 완전히는
 //            막지 못한다 — 인증 게이트로 축소. 필요 시 소켓 IP 피닝(undici Agent) 추가.
 
@@ -22,45 +21,6 @@ export interface UnfurlResult {
   description?: string
   image?: string
   siteName?: string
-}
-
-/** 사설/루프백/링크로컬/ULA/CGNAT/예약 IP인지 (v4·v6, IPv4-mapped 포함). */
-function isPrivateAddress(ip: string): boolean {
-  const mapped = ip.match(/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i)?.[1]
-  const v = mapped ?? ip
-  if (isIP(v) === 4) {
-    const [a, b] = v.split('.').map(Number)
-    return (
-      a === 0 ||
-      a === 10 ||
-      a === 127 ||
-      (a === 169 && b === 254) || // 링크로컬 + 클라우드 메타데이터
-      (a === 172 && b >= 16 && b <= 31) ||
-      (a === 192 && b === 168) ||
-      (a === 100 && b >= 64 && b <= 127) || // CGNAT
-      a >= 224 // multicast/reserved
-    )
-  }
-  const h = v.toLowerCase()
-  if (h === '::1' || h === '::') return true
-  if (h.startsWith('fc') || h.startsWith('fd')) return true // ULA fc00::/7
-  if (/^fe[89ab]/.test(h)) return true // 링크로컬 fe80::/10
-  return false
-}
-
-/** 호스트가 공인 주소로만 해석되는지 검증. 리터럴 IP도 직접 검사. 하나라도 사설이면 throw. */
-async function assertPublicHost(u: URL): Promise<void> {
-  const host = u.hostname.replace(/^\[|\]$/g, '')
-  let addresses: string[]
-  if (isIP(host)) {
-    addresses = [host]
-  } else {
-    const resolved = await dnsLookup(host, { all: true, verbatim: true })
-    addresses = resolved.map(r => r.address)
-  }
-  if (addresses.length === 0 || addresses.some(isPrivateAddress)) {
-    throw new Error('blocked host')
-  }
 }
 
 function decodeEntities(s: string): string {
@@ -82,39 +42,13 @@ function pickMeta(head: string, prop: string): string | undefined {
   return v || undefined
 }
 
-async function safeFetch(startUrl: string, signal: AbortSignal): Promise<Response | null> {
-  let current = startUrl
-  for (let i = 0; i <= MAX_REDIRECTS; i++) {
-    let u: URL
-    try {
-      u = new URL(current)
-    } catch {
-      return null
-    }
-    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null
-    try {
-      await assertPublicHost(u) // 해석된 모든 IP가 공인인지 (매 홉 재검증)
-    } catch {
-      return null
-    }
-
-    const res = await fetch(current, {
-      redirect: 'manual',
-      signal,
-      headers: {
-        'User-Agent': 'PickstashBot/1.0 (+link preview)',
-        Accept: 'text/html,application/xhtml+xml',
-      },
-    })
-    if (res.status >= 300 && res.status < 400) {
-      const loc = res.headers.get('location')
-      if (!loc) return res
-      current = new URL(loc, current).toString() // 다음 루프에서 호스트 재검증
-      continue
-    }
-    return res
-  }
-  return null
+function safeFetch(startUrl: string, signal: AbortSignal): Promise<Response | null> {
+  return safeFetchWithRedirects(
+    startUrl,
+    signal,
+    { 'User-Agent': 'PickstashBot/1.0 (+link preview)', Accept: 'text/html,application/xhtml+xml' },
+    MAX_REDIRECTS
+  )
 }
 
 async function readCapped(res: Response, maxBytes: number): Promise<string> {

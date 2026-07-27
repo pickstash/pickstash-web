@@ -6,6 +6,19 @@ export function formatKoreanDate(dateStr: string): string {
   }).format(new Date(dateStr))
 }
 
+/** 댓글 등 상대 시간 표시: 방금 전/N분 전/N시간 전/N일 전, 7일 이후는 날짜로 폴백 */
+export function formatRelativeTime(dateStr: string): string {
+  const diffSec = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000)
+  if (diffSec < 60) return '방금 전'
+  const diffMin = Math.floor(diffSec / 60)
+  if (diffMin < 60) return `${diffMin}분 전`
+  const diffHour = Math.floor(diffMin / 60)
+  if (diffHour < 24) return `${diffHour}시간 전`
+  const diffDay = Math.floor(diffHour / 24)
+  if (diffDay < 7) return `${diffDay}일 전`
+  return formatKoreanDate(dateStr)
+}
+
 export function formatKoreanDateTime(dateStr: string): string {
   return new Intl.DateTimeFormat('ko-KR', {
     year: 'numeric',

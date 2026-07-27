@@ -6,24 +6,32 @@ import { VoteButtons } from '@/components/vote-buttons'
 import { PageHeader } from '@/components/page-header'
 import { AppDrawer } from '@/components/app-drawer'
 import { Icon } from '@/components/icon'
+import { CommentComposer } from '@/components/comment-composer'
 import { useBoxVotes } from '@/hooks/use-votes'
 import { useRealtimeVotes } from '@/hooks/use-realtime-votes'
 import { useDeleteOption } from '@/hooks/use-options'
-import { useComments, useCreateComment, useDeleteComment } from '@/hooks/use-comments'
+import { useComments, useCreateComment, useUpdateComment, useDeleteComment } from '@/hooks/use-comments'
 import { useRealtimeComments } from '@/hooks/use-realtime-comments'
+import { useCommentLikes, useToggleCommentLike } from '@/hooks/use-comment-likes'
+import { useRealtimeCommentLikes } from '@/hooks/use-realtime-comment-likes'
 import {
   parseBlocks,
-  linkDisplayLabel,
+  linkFallbackTitle,
   linkHref,
   linkKindOf,
   linkKindEmoji,
   parseYouTubeId,
 } from '@/lib/domain/option-content'
-import { formatKoreanDate } from '@/lib/utils'
+import { groupComments } from '@/lib/domain/comments'
+import { parseMentionBody } from '@/lib/domain/mentions'
+import { formatKoreanDate, formatRelativeTime } from '@/lib/utils'
+import { proxiedImageUrl } from '@/lib/api/unfurl'
 import { YouTubeEmbed } from '@/components/youtube-embed'
 import type { Option } from '@/lib/api/options'
+import type { CommentWithProfile } from '@/lib/api/comments'
 
 type Creator = { nickname: string; avatar_url: string | null } | null
+type Participant = { id: string; nickname: string; avatar_url: string | null }
 
 interface OptionDetailClientProps {
   option: Option
@@ -33,6 +41,7 @@ interface OptionDetailClientProps {
   canVote: boolean
   currentUserId: string
   myNickname: string
+  participants: Participant[]
 }
 
 export function OptionDetailClient({
@@ -43,30 +52,117 @@ export function OptionDetailClient({
   canVote,
   currentUserId,
   myNickname,
+  participants,
 }: OptionDetailClientProps) {
   const { data: votes = {} } = useBoxVotes(boxId, round)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
-  const [commentBody, setCommentBody] = useState('')
+  const [replyingTo, setReplyingTo] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const deleteOption = useDeleteOption(boxId)
   const { data: comments = [] } = useComments(option.id)
   const createComment = useCreateComment(option.id)
+  const updateComment = useUpdateComment(option.id)
   const deleteComment = useDeleteComment(option.id)
+  const { data: commentLikes = {} } = useCommentLikes(option.id)
+  const toggleCommentLike = useToggleCommentLike(option.id)
 
   useRealtimeVotes(boxId, round)
   useRealtimeComments(option.id)
+  useRealtimeCommentLikes(option.id)
 
   const counts = votes[option.id] ?? { like: 0, dislike: 0, myVote: null }
   const blocks = parseBlocks(option.content)
-  // 라벨 칩은 링크가 2개 이상(구분 필요)일 때만. 하나뿐이면 선택지 이름이 곧 식별자라 중복.
-  const multiLink = blocks.filter(b => b.type === 'link').length > 1
+  const { top: topComments, repliesByParent } = groupComments(comments)
 
-  function handleSubmitComment(e: React.FormEvent) {
-    e.preventDefault()
-    if (!commentBody.trim()) return
-    createComment.mutate(commentBody.trim(), {
-      onSuccess: () => setCommentBody(''),
-    })
+  function renderCommentBody(body: string) {
+    return parseMentionBody(body).map((seg, i) =>
+      seg.type === 'mention' ? (
+        <span key={i} className="font-bold text-butter-dark">@{seg.nickname}</span>
+      ) : (
+        <span key={i}>{seg.value}</span>
+      )
+    )
+  }
+
+  function commentActionRow(comment: CommentWithProfile, topLevelId: string) {
+    const like = commentLikes[comment.id] ?? { count: 0, likedByMe: false }
+    return (
+      <div className="mt-1 flex items-center gap-3">
+        <button
+          onClick={() => toggleCommentLike.mutate({ commentId: comment.id, likedByMe: like.likedByMe })}
+          className={`flex items-center gap-1 text-[11px] font-bold ${like.likedByMe ? 'text-butter-dark' : 'text-ink-faint'}`}
+        >
+          <Icon name="heart" filled={like.likedByMe} size={12} />
+          {like.count > 0 && <span className="tabular-nums">{like.count}</span>}
+        </button>
+        <button
+          onClick={() => { setReplyingTo(topLevelId); setEditingId(null) }}
+          className="text-[11px] font-bold text-ink-faint"
+        >
+          답글
+        </button>
+        {comment.user_id === currentUserId && (
+          <>
+            <button
+              onClick={() => { setEditingId(comment.id); setReplyingTo(null) }}
+              className="text-[11px] text-ink-faint"
+            >
+              수정
+            </button>
+            <button
+              onClick={() => deleteComment.mutate(comment.id)}
+              className="text-[11px] text-ink-faint"
+            >
+              삭제
+            </button>
+          </>
+        )}
+      </div>
+    )
+  }
+
+  function renderComment(comment: CommentWithProfile, topLevelId: string, small?: boolean) {
+    if (editingId === comment.id) {
+      return (
+        <CommentComposer
+          key={comment.id}
+          participants={participants}
+          currentUserId={currentUserId}
+          initialBody={comment.body}
+          submitLabel="저장"
+          autoFocus
+          isPending={updateComment.isPending}
+          onCancel={() => setEditingId(null)}
+          onSubmit={body => updateComment.mutate({ id: comment.id, body }, { onSuccess: () => setEditingId(null) })}
+        />
+      )
+    }
+    return (
+      <div key={comment.id} className="flex gap-3">
+        <div className={`shrink-0 overflow-hidden rounded-full bg-butter-tint ${small ? 'h-6 w-6' : 'h-7 w-7'}`}>
+          {comment.profiles?.avatar_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={comment.profiles.avatar_url} alt={comment.profiles.nickname} className="h-full w-full object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-[11px] font-bold text-ink">
+              {comment.profiles?.nickname?.[0] ?? '?'}
+            </div>
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-bold text-ink">{comment.profiles?.nickname}</span>
+            <span className="text-[11px] text-ink-faint">
+              {formatRelativeTime(comment.created_at)}
+              {comment.edited_at && ' · 수정됨'}
+            </span>
+          </div>
+          <p className="mt-0.5 break-words text-[13.5px] text-ink">{renderCommentBody(comment.body)}</p>
+          {commentActionRow(comment, topLevelId)}
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -181,7 +277,7 @@ export function OptionDetailClient({
                     <img
                       src={block.url}
                       alt="첨부 사진"
-                      className="max-h-80 w-full rounded-[14px] border border-line object-cover"
+                      className="h-auto w-full rounded-[14px] border border-line"
                     />
                   </a>
                 )
@@ -191,54 +287,50 @@ export function OptionDetailClient({
               if (ytId) {
                 return (
                   <div key={block.id} className="space-y-1.5">
-                    {multiLink && block.label && (
-                      <span className="inline-block rounded-full bg-butter-tint px-1.5 py-0.5 text-[10.5px] font-bold text-ink">
-                        {block.label}
-                      </span>
-                    )}
                     <YouTubeEmbed videoId={ytId} />
+                    {block.label && (
+                      <p className="border-t border-dashed border-line pt-2 text-[13px] text-ink-soft">
+                        📝 {block.label}
+                      </p>
+                    )}
                   </div>
                 )
               }
               const emoji = linkKindEmoji(linkKindOf(block))
               return (
-                <a
-                  key={block.id}
-                  href={linkHref(block.url)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex gap-3 rounded-[14px] border border-line bg-cream/40 p-3 active:bg-cream"
-                >
-                  <div className="relative h-14 w-14 shrink-0">
-                    {block.image ? (
-                      <>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={block.image} alt="" className="h-14 w-14 rounded-[10px] border border-line object-cover" />
-                        <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full border border-line bg-paper text-[11px]">
+                <div key={block.id} className="rounded-[14px] border border-line bg-cream/40 p-3">
+                  <a href={linkHref(block.url)} target="_blank" rel="noopener noreferrer" className="flex gap-3 active:opacity-80">
+                    <div className="relative h-14 w-14 shrink-0">
+                      {block.image ? (
+                        <>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={proxiedImageUrl(block.image)} alt="" className="h-14 w-14 rounded-[10px] border border-line object-cover" />
+                          <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full border border-line bg-paper text-[11px]">
+                            {emoji}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="flex h-14 w-14 items-center justify-center rounded-[10px] border border-line bg-paper text-2xl">
                           {emoji}
                         </span>
-                      </>
-                    ) : (
-                      <span className="flex h-14 w-14 items-center justify-center rounded-[10px] border border-line bg-paper text-2xl">
-                        {emoji}
-                      </span>
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    {multiLink && block.label && (
-                      <span className="inline-block rounded-full bg-butter-tint px-1.5 py-0.5 text-[10.5px] font-bold text-ink">
-                        {block.label}
-                      </span>
-                    )}
-                    <p className="mt-0.5 truncate text-[13px] font-bold text-ink">
-                      {block.title || linkDisplayLabel(block.label, block.url)}
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="mt-0.5 truncate text-[13px] font-bold text-ink">
+                        {block.title || linkFallbackTitle(block.url)}
+                      </p>
+                      {block.description && (
+                        <p className="line-clamp-1 text-[11.5px] text-ink-soft">{block.description}</p>
+                      )}
+                      <p className="truncate text-[11px] text-ink-faint">{block.url}</p>
+                    </div>
+                  </a>
+                  {block.label && (
+                    <p className="mt-2 border-t border-dashed border-line pt-2 text-[13px] text-ink-soft">
+                      📝 {block.label}
                     </p>
-                    {block.description && (
-                      <p className="line-clamp-1 text-[11.5px] text-ink-soft">{block.description}</p>
-                    )}
-                    <p className="truncate text-[11px] text-ink-faint">{block.url}</p>
-                  </div>
-                </a>
+                  )}
+                </div>
               )
             })}
           </div>
@@ -255,53 +347,52 @@ export function OptionDetailClient({
           )}
 
           <div className="space-y-4">
-            {comments.map(comment => (
-              <div key={comment.id} className="flex gap-3">
-                <div className="h-7 w-7 shrink-0 overflow-hidden rounded-full bg-butter-tint">
-                  {comment.profiles?.avatar_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={comment.profiles.avatar_url} alt={comment.profiles.nickname} className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-[11px] font-bold text-ink">
-                      {comment.profiles?.nickname?.[0] ?? '?'}
+            {topComments.map(comment => {
+              const replies = repliesByParent[comment.id] ?? []
+              return (
+                <div key={comment.id} className="space-y-3">
+                  {renderComment(comment, comment.id)}
+                  {replies.length > 0 && (
+                    <div className="ml-9 space-y-3 border-l-2 border-cream pl-3">
+                      {replies.map(reply => renderComment(reply, comment.id, true))}
+                    </div>
+                  )}
+                  {replyingTo === comment.id && (
+                    <div className="ml-9">
+                      <CommentComposer
+                        participants={participants}
+                        currentUserId={currentUserId}
+                        placeholder={`${comment.profiles?.nickname ?? ''}님에게 답글`}
+                        initialMention={
+                          comment.profiles ? { id: comment.user_id, nickname: comment.profiles.nickname } : undefined
+                        }
+                        submitLabel="등록"
+                        autoFocus
+                        isPending={createComment.isPending}
+                        onCancel={() => setReplyingTo(null)}
+                        onSubmit={body =>
+                          createComment.mutate(
+                            { body, parentCommentId: comment.id },
+                            { onSuccess: () => setReplyingTo(null) },
+                          )
+                        }
+                      />
                     </div>
                   )}
                 </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-bold text-ink">{comment.profiles?.nickname}</span>
-                    {comment.user_id === currentUserId && (
-                      <button
-                        onClick={() => deleteComment.mutate(comment.id)}
-                        className="shrink-0 text-[11px] text-ink-faint"
-                      >
-                        삭제
-                      </button>
-                    )}
-                  </div>
-                  <p className="mt-0.5 break-words text-[13.5px] text-ink">{comment.body}</p>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
 
-          <form onSubmit={handleSubmitComment} className="flex gap-2">
-            <input
-              type="text"
-              value={commentBody}
-              onChange={e => setCommentBody(e.target.value)}
-              placeholder="댓글을 입력하세요"
-              maxLength={200}
-              className="min-w-0 flex-1 rounded-field border-[1.5px] border-line bg-paper px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none"
-            />
-            <button
-              type="submit"
-              disabled={!commentBody.trim() || createComment.isPending}
-              className="shrink-0 rounded-field bg-ink px-4 py-2.5 text-sm font-bold text-cream disabled:opacity-50"
-            >
-              등록
-            </button>
-          </form>
+          <CommentComposer
+            participants={participants}
+            currentUserId={currentUserId}
+            placeholder="댓글을 입력하세요"
+            submitLabel="등록"
+            isPending={createComment.isPending}
+            compact
+            onSubmit={body => createComment.mutate({ body })}
+          />
         </div>
       </div>
     </main>
