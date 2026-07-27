@@ -135,6 +135,17 @@ function getBoxStatus(box: { closedAt: Date | null }): BoxStatus {
 - **결정 결과 강조**: 정리완료 카드는 결정된 선택지 이름을 형광펜(버터) 밑줄로 최상단 노출 — "○○(으)로 결정!". 중복 결정이면 "○○ 외 N개로 결정".
 - **좋아요**(여럿 상자)는 실시간 인기 신호, 결정권 없음(참고). **혼자 상자는 좋아요 미표시.**
 
+### 3-7. 폴더 (주제별 상자 묶음, 사용자 정의) — 2026-07-28 추가
+
+사용자가 만든 **이름 있는 상자 묶음**. 예: "여행" 폴더에 *여행지·항공권·음식·숙소* 결정 상자를 모아둠. 상태(어질러진/정리된)·즐겨찾기에 이은 **세 번째 분류 축**(주제)이다.
+
+- **⚠️ 그룹(사람 묶음)과 다름**: `groups`/`group_members`는 *같이 초대할 친구 집합*(현재 UI 숨김). 폴더는 *상자 조직화*로 완전히 별개 축이다. 이름을 "그룹"으로 재사용하지 않는다.
+- **모델 (v1 = 단일 폴더)**: 상자 1개 = 폴더 **0~1개**. `boxes.folder_id` nullable. 폴더는 **방장 소유**(`folders.owner_id`), 방장이 지정. 공유 상자에선 방장의 분류가 상자 속성으로 보인다(개인별 폴더는 후순위 과제).
+- **상태 가로지름**: 폴더는 어질러진/정리된을 가로지른다(즐겨찾기처럼). 폴더 뷰(`/folder/[id]`)는 **상태 무관 전체** 노출(안에서 상태 필터 가능).
+- **미분류**(`folder_id IS NULL`) 상자는 기존 어질러진/정리된/즐겨찾는에 그대로 노출(폴더는 추가 뷰일 뿐 기존 뷰를 대체하지 않음).
+- **폴더 삭제 시 상자는 지우지 않는다** — `folder_id`를 null로(미분류 복귀). (FK `on delete set null`)
+- **진입**: 햄버거 드로어에 "폴더" 섹션(내 폴더 목록 + 새 폴더). 상자 상세 편집 메뉴에서 "폴더 지정".
+
 ## 4. 라우트 맵
 
 | 라우트 | 화면 | 비고 |
@@ -151,6 +162,7 @@ function getBoxStatus(box: { closedAt: Date | null }): BoxStatus {
 | `/messy` | 어질러진 창고 | 7-7 |
 | `/done` | 정리된 창고 | 7-7 |
 | `/favorites` | 즐겨찾는 창고 | 7-7 |
+| `/folder/[id]` | 폴더 (주제별 상자 묶음) | 상태 무관 전체. §3-7 |
 | `/invite/[code]` | 상자 초대 랜딩 | **generateMetadata로 OG 동적 렌더링** + 로그인 전 상자 미리보기 |
 | `/groups` | 그룹 관리 | 7-8 |
 | `/groups/[id]` | 그룹 상세 | 7-8 |
@@ -170,6 +182,8 @@ function getBoxStatus(box: { closedAt: Date | null }): BoxStatus {
 > - `box_activities.type`: `'rematch_started'` 제거, 결정은 `'box_decided'`(또는 기존 `'box_closed'` 재사용).
 > - **RLS**: "정리된 상자 쓰기 가드" **폐기** — 정리완료 상자에서도 선택지·좋아요·댓글 편집 허용(§3-4). 참여자면 상태 무관.
 > - **RPC**: `start_rematch` **삭제**. `close_box` → **`decide_box(p_box_id, p_option_ids uuid[])`**(선택 옵션 `decided_at` + `closed_at` 세팅)로 대체. `reopen_box(p_box_id)`는 마감 인자 없이 `closed_at`·`decided_at` 해제만.
+>
+> **폴더 델타 (2026-07-28 — 마이그레이션 `009_folders.sql`):** `folders` 테이블 신규 + `boxes.folder_id uuid references folders(id) on delete set null` 추가. 주제별 상자 묶음(사용자 정의), 그룹(사람)과 무관. 상세 §3-7. RLS: 폴더는 owner만 CRUD, 상자 폴더 지정은 기존 boxes update(방장) 권한 내.
 
 ```sql
 -- 프로필 (auth.users 1:1)
@@ -190,6 +204,7 @@ create table boxes (
   closed_at timestamptz,                 -- 수동 "이대로 결정하기" 시각. null이면 미완료
   current_round int not null default 1,  -- 끝장전 시작 시 +1
   invite_code text not null unique default substr(md5(random()::text), 1, 8),
+  folder_id uuid references folders(id) on delete set null,  -- 폴더(주제별 묶음, 0~1). 009에서 add(folders 생성 후). §3-7
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -249,6 +264,15 @@ create table favorites (
   box_id uuid not null references boxes(id) on delete cascade,
   created_at timestamptz not null default now(),
   primary key (user_id, box_id)
+);
+
+-- 폴더 (주제별 상자 묶음, 사용자 정의). 그룹(사람 묶음)과 무관 — §3-7. boxes.folder_id로 연결(단일 폴더).
+create table folders (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid not null references profiles(id) on delete cascade,
+  name text not null,
+  sort int not null default 0,           -- 드로어 표시 순서
+  created_at timestamptz not null default now()
 );
 
 -- 댓글 (선택지에 달림). 답글은 플랫 2단계(parent_comment_id, 답글의 답글 금지)

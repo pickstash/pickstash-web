@@ -24,6 +24,7 @@ export type IconName =
   | 'more'
   | 'calendar'
   | 'edit'
+  | 'folder'
 
 function inner(name: IconName): ReactNode {
   switch (name) {
@@ -145,6 +146,8 @@ function inner(name: IconName): ReactNode {
           <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
         </>
       )
+    case 'folder':
+      return <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
   }
 }
 

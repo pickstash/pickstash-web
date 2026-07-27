@@ -12,6 +12,7 @@ import {
   useReopenBox,
 } from '@/hooks/use-boxes'
 import { useToggleFavorite } from '@/hooks/use-favorites'
+import { useFolders, useMyBoxFolder, useSetBoxFolder, useCreateFolder } from '@/hooks/use-folders'
 import { useOptions } from '@/hooks/use-options'
 import { useBoxVotes } from '@/hooks/use-votes'
 import { DeadlineBottomSheet } from '@/components/deadline-bottom-sheet'
@@ -114,6 +115,8 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
   const [confirmLeave, setConfirmLeave] = useState(false)
   const [confirmReopen, setConfirmReopen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [folderModal, setFolderModal] = useState(false)
+  const [folderNameInput, setFolderNameInput] = useState('')
   const [isFavorite, setIsFavorite] = useState(initialIsFavorite)
   const [deciding, setDeciding] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -126,6 +129,10 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
   const leaveBox = useLeaveBox()
   const reopenBox = useReopenBox(box.id)
   const toggleFavorite = useToggleFavorite(box.id)
+  const { data: folders = [] } = useFolders()
+  const { data: myFolderId = null } = useMyBoxFolder(box.id)
+  const assignFolder = useSetBoxFolder(box.id)
+  const createFolder = useCreateFolder()
 
   const { data: options = initialOptions } = useOptions(box.id)
   const { data: votes = {} } = useBoxVotes(box.id, box.current_round)
@@ -137,6 +144,12 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
   const isSolo = box.box_participants.length === 1
   const isAuto = box.decision_mode === 'auto_deadline'
   const showLikes = !isSolo                          // 혼자 상자는 좋아요 미표시
+
+  // 폴더 지정/해제 (개인별 — 참여자 누구나 자기 폴더에). 무효화로 체크 표시 갱신.
+  function assignToFolder(folderId: string | null) {
+    assignFolder.mutate(folderId)
+    setFolderModal(false)
+  }
 
   const decidedOptions = options.filter(o => o.decided_at)
   const likeOf = (id: string) => votes[id]?.like ?? 0
@@ -236,7 +249,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
     }
   }
 
-  // 결정 방식 변경 (방장): 직접 정하기는 즉시, 마감 투표는 마감일 시트를 거쳐 적용
+  // 결정 방식 변경 (참여자 누구나): 직접 정하기는 즉시, 마감 투표는 마감일 시트를 거쳐 적용
   function chooseMode(mode: DecisionMode) {
     if (mode === box.decision_mode) { setModeModal(false); return }
     if (mode === 'manual') {
@@ -359,7 +372,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
         </div>
       )}
 
-      {/* 결정 방식 변경 (방장) */}
+      {/* 결정 방식 변경 (참여자 누구나) */}
       {modeModal && (
         <div className="fixed inset-0 z-50 flex flex-col justify-end">
           <div className="absolute inset-0 bg-ink/45" onClick={() => setModeModal(false)} />
@@ -393,6 +406,73 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
               })}
             </div>
             <p className="mt-3 text-[11.5px] text-ink-faint">마감 투표로 바꾸면 마감일을 정하게 돼요.</p>
+          </div>
+        </div>
+      )}
+
+      {/* 폴더 지정 (방장) — 주제별 상자 묶음 §3-7 */}
+      {folderModal && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end">
+          <div className="absolute inset-0 bg-ink/45" onClick={() => setFolderModal(false)} />
+          <div className="relative mx-auto w-full max-w-[430px] rounded-t-sheet bg-paper px-5 pb-10 pt-3">
+            <div className="mx-auto mb-4 h-1 w-9 rounded-full bg-line" />
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-base font-extrabold tracking-tight text-ink">폴더 지정</h3>
+              <button onClick={() => setFolderModal(false)} className="text-[13px] text-ink-faint">닫기</button>
+            </div>
+
+            <div className="max-h-[46vh] space-y-1 overflow-y-auto">
+              <button
+                onClick={() => assignToFolder(null)}
+                className="flex w-full items-center justify-between rounded-[12px] px-3 py-3 text-left text-sm font-semibold text-ink active:bg-cream"
+              >
+                미분류
+                {!myFolderId && <Icon name="check" size={16} strokeWidth={3} className="text-butter-dark" />}
+              </button>
+              {folders.map(f => (
+                <button
+                  key={f.id}
+                  onClick={() => assignToFolder(f.id)}
+                  className="flex w-full items-center justify-between gap-2 rounded-[12px] px-3 py-3 text-left text-sm font-semibold text-ink active:bg-cream"
+                >
+                  <span className="flex min-w-0 items-center gap-2">
+                    <Icon name="folder" size={16} className="shrink-0 text-ink-soft" />
+                    <span className="truncate">{f.name}</span>
+                  </span>
+                  {myFolderId === f.id && <Icon name="check" size={16} strokeWidth={3} className="shrink-0 text-butter-dark" />}
+                </button>
+              ))}
+            </div>
+
+            <form
+              onSubmit={e => {
+                e.preventDefault()
+                const n = folderNameInput.trim()
+                if (!n || createFolder.isPending) return
+                createFolder.mutate(n, {
+                  onSuccess: folder => {
+                    setFolderNameInput('')
+                    assignToFolder(folder.id)
+                  },
+                })
+              }}
+              className="mt-3 flex gap-2 border-t border-line pt-3"
+            >
+              <input
+                value={folderNameInput}
+                onChange={e => setFolderNameInput(e.target.value)}
+                placeholder="새 폴더 만들기"
+                maxLength={20}
+                className="min-w-0 flex-1 rounded-field border-[1.5px] border-line bg-paper px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none"
+              />
+              <button
+                type="submit"
+                disabled={!folderNameInput.trim() || createFolder.isPending}
+                className="shrink-0 rounded-field bg-ink px-4 py-2.5 text-sm font-bold text-cream disabled:opacity-50"
+              >
+                만들기
+              </button>
+            </form>
           </div>
         </div>
       )}
@@ -509,6 +589,12 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
                           결정 방식 변경
                         </button>
                       )}
+                      <button
+                        onClick={() => { setMenuOpen(false); setFolderModal(true) }}
+                        className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-ink active:bg-cream"
+                      >
+                        폴더 지정
+                      </button>
                       <button
                         onClick={() => { setMenuOpen(false); setConfirmLeave(true) }}
                         className="block w-full border-t border-line px-4 py-2.5 text-left text-[13px] font-semibold text-tomato active:bg-tomato-tint"
