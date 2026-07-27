@@ -132,6 +132,25 @@ export function linkDisplayLabel(label: string, url: string): string {
   }
 }
 
+/**
+ * "라벨 https://..." 처럼 URL이 다른 텍스트에 섞여 붙여넣어졌을 때 URL과 라벨을 분리한다.
+ * (공유 버튼이 "네이버 https://www.naver.com/" 형태로 복사해주는 경우 대응)
+ * - 텍스트 안 첫 URL(http/https 또는 www.)을 추출, 끝 구두점 제거.
+ * - URL을 뺀 나머지를 라벨 후보로 정리.
+ * - URL이 없으면 null.
+ */
+export function splitPastedLink(raw: string): { url: string; label: string } | null {
+  const text = raw.trim()
+  if (!text) return null
+  const m = text.match(/(https?:\/\/[^\s]+|www\.[^\s]+)/i)
+  if (!m || m.index === undefined) return null
+  const url = m[0].replace(/[.,;:)\]}"'»]+$/, '') // 끝에 붙은 구두점 제거
+  const label = (text.slice(0, m.index) + text.slice(m.index + m[0].length))
+    .replace(/\s+/g, ' ')
+    .trim()
+  return { url, label }
+}
+
 /** 스킴 없는 링크(예: 레거시 "naver.com")에 https://를 붙여 안전한 href로 만든다. */
 export function linkHref(url: string): string {
   const u = url.trim()

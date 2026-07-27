@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react'
 import { uploadOptionImage } from '@/lib/api/options'
 import { fetchLinkPreview } from '@/lib/api/unfurl'
-import { cleanBlocks, LINK_KINDS, linkKindOf, type OptionBlock } from '@/lib/domain/option-content'
+import { cleanBlocks, LINK_KINDS, linkKindOf, splitPastedLink, type OptionBlock } from '@/lib/domain/option-content'
 
 interface OptionFormProps {
   boxId: string
@@ -70,15 +70,26 @@ export function OptionForm({
     setBlocks(prev => [...prev, { type: 'link', id: newId(), url: '', label: '' }])
   }
 
-  // 링크 URL 확정 시 OG 미리보기를 가져와 블록에 저장
-  async function loadLinkPreview(id: string, url: string) {
-    const trimmed = url.trim()
-    if (!trimmed) {
+  // "라벨 URL" 형태로 붙여넣어진 링크를 URL/라벨로 분리해 블록에 채운다. 분리했으면 정리된 URL 반환.
+  function normalizePastedLink(id: string, currentLabel: string, raw: string): string {
+    const split = splitPastedLink(raw)
+    if (!split) return raw.trim()
+    updateBlock(id, {
+      url: split.url,
+      ...(split.label && !currentLabel.trim() ? { label: split.label } : {}),
+    })
+    return split.url
+  }
+
+  // 링크 URL 확정 시 OG 미리보기를 가져와 블록에 저장 (섞여 들어온 라벨은 먼저 분리)
+  async function loadLinkPreview(id: string, rawUrl: string, currentLabel = '') {
+    const url = normalizePastedLink(id, currentLabel, rawUrl)
+    if (!url) {
       updateBlock(id, { title: undefined, description: undefined, image: undefined })
       return
     }
     setLinkLoading(prev => ({ ...prev, [id]: true }))
-    const preview = await fetchLinkPreview(trimmed)
+    const preview = await fetchLinkPreview(url)
     updateBlock(id, {
       title: preview.title,
       description: preview.description,
@@ -222,8 +233,15 @@ export function OptionForm({
                       type="url"
                       value={block.url}
                       onChange={e => updateBlock(block.id, { url: e.target.value })}
-                      onBlur={e => loadLinkPreview(block.id, e.target.value)}
-                      placeholder="https:// (지도·쇼핑 등 링크를 붙여넣으세요)"
+                      onPaste={e => {
+                        // "네이버 https://..." 처럼 이름이 섞여 복사됐으면 URL/라벨로 자동 분리
+                        const split = splitPastedLink(e.clipboardData.getData('text'))
+                        if (!split || !split.label) return // 순수 URL이면 기본 붙여넣기
+                        e.preventDefault()
+                        loadLinkPreview(block.id, e.clipboardData.getData('text'), block.label)
+                      }}
+                      onBlur={e => loadLinkPreview(block.id, e.target.value, block.label)}
+                      placeholder="https:// (이름째 붙여넣어도 자동 분리돼요)"
                       className="w-full rounded-field border-[1.5px] border-line bg-paper px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none"
                     />
                     {linkLoading[block.id] && (
