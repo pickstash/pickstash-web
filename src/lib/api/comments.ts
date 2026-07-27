@@ -21,7 +21,7 @@ export async function getComments(optionId: string): Promise<CommentWithProfile[
   const supabase = createClient()
   const { data, error } = await supabase
     .from('comments')
-    .select('*, profiles(id, nickname, avatar_url)')
+    .select('*, profiles!comments_user_id_fkey(id, nickname, avatar_url)')
     .eq('option_id', optionId)
     .order('created_at', { ascending: true })
   if (error) throw error

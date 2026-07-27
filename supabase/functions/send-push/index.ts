@@ -9,8 +9,14 @@ interface RequestBody {
   message_key?: 'mention'
 }
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
 Deno.serve(async (req) => {
-  if (req.method !== 'POST') return new Response('Method Not Allowed', { status: 405 })
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
+  if (req.method !== 'POST') return new Response('Method Not Allowed', { status: 405, headers: corsHeaders })
 
   const { box_id, triggered_by, target_user_ids, message_key }: RequestBody = await req.json()
 
@@ -26,7 +32,7 @@ Deno.serve(async (req) => {
     .eq('id', box_id)
     .single()
 
-  if (!box) return new Response('Box not found', { status: 404 })
+  if (!box) return new Response('Box not found', { status: 404, headers: corsHeaders })
 
   let userIds: string[]
   if (target_user_ids?.length) {
@@ -43,7 +49,7 @@ Deno.serve(async (req) => {
     userIds = (participants ?? []).map(p => p.user_id)
   }
 
-  if (!userIds.length) return new Response('OK')
+  if (!userIds.length) return new Response('OK', { headers: corsHeaders })
 
   // 참여자들의 push 구독 정보 조회
   const { data: subscriptions } = await supabase
@@ -51,7 +57,7 @@ Deno.serve(async (req) => {
     .select('endpoint, p256dh, auth')
     .in('user_id', userIds)
 
-  if (!subscriptions?.length) return new Response('OK')
+  if (!subscriptions?.length) return new Response('OK', { headers: corsHeaders })
 
   webpush.setVapidDetails(
     'mailto:admin@pickstash.app',
@@ -96,5 +102,5 @@ Deno.serve(async (req) => {
     await supabase.from('push_subscriptions').delete().in('endpoint', expiredEndpoints)
   }
 
-  return new Response('OK')
+  return new Response('OK', { headers: corsHeaders })
 })
