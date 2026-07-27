@@ -70,19 +70,34 @@ export function OptionForm({
     setBlocks(prev => [...prev, { type: 'link', id: newId(), url: '', label: '' }])
   }
 
+  // 이 링크가 '첫 번째 링크 블록'이고 선택지 이름이 비어 있으면, 라벨을 선택지 이름으로도 채운다.
+  // (링크 여러 개면 첫 링크의 라벨만 이름에 반영)
+  function maybeSyncNameFromLabel(blockId: string, label: string) {
+    if (!label.trim() || name.trim()) return
+    const firstLinkId = blocks.find(b => b.type === 'link')?.id
+    if (blockId === firstLinkId) setName(label.slice(0, 50))
+  }
+
+  // 링크 라벨 변경 — 블록에 반영 + 첫 링크면 선택지 이름 동기화
+  function updateLinkLabel(id: string, label: string) {
+    updateBlock(id, { label })
+    maybeSyncNameFromLabel(id, label)
+  }
+
   // URL이 정해진 채로 링크 블록을 추가하고 바로 미리보기·이름 자동채움을 태운다.
-  function addLinkWithUrl(url: string) {
+  function addLinkWithUrl(url: string, label = '') {
     if (atBlockLimit) return
     const id = newId()
-    setBlocks(prev => [...prev, { type: 'link', id, url, label: '' }])
+    setBlocks(prev => [...prev, { type: 'link', id, url, label }])
     loadLinkPreview(id, url)
   }
 
-  // "글씨 URL" 형태로 붙여넣어졌으면 URL만 뽑아 정리한다. 정리된 URL 반환.
+  // "글씨 URL" 형태로 붙여넣어졌으면 URL/라벨로 분리한다. 정리된 URL 반환.
   function normalizePastedLink(id: string, raw: string): string {
     const split = splitPastedLink(raw)
     if (!split) return raw.trim()
-    updateBlock(id, { url: split.url })
+    updateBlock(id, split.label ? { url: split.url, label: split.label } : { url: split.url })
+    if (split.label) maybeSyncNameFromLabel(id, split.label)
     return split.url
   }
 
@@ -167,7 +182,7 @@ export function OptionForm({
             if (!split) return // 순수 텍스트면 일반 붙여넣기
             e.preventDefault()
             if (split.label && !name.trim()) setName(split.label.slice(0, 50))
-            addLinkWithUrl(split.url)
+            addLinkWithUrl(split.url, split.label)
           }}
           maxLength={50}
           placeholder="선택지 이름을 입력하세요"
@@ -301,6 +316,14 @@ export function OptionForm({
                         })}
                       </div>
                     </div>
+                    <input
+                      type="text"
+                      value={block.label}
+                      onChange={e => updateLinkLabel(block.id, e.target.value)}
+                      maxLength={30}
+                      placeholder="라벨(선택) — 첫 링크는 선택지 이름에도 반영돼요"
+                      className="w-full rounded-field border-[1.5px] border-line bg-paper px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none"
+                    />
                   </div>
                 )}
               </div>
