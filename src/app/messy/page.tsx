@@ -30,7 +30,7 @@ export default async function MessyPage() {
       <PageHeader title="어질러진 창고" />
 
       <p className="px-5 pb-4 text-[13px] leading-relaxed text-ink-soft">
-        아직 정하는 중인 상자들이에요. 후보를 더하고 투표해서 하나씩 결정해보세요.
+        아직 정리 중인 상자들이에요.<br/>후보를 더하고 투표해서 하나씩 결정해보세요.
       </p>
 
       <div className="flex-1 space-y-2.5 px-5 pb-10">
