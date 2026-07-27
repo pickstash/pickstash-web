@@ -6,6 +6,7 @@ import {
   getOptions,
   getOption,
   createOption,
+  createOptionsFromText,
   updateOption,
   deleteOption,
   type CreateOptionInput,
@@ -37,6 +38,18 @@ export function useCreateOption(boxId: string) {
       qc.invalidateQueries({ queryKey: ['options', boxId] })
       qc.invalidateQueries({ queryKey: ['box', boxId] })
       router.push(`/box/${boxId}/option/${option.id}`)
+    },
+  })
+}
+
+/** 링크 붙여넣기 → 선택지 자동 생성 (여러 개 한 번에). 성공 시 목록 새로고침, 페이지 이동 없음. */
+export function useQuickAddOptions(boxId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (text: string) => createOptionsFromText(boxId, text),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['options', boxId] })
+      qc.invalidateQueries({ queryKey: ['box', boxId] })
     },
   })
 }

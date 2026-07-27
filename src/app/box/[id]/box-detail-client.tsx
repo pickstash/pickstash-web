@@ -12,7 +12,8 @@ import {
   useReopenBox,
 } from '@/hooks/use-boxes'
 import { useToggleFavorite } from '@/hooks/use-favorites'
-import { useOptions } from '@/hooks/use-options'
+import { useOptions, useQuickAddOptions } from '@/hooks/use-options'
+import { countQuickAddLinks } from '@/lib/api/options'
 import { useBoxVotes } from '@/hooks/use-votes'
 import { DeadlineBottomSheet } from '@/components/deadline-bottom-sheet'
 import { OptionsSection } from '@/components/options-section'
@@ -114,6 +115,8 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
   const [confirmLeave, setConfirmLeave] = useState(false)
   const [confirmReopen, setConfirmReopen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [quickAddOpen, setQuickAddOpen] = useState(false)
+  const [quickAddText, setQuickAddText] = useState('')
   const [isFavorite, setIsFavorite] = useState(initialIsFavorite)
   const [deciding, setDeciding] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -123,6 +126,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
   const updateDeadline = useUpdateBoxDeadline(box.id)
   const updateDecisionMode = useUpdateBoxDecisionMode(box.id)
   const decideBox = useDecideBox(box.id)
+  const quickAddOptions = useQuickAddOptions(box.id)
   const leaveBox = useLeaveBox()
   const reopenBox = useReopenBox(box.id)
   const toggleFavorite = useToggleFavorite(box.id)
@@ -616,12 +620,20 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
           showLikes={showLikes}
         />
 
-        <Link href={`/box/${box.id}/option/new`} className="block">
-          <div className="flex items-center justify-center gap-1.5 rounded-[18px] border border-dashed border-[#D9D6C2] bg-paper/50 py-4 text-[13px] font-bold text-ink-soft active:bg-cream">
-            <Icon name="plus" size={16} />
-            선택지 추가하기
-          </div>
-        </Link>
+        <div className="space-y-2">
+          <Link href={`/box/${box.id}/option/new`} className="block">
+            <div className="flex items-center justify-center gap-1.5 rounded-[18px] border border-dashed border-[#D9D6C2] bg-paper/50 py-4 text-[13px] font-bold text-ink-soft active:bg-cream">
+              <Icon name="plus" size={16} />
+              선택지 추가하기
+            </div>
+          </Link>
+          <button
+            onClick={() => setQuickAddOpen(true)}
+            className="flex w-full items-center justify-center gap-1.5 rounded-[18px] border border-dashed border-[#D9D6C2] bg-paper/50 py-3 text-[12.5px] font-bold text-ink-soft active:bg-cream"
+          >
+            🔗 링크 붙여넣어 한 번에 추가
+          </button>
+        </div>
       </div>
 
       {/* 하단: 이걸로 정하기 (직접 정하기 · 진행 중) */}
@@ -635,6 +647,46 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
           </button>
         </div>
       )}
+
+      {/* 링크 붙여넣어 한 번에 추가 */}
+      {quickAddOpen && (() => {
+        const detected = countQuickAddLinks(quickAddText)
+        const close = () => { if (!quickAddOptions.isPending) { setQuickAddOpen(false); setQuickAddText('') } }
+        return (
+          <div className="fixed inset-0 z-50 flex flex-col justify-end">
+            <div className="absolute inset-0 bg-ink/45" onClick={close} />
+            <div className="relative mx-auto w-full max-w-[430px] rounded-t-sheet bg-paper px-5 pb-10 pt-3">
+              <div className="mx-auto mb-4 h-1 w-9 rounded-full bg-line" />
+              <h3 className="text-[15px] font-extrabold text-ink">링크로 빠르게 추가</h3>
+              <p className="mt-1 text-[12px] leading-relaxed text-ink-soft">
+                쇼핑·지도 링크를 붙여넣으면 각 링크가 선택지가 돼요. 여러 개는 줄바꿈으로. (최대 10개)
+              </p>
+              <textarea
+                value={quickAddText}
+                onChange={e => setQuickAddText(e.target.value)}
+                rows={5}
+                autoFocus
+                placeholder={'https://link.coupang.com/…\nhttps://smartstore.naver.com/…'}
+                className="mt-3 w-full resize-none rounded-field border-[1.5px] border-line bg-paper px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none"
+              />
+              <p className="mt-1.5 text-[11.5px] font-semibold text-ink-faint">
+                {detected > 0 ? `링크 ${detected}개 감지됨` : '링크를 붙여넣어 주세요'}
+              </p>
+              <button
+                onClick={() =>
+                  quickAddOptions.mutate(quickAddText, {
+                    onSuccess: () => { setQuickAddOpen(false); setQuickAddText('') },
+                  })
+                }
+                disabled={detected === 0 || quickAddOptions.isPending}
+                className="mt-3 w-full rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80 disabled:opacity-50"
+              >
+                {quickAddOptions.isPending ? '추가하는 중…' : detected > 0 ? `${detected}개 선택지로 추가` : '추가하기'}
+              </button>
+            </div>
+          </div>
+        )
+      })()}
 
       <DeadlineBottomSheet
         open={deadlineSheet}
