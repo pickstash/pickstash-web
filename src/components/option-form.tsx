@@ -38,6 +38,11 @@ export function OptionForm({
   const [imageError, setImageError] = useState<string | null>(null)
   const [linkLoading, setLinkLoading] = useState<Record<string, boolean>>({})
   const fileInputRef = useRef<HTMLInputElement>(null)
+  // 비동기(OG 로드) 후 최신 상태를 읽기 위한 ref
+  const blocksRef = useRef(blocks)
+  blocksRef.current = blocks
+  const nameRef = useRef(name)
+  nameRef.current = name
 
   const imageCount = blocks.filter(b => b.type === 'image').length
   const atBlockLimit = blocks.length >= MAX_BLOCKS
@@ -115,9 +120,14 @@ export function OptionForm({
       description: preview.description,
       image: preview.image,
     })
-    // 선택지 이름이 비어 있으면 링크 제목으로 자동 채움 (쇼핑처럼 링크=이름인 경우)
-    if (preview.title) {
-      setName(prev => (prev.trim() ? prev : preview.title!.slice(0, 50)))
+    // 라벨이 비어 있으면(=글씨가 섞여 있지 않았으면) OG 제목을 라벨로 채우고,
+    // 첫 링크면 선택지 이름에도 반영한다. (붙여넣은 글씨 라벨이 있으면 그대로 둠)
+    const cur = blocksRef.current.find(b => b.id === id)
+    if (preview.title && cur?.type === 'link' && !cur.label.trim()) {
+      const lbl = preview.title.slice(0, 50)
+      updateBlock(id, { label: lbl })
+      const firstLinkId = blocksRef.current.find(b => b.type === 'link')?.id
+      if (id === firstLinkId && !nameRef.current.trim()) setName(lbl)
     }
     setLinkLoading(prev => {
       const next = { ...prev }
@@ -275,7 +285,7 @@ export function OptionForm({
                         loadLinkPreview(block.id, text)
                       }}
                       onBlur={e => loadLinkPreview(block.id, e.target.value)}
-                      placeholder="https:// (글씨가 섞여 있어도 자동 정리돼요)"
+                      placeholder="https://"
                       className="w-full rounded-field border-[1.5px] border-line bg-paper px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none"
                     />
                     {linkLoading[block.id] && (
@@ -320,8 +330,8 @@ export function OptionForm({
                       type="text"
                       value={block.label}
                       onChange={e => updateLinkLabel(block.id, e.target.value)}
-                      maxLength={30}
-                      placeholder="라벨(선택) — 첫 링크는 선택지 이름에도 반영돼요"
+                      maxLength={50}
+                      placeholder="이 링크가 뭔지 (예: 최저가, 공식몰, 리뷰)"
                       className="w-full rounded-field border-[1.5px] border-line bg-paper px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none"
                     />
                   </div>
