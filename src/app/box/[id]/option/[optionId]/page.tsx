@@ -31,17 +31,13 @@ export default async function OptionDetailPage({
 
   const status = getBoxStatus(box)
   const canVote = status === 'OPEN'
-  const isDone = status === 'RESOLVED'
 
   return (
     <OptionDetailClient
       option={option}
       boxId={boxId}
       round={box.current_round}
-      isOwner={myParticipant.role === 'owner'}
-      isAuthor={option.created_by === user.id}
       canVote={canVote}
-      isDone={isDone}
       currentUserId={user.id}
     />
   )

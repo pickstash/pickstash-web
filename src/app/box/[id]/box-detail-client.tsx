@@ -8,7 +8,6 @@ import {
   useUpdateBoxDeadline,
   useUpdateBoxDecisionMode,
   useDecideBox,
-  useDeleteBox,
   useLeaveBox,
   useReopenBox,
 } from '@/hooks/use-boxes'
@@ -28,7 +27,6 @@ import type { Option } from '@/lib/api/options'
 
 interface BoxDetailClientProps {
   box: BoxWithParticipants
-  isOwner: boolean
   currentUserId: string
   initialOptions: Option[]
   initialIsFavorite: boolean
@@ -104,7 +102,7 @@ function PencilCircle({ children }: { children: ReactNode }) {
   )
 }
 
-export function BoxDetailClient({ box: initialBox, isOwner, currentUserId, initialOptions, initialIsFavorite }: BoxDetailClientProps) {
+export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions, initialIsFavorite }: BoxDetailClientProps) {
   const [box, setBox] = useState(initialBox)
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleInput, setTitleInput] = useState(box.title)
@@ -113,7 +111,6 @@ export function BoxDetailClient({ box: initialBox, isOwner, currentUserId, initi
   const [deadlineSheet, setDeadlineSheet] = useState(false)
   const [modeModal, setModeModal] = useState(false)
   const [switchingToAuto, setSwitchingToAuto] = useState(false)
-  const [confirmDeleteBox, setConfirmDeleteBox] = useState(false)
   const [confirmLeave, setConfirmLeave] = useState(false)
   const [confirmReopen, setConfirmReopen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -126,7 +123,6 @@ export function BoxDetailClient({ box: initialBox, isOwner, currentUserId, initi
   const updateDeadline = useUpdateBoxDeadline(box.id)
   const updateDecisionMode = useUpdateBoxDecisionMode(box.id)
   const decideBox = useDecideBox(box.id)
-  const deleteBox = useDeleteBox()
   const leaveBox = useLeaveBox()
   const reopenBox = useReopenBox(box.id)
   const toggleFavorite = useToggleFavorite(box.id)
@@ -155,8 +151,8 @@ export function BoxDetailClient({ box: initialBox, isOwner, currentUserId, initi
     </div>
   )
 
-  // 마감 칩은 '마감 투표' 상자에서만 (직접 정하기 상자는 마감 없음)
-  const deadlineNode = !isAuto ? null : isOwner && !isDone ? (
+  // 마감 칩은 '마감 투표' 상자에서만 (직접 정하기 상자는 마감 없음). 참여자 누구나 수정.
+  const deadlineNode = !isAuto ? null : !isDone ? (
     <button
       onClick={() => setDeadlineSheet(true)}
       className="flex items-center gap-1.5 rounded-full border border-line bg-paper px-3 py-1.5 text-[12px] font-bold text-ink-soft active:bg-cream"
@@ -331,39 +327,19 @@ export function BoxDetailClient({ box: initialBox, isOwner, currentUserId, initi
         }
       />
 
-      {/* 상자 삭제 확인 */}
-      {confirmDeleteBox && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-8">
-          <div className="absolute inset-0 bg-ink/40" onClick={() => setConfirmDeleteBox(false)} />
-          <div className="relative w-full max-w-[300px] rounded-[20px] bg-paper p-5 shadow-[0_16px_40px_rgba(42,42,39,0.25)]">
-            <p className="text-[15px] font-extrabold text-ink">상자를 삭제할까요?</p>
-            <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-soft">선택지·투표·댓글이 모두 사라져요. 되돌릴 수 없어요.</p>
-            <div className="mt-4 flex gap-2">
-              <button
-                onClick={() => setConfirmDeleteBox(false)}
-                className="flex-1 rounded-field border border-line py-3 text-[13px] font-bold text-ink-soft"
-              >
-                취소
-              </button>
-              <button
-                onClick={() => deleteBox.mutate(box.id)}
-                disabled={deleteBox.isPending}
-                className="flex-1 rounded-field bg-tomato py-3 text-[13px] font-bold text-white disabled:opacity-50"
-              >
-                삭제하기
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 상자 나가기 확인 (참여자) */}
+      {/* 상자 나가기 확인 — 혼자인 상자는 나가면 삭제됨 */}
       {confirmLeave && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-8">
           <div className="absolute inset-0 bg-ink/40" onClick={() => setConfirmLeave(false)} />
           <div className="relative w-full max-w-[300px] rounded-[20px] bg-paper p-5 shadow-[0_16px_40px_rgba(42,42,39,0.25)]">
-            <p className="text-[15px] font-extrabold text-ink">상자에서 나갈까요?</p>
-            <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-soft">내 목록에서 사라져요. 다시 참여하려면 초대가 필요해요.</p>
+            <p className="text-[15px] font-extrabold text-ink">
+              {isSolo ? '상자를 삭제할까요?' : '상자에서 나갈까요?'}
+            </p>
+            <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-soft">
+              {isSolo
+                ? '나 혼자 있는 상자예요. 나가면 선택지·투표·댓글이 모두 사라져요. 되돌릴 수 없어요.'
+                : '내 목록에서 사라져요. 다시 참여하려면 초대가 필요해요. (마지막 한 명이 나가면 상자가 삭제돼요.)'}
+            </p>
             <div className="mt-4 flex gap-2">
               <button
                 onClick={() => setConfirmLeave(false)}
@@ -376,7 +352,7 @@ export function BoxDetailClient({ box: initialBox, isOwner, currentUserId, initi
                 disabled={leaveBox.isPending}
                 className="flex-1 rounded-field bg-tomato py-3 text-[13px] font-bold text-white disabled:opacity-50"
               >
-                나가기
+                {isSolo ? '삭제하기' : '나가기'}
               </button>
             </div>
           </div>
@@ -500,57 +476,49 @@ export function BoxDetailClient({ box: initialBox, isOwner, currentUserId, initi
           ) : (
             <div className="flex items-start justify-between gap-2">
               <h1 className="min-w-0 text-[22px] font-extrabold leading-tight tracking-tight text-ink">{box.title}</h1>
-              {isOwner ? (
-                <div className="relative shrink-0">
-                  <button
-                    onClick={() => setMenuOpen(v => !v)}
-                    className="mt-1 flex items-center gap-1 text-[12.5px] font-semibold text-ink-faint active:text-ink"
-                  >
-                    <Icon name="edit" size={13} />
-                    편집
-                  </button>
-                  {menuOpen && (
-                    <>
-                      <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-                      <div className="absolute right-0 top-full z-50 mt-1.5 w-36 overflow-hidden rounded-[14px] border border-line bg-paper py-1 shadow-[0_8px_24px_rgba(42,42,39,0.16)]">
-                        <button
-                          onClick={() => { setMenuOpen(false); setEditingTitle(true); setTitleInput(box.title) }}
-                          className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-ink active:bg-cream"
-                        >
-                          제목 수정
-                        </button>
-                        <button
-                          onClick={() => { setMenuOpen(false); setEditingMemo(true); setMemoInput(box.memo ?? '') }}
-                          className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-ink active:bg-cream"
-                        >
-                          {box.memo ? '메모 수정' : '메모 추가'}
-                        </button>
-                        {!isDone && (
-                          <button
-                            onClick={() => { setMenuOpen(false); setModeModal(true) }}
-                            className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-ink active:bg-cream"
-                          >
-                            결정 방식 변경
-                          </button>
-                        )}
-                        <button
-                          onClick={() => { setMenuOpen(false); setConfirmDeleteBox(true) }}
-                          className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-tomato active:bg-tomato-tint"
-                        >
-                          상자 삭제
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              ) : (
+              {/* 편집은 참여자 누구나. 마지막 항목은 나가기(혼자면 삭제). */}
+              <div className="relative shrink-0">
                 <button
-                  onClick={() => setConfirmLeave(true)}
-                  className="mt-1 shrink-0 text-[12.5px] font-semibold text-ink-faint active:text-tomato"
+                  onClick={() => setMenuOpen(v => !v)}
+                  className="mt-1 flex items-center gap-1 text-[12.5px] font-semibold text-ink-faint active:text-ink"
                 >
-                  나가기
+                  <Icon name="edit" size={13} />
+                  편집
                 </button>
-              )}
+                {menuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+                    <div className="absolute right-0 top-full z-50 mt-1.5 w-36 overflow-hidden rounded-[14px] border border-line bg-paper py-1 shadow-[0_8px_24px_rgba(42,42,39,0.16)]">
+                      <button
+                        onClick={() => { setMenuOpen(false); setEditingTitle(true); setTitleInput(box.title) }}
+                        className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-ink active:bg-cream"
+                      >
+                        제목 수정
+                      </button>
+                      <button
+                        onClick={() => { setMenuOpen(false); setEditingMemo(true); setMemoInput(box.memo ?? '') }}
+                        className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-ink active:bg-cream"
+                      >
+                        {box.memo ? '메모 수정' : '메모 추가'}
+                      </button>
+                      {!isDone && (
+                        <button
+                          onClick={() => { setMenuOpen(false); setModeModal(true) }}
+                          className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-ink active:bg-cream"
+                        >
+                          결정 방식 변경
+                        </button>
+                      )}
+                      <button
+                        onClick={() => { setMenuOpen(false); setConfirmLeave(true) }}
+                        className="block w-full border-t border-line px-4 py-2.5 text-left text-[13px] font-semibold text-tomato active:bg-tomato-tint"
+                      >
+                        {isSolo ? '상자 삭제' : '나가기'}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           )}
 

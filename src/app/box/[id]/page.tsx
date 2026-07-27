@@ -47,7 +47,6 @@ export default async function BoxDetailPage({ params }: { params: Promise<{ id: 
   return (
     <BoxDetailClient
       box={box}
-      isOwner={myParticipant.role === 'owner'}
       currentUserId={user.id}
       initialOptions={optionsData ?? []}
       initialIsFavorite={!!favorite}

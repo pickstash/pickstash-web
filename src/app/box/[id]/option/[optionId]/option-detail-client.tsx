@@ -24,10 +24,7 @@ interface OptionDetailClientProps {
   option: Option
   boxId: string
   round: number
-  isOwner: boolean
-  isAuthor: boolean
   canVote: boolean
-  isDone: boolean
   currentUserId: string
 }
 
@@ -35,10 +32,7 @@ export function OptionDetailClient({
   option,
   boxId,
   round,
-  isOwner,
-  isAuthor,
   canVote,
-  isDone,
   currentUserId,
 }: OptionDetailClientProps) {
   const { data: votes = {} } = useBoxVotes(boxId, round)
@@ -55,9 +49,9 @@ export function OptionDetailClient({
   const counts = votes[option.id] ?? { like: 0, dislike: 0, myVote: null }
   const blocks = parseBlocks(option.content)
 
-  // 정리된 상자에서는 편집·삭제 불가 (spec 3장 · 004 RLS 병행)
-  const canEdit = !isDone && (isOwner || isAuthor)
-  const canDelete = !isDone && isAuthor
+  // 참여자면 누구나 편집·삭제 (008 RLS: 방장·작성자 구분 폐기). 페이지가 비참여자를 이미 리다이렉트.
+  const canEdit = true
+  const canDelete = true
 
   function handleSubmitComment(e: React.FormEvent) {
     e.preventDefault()
@@ -221,7 +215,7 @@ export function OptionDetailClient({
               onChange={e => setCommentBody(e.target.value)}
               placeholder="댓글을 입력하세요"
               maxLength={200}
-              className="flex-1 rounded-field border-[1.5px] border-line bg-paper px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none"
+              className="min-w-0 flex-1 rounded-field border-[1.5px] border-line bg-paper px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none"
             />
             <button
               type="submit"
