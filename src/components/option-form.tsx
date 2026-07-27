@@ -45,6 +45,7 @@ export function OptionForm({
   nameRef.current = name
 
   const imageCount = blocks.filter(b => b.type === 'image').length
+  const linkCount = blocks.filter(b => b.type === 'link').length
   const atBlockLimit = blocks.length >= MAX_BLOCKS
 
   function updateBlock(id: string, patch: Record<string, unknown>) {
@@ -195,11 +196,13 @@ export function OptionForm({
             addLinkWithUrl(split.url, split.label)
           }}
           maxLength={50}
-          placeholder="선택지 이름을 입력하세요"
+          placeholder="링크 붙여넣기 또는 이름 입력"
           className="w-full rounded-field border-[1.5px] border-line bg-paper px-4 py-3 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none focus:ring-[3px] focus:ring-butter-tint"
           required
         />
-        <p className="mt-1 text-[11.5px] text-ink-faint">링크를 붙여넣으면 이름·링크가 자동으로 채워져요.</p>
+        <p className="mt-1 text-[11.5px] text-ink-faint">
+          쇼핑·유튜브·지도 링크를 여기 붙여넣으면 이름·미리보기가 자동으로 채워져요.
+        </p>
       </div>
 
       {/* 본문 블록 */}
@@ -326,14 +329,17 @@ export function OptionForm({
                         })}
                       </div>
                     </div>
-                    <input
-                      type="text"
-                      value={block.label}
-                      onChange={e => updateLinkLabel(block.id, e.target.value)}
-                      maxLength={50}
-                      placeholder="이 링크가 뭔지 (예: 최저가, 공식몰, 리뷰)"
-                      className="w-full rounded-field border-[1.5px] border-line bg-paper px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none"
-                    />
+                    {/* 라벨은 한 선택지에 링크가 2개 이상일 때만 (구분이 실제로 필요할 때). */}
+                    {linkCount >= 2 && (
+                      <input
+                        type="text"
+                        value={block.label}
+                        onChange={e => updateLinkLabel(block.id, e.target.value)}
+                        maxLength={50}
+                        placeholder="이 링크가 뭔지 (예: 최저가, 공식몰, 리뷰)"
+                        className="w-full rounded-field border-[1.5px] border-line bg-paper px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none"
+                      />
+                    )}
                   </div>
                 )}
               </div>

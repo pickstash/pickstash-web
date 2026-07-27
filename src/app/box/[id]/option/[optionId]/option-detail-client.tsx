@@ -48,6 +48,8 @@ export function OptionDetailClient({
 
   const counts = votes[option.id] ?? { like: 0, dislike: 0, myVote: null }
   const blocks = parseBlocks(option.content)
+  // 라벨 칩은 링크가 2개 이상(구분 필요)일 때만. 하나뿐이면 선택지 이름이 곧 식별자라 중복.
+  const multiLink = blocks.filter(b => b.type === 'link').length > 1
 
   // 참여자면 누구나 편집·삭제 (008 RLS: 방장·작성자 구분 폐기). 페이지가 비참여자를 이미 리다이렉트.
   const canEdit = true
@@ -114,7 +116,7 @@ export function OptionDetailClient({
               if (ytId) {
                 return (
                   <div key={block.id} className="space-y-1.5">
-                    {block.label && (
+                    {multiLink && block.label && (
                       <span className="inline-block rounded-full bg-butter-tint px-1.5 py-0.5 text-[10.5px] font-bold text-ink">
                         {block.label}
                       </span>
@@ -148,7 +150,7 @@ export function OptionDetailClient({
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    {block.label && (
+                    {multiLink && block.label && (
                       <span className="inline-block rounded-full bg-butter-tint px-1.5 py-0.5 text-[10.5px] font-bold text-ink">
                         {block.label}
                       </span>
