@@ -136,7 +136,10 @@ export default async function HomePage() {
         {/* ① 마감 히어로 (가장 급한 상자) */}
         <DecisionHero box={hero} />
 
-        {/* ② 창고 요약 한 줄 */}
+        {/* ② 이어서 정할 상자 (가로 레일) — 결정 콘텐츠를 히어로와 함께 위로 */}
+        <DecisionRail boxes={railCards} totalOpen={openCount} />
+
+        {/* ③ 창고 요약 한 줄 (탐색) */}
         <section className="px-5 pt-5">
           <div className="flex items-stretch gap-2 rounded-[18px] border border-[#ECEADC] bg-paper p-1.5 shadow-[0_2px_10px_rgba(42,42,39,0.05)]">
             {warehouses.map((w, i) => (
@@ -157,11 +160,8 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* ③ 폴더(주제) 칩 */}
+        {/* ④ 폴더(주제) 칩 (탐색) */}
         <FolderChips initialFolders={(folders ?? []) as Folder[]} />
-
-        {/* ④ 이어서 정할 상자 (가로 레일) */}
-        <DecisionRail boxes={railCards} totalOpen={openCount} />
       </div>
 
       {/* 하단 고정 CTA */}

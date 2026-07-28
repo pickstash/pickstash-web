@@ -16,6 +16,8 @@ export function FolderChips({ initialFolders }: { initialFolders: Folder[] }) {
   const [adding, setAdding] = useState(false)
   const [name, setName] = useState('')
 
+  // 폴더가 없어도 섹션은 유지 — 최소 '+ 새 폴더' 버튼으로 생성 유도(숨기지 않음).
+
   function submit() {
     const trimmed = name.trim()
     if (!trimmed) {

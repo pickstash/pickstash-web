@@ -19,8 +19,9 @@ function DeadlineChip({ deadlineAt }: { deadlineAt: string }) {
 }
 
 /**
- * "이어서 정할 상자" — 히어로 다음으로 정할 상자들을 가로 스크롤 미니 카드로.
+ * "이어서 정리할 상자" — 히어로 다음으로 정리할 상자들을 가로 스크롤 미니 카드로.
  * 세로 리스트(창고 화면)와 리듬을 다르게 해 홈과 목록을 구분한다.
+ * boxes가 비면(예: 어질러진 상자가 히어로 1개뿐) 섹션 자체를 렌더하지 않는다.
  */
 export function DecisionRail({ boxes, totalOpen }: { boxes: OpenBoxCard[]; totalOpen: number }) {
   if (boxes.length === 0) return null
@@ -28,7 +29,7 @@ export function DecisionRail({ boxes, totalOpen }: { boxes: OpenBoxCard[]; total
   return (
     <section className="pt-5">
       <div className="mb-2.5 flex items-center justify-between px-5">
-        <h2 className="text-[14px] font-extrabold text-ink">이어서 정할 상자</h2>
+        <h2 className="text-[14px] font-extrabold text-ink">이어서 정리할 상자</h2>
         {totalOpen > boxes.length + 1 && (
           <Link href="/messy" className="text-[12px] font-semibold text-ink-faint active:opacity-70">
             전체 {totalOpen} ›
@@ -36,7 +37,7 @@ export function DecisionRail({ boxes, totalOpen }: { boxes: OpenBoxCard[]; total
         )}
       </div>
 
-      <div className="-mx-5 flex gap-2.5 overflow-x-auto px-5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex gap-2.5 overflow-x-auto px-5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {boxes.map(box => (
           <Link key={box.id} href={`/box/${box.id}`} className="block shrink-0">
             <div className="flex w-[176px] flex-col gap-2.5 rounded-[18px] border border-[#ECEADC] bg-paper p-3.5 shadow-[0_2px_10px_rgba(42,42,39,0.05)] active:bg-butter-tint/40">
