@@ -72,8 +72,9 @@ begin
     where o.box_id = p_box_id group by o.id having count(*) = v_max
   );
   update boxes set closed_at = now() where id = p_box_id;
+  -- actor 폴백: owner_id 삭제(011) → 첫 참여자(생성자). owner_id 참조하면 재실행 시 실패.
   insert into box_activities (box_id, actor_id, type)
-  values (p_box_id, coalesce(auth.uid(), (select owner_id from boxes where id = p_box_id)), 'box_closed');
+  values (p_box_id, coalesce(auth.uid(), (select user_id from box_participants where box_id = p_box_id order by joined_at limit 1)), 'box_closed');
 end; $$;
 
 -- ─────────────────────────────────────────────
@@ -92,16 +93,16 @@ create policy "options: 참여자 추가" on options for insert with check (
   created_by = auth.uid()
   and exists (select 1 from box_participants where box_id = options.box_id and user_id = auth.uid())
 );
+-- 수정/삭제: 참여자 누구나(008에서 방장/작성자 구분 폐기, 011에서 role 컬럼 삭제).
+--   role 컬럼을 참조하면 011 이후 재실행 시 "column role does not exist"로 실패하므로 참여자 기준으로 통일.
 drop policy if exists "options: 작성자·owner 수정" on options;
-create policy "options: 작성자·owner 수정" on options for update using (
-  created_by = auth.uid()
-  or exists (select 1 from box_participants where box_id = options.box_id and user_id = auth.uid() and role = 'owner')
-);
+drop policy if exists "options: 참여자 수정" on options;
+create policy "options: 참여자 수정" on options for update
+  using (exists (select 1 from box_participants where box_id = options.box_id and user_id = auth.uid()));
 drop policy if exists "options: 작성자·owner 삭제" on options;
-create policy "options: 작성자·owner 삭제" on options for delete using (
-  created_by = auth.uid()
-  or exists (select 1 from box_participants where box_id = options.box_id and user_id = auth.uid() and role = 'owner')
-);
+drop policy if exists "options: 참여자 삭제" on options;
+create policy "options: 참여자 삭제" on options for delete
+  using (exists (select 1 from box_participants where box_id = options.box_id and user_id = auth.uid()));
 
 -- ─────────────────────────────────────────────
 -- ④ 백필: 기존 정리완료 상자에 결정 표시가 하나도 없으면 좋아요 최다(들)를 결정으로.

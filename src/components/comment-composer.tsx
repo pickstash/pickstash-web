@@ -60,6 +60,37 @@ function initialState(initialBody?: string, initialMention?: { id: string; nickn
   return { text: '', spans: [] }
 }
 
+/**
+ * 입력 텍스트가 바뀔 때 멘션 span의 절대 오프셋을 보정한다.
+ * 앞/뒤 공통 부분으로 변경 구간을 특정하고, 변경 지점 뒤의 span은 길이 변화량만큼 민다.
+ * 변경이 span 내부를 건드리면 그 span은 버린다(멘션 해제). 없으면 멘션 앞 편집 시 멘션이 소실됨.
+ */
+function reindexSpans(oldText: string, newText: string, spans: MentionSpan[]): MentionSpan[] {
+  if (oldText === newText || spans.length === 0) return spans
+  const delta = newText.length - oldText.length
+  const minLen = Math.min(oldText.length, newText.length)
+  let prefix = 0
+  while (prefix < minLen && oldText[prefix] === newText[prefix]) prefix++
+  let suffix = 0
+  while (
+    suffix < minLen - prefix &&
+    oldText[oldText.length - 1 - suffix] === newText[newText.length - 1 - suffix]
+  ) {
+    suffix++
+  }
+  const oldChangeEnd = oldText.length - suffix // 변경 구간(old 기준)의 끝(제외)
+  const result: MentionSpan[] = []
+  for (const s of spans) {
+    if (s.end <= prefix) {
+      result.push(s) // 변경 지점 앞 — 그대로
+    } else if (s.start >= oldChangeEnd) {
+      result.push({ ...s, start: s.start + delta, end: s.end + delta }) // 변경 지점 뒤 — 이동
+    }
+    // else: 변경이 span과 겹침 → 버림(멘션 해제)
+  }
+  return result
+}
+
 export function CommentComposer({
   participants,
   currentUserId,
@@ -90,7 +121,9 @@ export function CommentComposer({
     const newText = e.target.value
     const cursor = e.target.selectionStart ?? newText.length
 
-    const nextSpans = spans.filter(s => newText.slice(s.start, s.end) === `@${s.nickname}`)
+    const nextSpans = reindexSpans(text, newText, spans).filter(
+      s => newText.slice(s.start, s.end) === `@${s.nickname}`,
+    )
     setSpans(nextSpans)
     setText(newText)
 

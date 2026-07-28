@@ -172,6 +172,10 @@ export async function leaveBox(id: string): Promise<void> {
     .eq('box_id', id)
     .eq('user_id', user.id)
   if (error) throw error
+  // 나가면 이 상자는 내 모든 목록(RLS)에서 사라지므로 즐겨찾기도 정리한다.
+  // (안 지우면 홈 '즐겨찾는 창고' 카운트엔 잡히는데 목록엔 안 떠 불일치.)
+  // 마지막 참여자였다면 상자 cascade로 이미 삭제됐을 수 있어 이 delete는 무해한 no-op.
+  await supabase.from('favorites').delete().eq('box_id', id).eq('user_id', user.id)
 }
 
 export async function markAllSeen(): Promise<void> {

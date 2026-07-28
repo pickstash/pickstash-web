@@ -74,7 +74,7 @@ export default function BoxLinksPage({ params }: { params: Promise<{ id: string 
         ) : (
           <div className="space-y-2.5">
             {shown.map(({ optionId, optionName, block, kind }) => (
-              <div key={block.id} className="rounded-card border border-line bg-paper p-3.5">
+              <div key={`${optionId}-${block.id}`} className="rounded-card border border-line bg-paper p-3.5">
                 <a href={linkHref(block.url)} target="_blank" rel="noopener noreferrer" className="flex gap-3">
                   {block.image ? (
                     <div className="relative h-12 w-12 shrink-0">

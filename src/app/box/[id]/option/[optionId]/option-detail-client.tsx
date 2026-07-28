@@ -57,8 +57,11 @@ export function OptionDetailClient({
   const { data: votes = {} } = useBoxVotes(boxId, round)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
-  const [replyingTo, setReplyingTo] = useState<string | null>(null)
+  const [replyingTo, setReplyingTo] = useState<{ parentId: string; mention?: { id: string; nickname: string } } | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [confirmDeleteComment, setConfirmDeleteComment] = useState<string | null>(null)
+  // 등록 성공 시 key를 올려 새 댓글 컴포저를 리마운트(입력 내용 비우기 → 중복 등록 방지)
+  const [composerKey, setComposerKey] = useState(0)
   const deleteOption = useDeleteOption(boxId)
   const { data: comments = [] } = useComments(option.id)
   const createComment = useCreateComment(option.id)
@@ -97,7 +100,15 @@ export function OptionDetailClient({
           {like.count > 0 && <span className="tabular-nums">{like.count}</span>}
         </button>
         <button
-          onClick={() => { setReplyingTo(topLevelId); setEditingId(null) }}
+          onClick={() => {
+            setReplyingTo({
+              parentId: topLevelId,
+              mention: comment.profiles
+                ? { id: comment.user_id, nickname: comment.profiles.nickname }
+                : undefined,
+            })
+            setEditingId(null)
+          }}
           className="text-[11px] font-bold text-ink-faint"
         >
           답글
@@ -111,7 +122,7 @@ export function OptionDetailClient({
               수정
             </button>
             <button
-              onClick={() => deleteComment.mutate(comment.id)}
+              onClick={() => setConfirmDeleteComment(comment.id)}
               className="text-[11px] text-ink-faint"
             >
               삭제
@@ -189,6 +200,37 @@ export function OptionDetailClient({
               <button
                 onClick={() => deleteOption.mutate(option.id)}
                 disabled={deleteOption.isPending}
+                className="flex-1 rounded-field bg-tomato py-3 text-[13px] font-bold text-white disabled:opacity-50"
+              >
+                삭제하기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 댓글 삭제 확인 — 답글까지 함께 사라지므로 실수 방지 */}
+      {confirmDeleteComment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-8">
+          <div className="absolute inset-0 bg-ink/40" onClick={() => setConfirmDeleteComment(null)} />
+          <div className="relative w-full max-w-[300px] rounded-[20px] bg-paper p-5 shadow-[0_16px_40px_rgba(42,42,39,0.25)]">
+            <p className="text-[15px] font-extrabold text-ink">댓글을 삭제할까요?</p>
+            <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-soft">
+              답글이 달려 있으면 함께 사라져요. 되돌릴 수 없어요.
+            </p>
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={() => setConfirmDeleteComment(null)}
+                className="flex-1 rounded-field border border-line py-3 text-[13px] font-bold text-ink-soft"
+              >
+                취소
+              </button>
+              <button
+                onClick={() => {
+                  deleteComment.mutate(confirmDeleteComment)
+                  setConfirmDeleteComment(null)
+                }}
+                disabled={deleteComment.isPending}
                 className="flex-1 rounded-field bg-tomato py-3 text-[13px] font-bold text-white disabled:opacity-50"
               >
                 삭제하기
@@ -357,15 +399,13 @@ export function OptionDetailClient({
                       {replies.map(reply => renderComment(reply, comment.id, true))}
                     </div>
                   )}
-                  {replyingTo === comment.id && (
+                  {replyingTo?.parentId === comment.id && (
                     <div className="ml-9">
                       <CommentComposer
                         participants={participants}
                         currentUserId={currentUserId}
-                        placeholder={`${comment.profiles?.nickname ?? ''}님에게 답글`}
-                        initialMention={
-                          comment.profiles ? { id: comment.user_id, nickname: comment.profiles.nickname } : undefined
-                        }
+                        placeholder={`${replyingTo.mention?.nickname ?? ''}님에게 답글`}
+                        initialMention={replyingTo.mention}
                         submitLabel="등록"
                         autoFocus
                         isPending={createComment.isPending}
@@ -385,13 +425,14 @@ export function OptionDetailClient({
           </div>
 
           <CommentComposer
+            key={composerKey}
             participants={participants}
             currentUserId={currentUserId}
             placeholder="댓글을 입력하세요"
             submitLabel="등록"
             isPending={createComment.isPending}
             compact
-            onSubmit={body => createComment.mutate({ body })}
+            onSubmit={body => createComment.mutate({ body }, { onSuccess: () => setComposerKey(k => k + 1) })}
           />
         </div>
       </div>

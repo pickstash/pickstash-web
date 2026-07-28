@@ -20,6 +20,7 @@ import {
   type CreateBoxInput,
   type DecisionMode,
 } from '@/lib/api/boxes'
+import type { Option } from '@/lib/api/options'
 
 export function useCreateBox() {
   const router = useRouter()
@@ -99,6 +100,20 @@ export function useDecideBox(boxId: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (optionIds: string[]) => decideBox(boxId, optionIds),
+    // 낙관적으로 선택지 캐시에 decided_at을 찍어, 상자가 정리완료로 바뀌는 순간
+    // 히어로가 "결정 없이 마무리됐어요"로 잠깐 깜빡이는 것을 막는다.
+    onMutate: async (optionIds) => {
+      await queryClient.cancelQueries({ queryKey: ['options', boxId] })
+      const prev = queryClient.getQueryData<Option[]>(['options', boxId])
+      const now = new Date().toISOString()
+      queryClient.setQueryData<Option[]>(['options', boxId], old =>
+        old?.map(o => (optionIds.includes(o.id) ? { ...o, decided_at: now } : o)),
+      )
+      return { prev }
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(['options', boxId], ctx.prev)
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['box', boxId] })
       queryClient.invalidateQueries({ queryKey: ['boxes'] })
