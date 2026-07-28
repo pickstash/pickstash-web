@@ -54,3 +54,6 @@ certificates
 
 # oh-my-claudecode 운영 상태 (커밋 대상 아님)
 .omc/
+
+# Claude Code MCP 로컬 설정
+.mcp.json
