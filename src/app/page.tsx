@@ -121,8 +121,8 @@ export default async function HomePage() {
   return (
     <main className="flex min-h-dvh flex-col">
       <header className="sticky top-0 z-20 flex items-center justify-between bg-cream/95 px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-3 backdrop-blur-sm">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <Image src="/icons/character.png" alt="" width={44} height={33} className="h-[33px] w-auto" priority />
+        <div className="flex min-w-0 items-center gap-2">
+          <Image src="/icons/character.png" alt="" width={32} height={24} className="h-6 w-auto" priority />
           <h1 className="truncate text-xl font-extrabold tracking-tight text-ink">
             {profile?.nickname ?? ''}님의 결정창고
           </h1>
