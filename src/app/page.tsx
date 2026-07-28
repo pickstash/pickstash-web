@@ -3,7 +3,8 @@ import Image from 'next/image'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { AppDrawer } from '@/components/app-drawer'
-import { DecisionQueueSection, type QueueCard } from '@/components/decision-queue-section'
+import { DecisionHero, type OpenBoxCard } from '@/components/decision-hero'
+import { DecisionRail } from '@/components/decision-rail'
 import { FolderChips } from '@/components/folder-chips'
 import { PushNotificationBanner } from '@/components/push-notification-banner'
 import { Icon } from '@/components/icon'
@@ -15,7 +16,7 @@ type RawOpenBox = Box & {
   box_participants: { user_id: string; profiles: { avatar_url: string | null; nickname: string } | null }[]
 }
 
-const HERO_LIMIT = 5
+const RAIL_LIMIT = 8 // 히어로 1개 + 레일 최대 8개까지만 좋아요 집계/표시
 
 export default async function HomePage() {
   const supabase = await createClient()
@@ -46,24 +47,26 @@ export default async function HomePage() {
   const favoriteSet = new Set((favs ?? []).map(f => f.box_id))
   const openBoxes = (rawOpenBoxes ?? []) as unknown as RawOpenBox[]
 
-  // 정렬: NEW(내 확인 이후 변경) 먼저 → 마감 임박(auto) → 최근(쿼리 순서 유지)
-  const enriched = openBoxes.map(b => ({
-    box: b,
-    isNew: new Date(b.updated_at) > new Date(lastSeenMap.get(b.id) ?? 0),
-  }))
-  const sorted = [...enriched].sort((a, b) => {
-    if (a.isNew !== b.isNew) return a.isNew ? -1 : 1
-    const ad = a.box.decision_mode === 'auto_deadline' && a.box.deadline_at ? new Date(a.box.deadline_at).getTime() : Infinity
-    const bd = b.box.decision_mode === 'auto_deadline' && b.box.deadline_at ? new Date(b.box.deadline_at).getTime() : Infinity
-    return ad - bd
-  })
-  const hero = sorted.slice(0, HERO_LIMIT)
+  // 정렬: 마감 임박(auto+deadline) 먼저 → NEW → 최근. 히어로 = 가장 급한 상자.
+  const deadlineTime = (b: RawOpenBox) =>
+    b.decision_mode === 'auto_deadline' && b.deadline_at ? new Date(b.deadline_at).getTime() : Infinity
+  const isNewOf = (b: RawOpenBox) => new Date(b.updated_at) > new Date(lastSeenMap.get(b.id) ?? 0)
 
-  // 히어로 상자들의 좋아요 집계(총합 + 지금 1위) — top N만 조회해 가볍게.
-  const likeByBox = new Map<string, { total: number; leader: string | null }>()
-  const heroIds = hero.map(h => h.box.id)
-  if (heroIds.length > 0) {
-    const { data: opts } = await supabase.from('options').select('id, box_id, name').in('box_id', heroIds)
+  const sorted = [...openBoxes].sort((a, b) => {
+    const da = deadlineTime(a), db = deadlineTime(b)
+    if (da !== db) return da - db
+    const na = isNewOf(a), nb = isNewOf(b)
+    if (na !== nb) return na ? -1 : 1
+    return 0 // 쿼리의 updated_at desc 유지
+  })
+
+  const displayed = sorted.slice(0, RAIL_LIMIT + 1)
+
+  // 표시할 상자들의 좋아요 집계(총합 + 1위/공동 1위)
+  const likeByBox = new Map<string, { total: number; leaders: string[] }>()
+  const ids = displayed.map(b => b.id)
+  if (ids.length > 0) {
+    const { data: opts } = await supabase.from('options').select('id, box_id, name').in('box_id', ids)
     const optIds = (opts ?? []).map(o => o.id)
     const { data: votes } = optIds.length
       ? await supabase.from('votes').select('option_id, vote_type').in('option_id', optIds)
@@ -81,29 +84,33 @@ export default async function HomePage() {
     }
     for (const [boxId, summaries] of perBox) {
       const total = summaries.reduce((s, o) => s + o.like, 0)
-      likeByBox.set(boxId, { total, leader: getVoteResult(summaries).winner })
+      const r = getVoteResult(summaries)
+      likeByBox.set(boxId, { total, leaders: r.winner ? [r.winner] : r.coLeaders })
     }
   }
 
-  const heroCards: QueueCard[] = hero.map(({ box, isNew }) => {
+  const toCard = (box: RawOpenBox): OpenBoxCard => {
     const like = likeByBox.get(box.id)
     return {
       id: box.id,
       title: box.title,
-      isNew,
+      isNew: isNewOf(box),
       isFavorite: favoriteSet.has(box.id),
       isSolo: box.box_participants.length <= 1,
       isAuto: box.decision_mode === 'auto_deadline',
       deadlineAt: box.deadline_at,
       participants: box.box_participants,
       totalLikes: like?.total ?? 0,
-      leaderName: like?.leader ?? null,
+      leaders: like?.leaders ?? [],
     }
-  })
+  }
+
+  const cards = displayed.map(toCard)
+  const hero = cards[0] ?? null
+  const railCards = cards.slice(1)
 
   const openCount = openBoxes.length
   const favoriteCount = favs?.length ?? 0
-  const isFirstVisit = openCount === 0 && (doneCount ?? 0) === 0
 
   const warehouses = [
     { href: '/messy', icon: 'box', name: '어질러진', count: openCount },
@@ -113,54 +120,48 @@ export default async function HomePage() {
 
   return (
     <main className="flex min-h-dvh flex-col">
-      <header className="sticky top-0 z-20 flex items-center justify-between bg-cream/95 px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-4 backdrop-blur-sm">
-        <h1 className="text-xl font-extrabold tracking-tight text-ink">
-          {profile?.nickname ?? ''}님의 결정창고
-        </h1>
+      <header className="sticky top-0 z-20 flex items-center justify-between bg-cream/95 px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-3 backdrop-blur-sm">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <Image src="/icons/character.png" alt="" width={44} height={33} className="h-[33px] w-auto" priority />
+          <h1 className="truncate text-xl font-extrabold tracking-tight text-ink">
+            {profile?.nickname ?? ''}님의 결정창고
+          </h1>
+        </div>
         <AppDrawer nickname={profile?.nickname ?? ''} />
       </header>
 
       <PushNotificationBanner />
 
       <div className="flex-1 pb-28">
-        {isFirstVisit ? (
-          <div className="mx-5 mt-6 flex flex-col items-center gap-3 rounded-card border border-dashed border-[#D9D6C2] bg-paper/60 px-6 py-12 text-center">
-            <Image src="/icons/icon-192.png" alt="" width={64} height={64} className="rounded-2xl" />
-            <div>
-              <p className="text-[14px] font-extrabold text-ink">첫 상자를 만들어보세요</p>
-              <p className="mt-1 text-[12px] leading-relaxed text-ink-soft">
-                친구들과 정할 것도, 혼자 고민 중인 것도 좋아요.<br />
-                상자에 담으면 결정이 남아요.
-              </p>
-            </div>
-          </div>
-        ) : (
-          <DecisionQueueSection items={heroCards} totalOpen={openCount} />
-        )}
+        {/* ① 마감 히어로 (가장 급한 상자) */}
+        <DecisionHero box={hero} />
 
-        {/* 폴더(주제) 칩 */}
-        <FolderChips initialFolders={(folders ?? []) as Folder[]} />
-
-        {/* 창고 요약 한 줄 */}
+        {/* ② 창고 요약 한 줄 */}
         <section className="px-5 pt-5">
-          <div className="flex items-stretch gap-2 rounded-card border border-[#ECEADC] bg-paper p-1.5 shadow-[0_2px_10px_rgba(42,42,39,0.05)]">
+          <div className="flex items-stretch gap-2 rounded-[18px] border border-[#ECEADC] bg-paper p-1.5 shadow-[0_2px_10px_rgba(42,42,39,0.05)]">
             {warehouses.map((w, i) => (
               <Link
                 key={w.href}
                 href={w.href}
-                className={`flex flex-1 flex-col items-center gap-1 rounded-[14px] py-2.5 active:bg-butter-tint/40 ${
+                className={`flex flex-1 flex-col items-center gap-1 rounded-[13px] py-2.5 active:bg-butter-tint/40 ${
                   i > 0 ? 'border-l border-[#F0EEE0]' : ''
                 }`}
               >
-                <span className="flex items-center gap-1 text-[11px] font-semibold text-ink-faint">
+                <span className="flex items-center gap-1 text-[10.5px] font-semibold text-ink-faint">
                   <Icon name={w.icon} size={12} />
                   {w.name}
                 </span>
-                <span className="text-[19px] font-extrabold tabular-nums text-ink">{w.count}</span>
+                <span className="text-[18px] font-extrabold tabular-nums text-ink">{w.count}</span>
               </Link>
             ))}
           </div>
         </section>
+
+        {/* ③ 폴더(주제) 칩 */}
+        <FolderChips initialFolders={(folders ?? []) as Folder[]} />
+
+        {/* ④ 이어서 정할 상자 (가로 레일) */}
+        <DecisionRail boxes={railCards} totalOpen={openCount} />
       </div>
 
       {/* 하단 고정 CTA */}
