@@ -34,6 +34,18 @@ export function formatDeadline(dateStr: string | null): string {
   return dateStr ? formatKoreanDateTime(dateStr) : '마감 없음'
 }
 
+/** 마감까지 남은 날짜를 짧게 (D-day/D-N/마감 지남). 날짜 경계 기준(시간 무시). */
+export function formatDday(dateStr: string): string {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const target = new Date(dateStr)
+  target.setHours(0, 0, 0, 0)
+  const diffDays = Math.round((target.getTime() - today.getTime()) / 86_400_000)
+  if (diffDays < 0) return '마감 지남'
+  if (diffDays === 0) return 'D-day'
+  return `D-${diffDays}`
+}
+
 /** YYYY.MM.DD HH:mm (로컬 시간) — 공간 절약형 마감일 표시 */
 export function formatDeadlineCompact(dateStr: string): string {
   const d = new Date(dateStr)
