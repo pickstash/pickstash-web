@@ -57,9 +57,9 @@ export function DecisionHero({ box }: { box: OpenBoxCard | null }) {
     return (
       <section className="px-5 pt-4">
         <div className="flex flex-col items-center gap-3 rounded-card border border-dashed border-[#D9D6C2] bg-paper/60 px-6 py-10 text-center">
-          <Image src="/icons/character.png" alt="" width={72} height={54} className="h-[54px] w-auto" />
+          {/*<Image src="/icons/character.png" alt="" width={72} height={54} className="h-[54px] w-auto" />*/}
           <div>
-            <p className="text-[14px] font-extrabold text-ink">지금 정할 상자가 없어요</p>
+            <p className="text-[14px] font-extrabold text-ink">지금 정리할 상자가 없어요</p>
             <p className="mt-1 text-[12px] leading-relaxed text-ink-soft">
               새 상자를 만들거나 친구 상자에 참여하면<br />여기에 모여요.
             </p>
