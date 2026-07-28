@@ -25,6 +25,7 @@ export default function NewOptionPage({ params }: { params: Promise<{ id: string
           boxId={boxId}
           isPending={createOption.isPending}
           submitLabel="선택지 추가하기"
+          offerClipboardLink
           onSubmit={data =>
             createOption.mutate({
               box_id: boxId,

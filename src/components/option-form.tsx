@@ -22,6 +22,8 @@ interface OptionFormProps {
   onSubmit: (data: { name: string; content: OptionBlock[] }) => void
   onCancel?: () => void
   submitLabel?: string
+  /** 상단에 '📋 복사한 링크 넣기' 칩 노출(선택지 추가 화면용). 탭하면 클립보드를 읽어 링크를 담는다. */
+  offerClipboardLink?: boolean
 }
 
 const MAX_IMAGES = 6
@@ -40,12 +42,15 @@ export function OptionForm({
   onSubmit,
   onCancel,
   submitLabel = '저장',
+  offerClipboardLink = false,
 }: OptionFormProps) {
   const [name, setName] = useState(initialName)
   const [blocks, setBlocks] = useState<OptionBlock[]>(initialContent)
   const [uploading, setUploading] = useState(false)
   const [imageError, setImageError] = useState<string | null>(null)
   const [linkLoading, setLinkLoading] = useState<Record<string, boolean>>({})
+  const [clipboardHint, setClipboardHint] = useState<string | null>(null)
+  const [clipboardUsed, setClipboardUsed] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   // 비동기(OG 로드) 후 최신 상태를 읽기 위한 ref
   const blocksRef = useRef(blocks)
@@ -107,6 +112,28 @@ export function OptionForm({
     const id = newId()
     setBlocks(prev => [...prev, { type: 'link', id, url, label: '' }])
     loadLinkPreview(id, url)
+  }
+
+  // 클립보드의 링크를 '한 번의 탭'(제스처)으로 읽어 선택지에 담는다.
+  // 이름 필드 붙여넣기와 동일 처리 — 섞인 글씨는 이름 후보로, URL은 링크 블록+미리보기로.
+  async function pasteLinkFromClipboard() {
+    setClipboardHint(null)
+    let text = ''
+    try {
+      if (!navigator.clipboard?.readText) throw new Error('unsupported')
+      text = await navigator.clipboard.readText()
+    } catch {
+      setClipboardHint('클립보드를 읽을 수 없어요. 이름 칸에 링크를 직접 붙여넣어 주세요.')
+      return
+    }
+    const split = splitPastedLink(text)
+    if (!split) {
+      setClipboardHint('복사한 내용에서 링크를 찾지 못했어요.')
+      return
+    }
+    if (split.label && !name.trim()) setName(split.label)
+    addLinkWithUrl(split.url)
+    setClipboardUsed(true)
   }
 
   // "글씨 URL" 형태로 붙여넣어졌으면 URL만 취한다. 섞인 글씨는 '이름' 후보로만 쓰고 라벨(메모)엔 안 넣는다.
@@ -201,6 +228,22 @@ export function OptionForm({
 
   return (
     <form onSubmit={handleSubmit} onPasteCapture={handlePasteImage} className="space-y-5 pb-32">
+      {/* 복사한 링크 넣기 — 탭(제스처) 안에서 클립보드를 읽어 링크 자동 담기 */}
+      {offerClipboardLink && !clipboardUsed && (
+        <div>
+          <button
+            type="button"
+            onClick={pasteLinkFromClipboard}
+            className="flex w-full items-center gap-2 rounded-field border-[1.5px] border-dashed border-butter-dark bg-butter-tint/50 px-4 py-3 text-left text-[13px] font-bold text-ink active:bg-butter-tint"
+          >
+            <span aria-hidden className="text-base">📋</span>
+            <span className="flex-1">복사한 링크 넣기</span>
+            <span className="text-[11px] font-semibold text-ink-soft">클립보드에서</span>
+          </button>
+          {clipboardHint && <p className="mt-1.5 text-[11.5px] text-tangerine">{clipboardHint}</p>}
+        </div>
+      )}
+
       {/* 이름 */}
       <div>
         <label className="mb-1.5 block text-[13px] font-semibold text-ink-soft">
