@@ -8,6 +8,7 @@ import {
   deleteFolder,
   getMyBoxFolderId,
   setBoxFolder,
+  reorderBoxFolders,
 } from '@/lib/api/folders'
 
 export function useFolders() {
@@ -59,5 +60,26 @@ export function useSetBoxFolder(boxId: string) {
       queryClient.invalidateQueries({ queryKey: ['boxFolder', boxId] })
       queryClient.invalidateQueries({ queryKey: ['folders'] })
     },
+  })
+}
+
+/** 편집 모드: 상자를 이 폴더에서 제외 (boxId 인자형). */
+export function useRemoveBoxFromFolder() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (boxId: string) => setBoxFolder(boxId, null),
+    onSuccess: (_d, boxId) => {
+      queryClient.invalidateQueries({ queryKey: ['boxFolder', boxId] })
+      queryClient.invalidateQueries({ queryKey: ['folders'] })
+    },
+  })
+}
+
+/** 편집 모드: 폴더 안 상자 순서 저장 ('완료' 시 orderedBoxIds로 일괄 반영). */
+export function useReorderFolderBoxes(folderId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (orderedBoxIds: string[]) => reorderBoxFolders(folderId, orderedBoxIds),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['folders'] }),
   })
 }

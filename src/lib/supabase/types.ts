@@ -248,18 +248,21 @@ export interface Database {
           user_id: string
           box_id: string
           folder_id: string
+          sort: number
           created_at: string
         }
         Insert: {
           user_id: string
           box_id: string
           folder_id: string
+          sort?: number
           created_at?: string
         }
         Update: {
           user_id?: string
           box_id?: string
           folder_id?: string
+          sort?: number
           created_at?: string
         }
         Relationships: []

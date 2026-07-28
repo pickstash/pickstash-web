@@ -1,11 +1,10 @@
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { BoxCard } from '@/components/box-card'
-import { PageHeader } from '@/components/page-header'
-import { AppDrawer } from '@/components/app-drawer'
+import { FolderView, type FolderBoxItem } from './folder-view'
 import type { Box } from '@/lib/api/boxes'
 
-// 폴더 뷰 — 주제별 상자 묶음(§3-7). 개인별: 내가 이 폴더에 넣은 상자만. 상태(어질러진/정리된) 무관.
+// 폴더 뷰 — 주제별 상자 묶음(§3-7). 개인별: 내가 이 폴더에 넣은 상자만, box_folders.sort 순서.
+// 추가(넣기)는 상자 상세의 '폴더 지정'에서만. 이 화면은 편집 모드로 순서 변경·제외.
 export default async function FolderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
@@ -16,52 +15,51 @@ export default async function FolderPage({ params }: { params: Promise<{ id: str
   const { data: folder } = await supabase.from('folders').select('id, name').eq('id', id).single()
   if (!folder) notFound()
 
-  // 내가 이 폴더에 넣은 상자 id (box_folders RLS: 본인 행만)
-  const { data: filings } = await supabase.from('box_folders').select('box_id').eq('folder_id', id)
-  const boxIds = (filings ?? []).map(f => f.box_id)
+  // 이 폴더에 담긴 상자 id를 sort 순으로 (box_folders RLS: 본인 행만)
+  const { data: filings } = await supabase
+    .from('box_folders')
+    .select('box_id, sort')
+    .eq('folder_id', id)
+    .order('sort', { ascending: true })
+  const orderedIds = (filings ?? []).map(f => f.box_id)
 
-  const [{ data: rawBoxes }, { data: participations }, { data: favs }, { data: profile }] = await Promise.all([
-    supabase
-      .from('boxes')
-      .select('*, box_participants(user_id, profiles(avatar_url, nickname))')
-      .in('id', boxIds)
-      .order('updated_at', { ascending: false }),
+  const [{ data: profile }, { data: participations }, { data: favs }] = await Promise.all([
+    supabase.from('profiles').select('nickname').eq('id', user.id).single(),
     supabase.from('box_participants').select('box_id, last_seen_at').eq('user_id', user.id),
     supabase.from('favorites').select('box_id').eq('user_id', user.id),
-    supabase.from('profiles').select('nickname').eq('id', user.id).single(),
   ])
+
+  type RawBox = Box & { box_participants: { user_id: string; profiles: { avatar_url: string | null; nickname: string } | null }[] }
+  let rawBoxes: RawBox[] = []
+  if (orderedIds.length > 0) {
+    const { data } = await supabase
+      .from('boxes')
+      .select('*, box_participants(user_id, profiles(avatar_url, nickname))')
+      .in('id', orderedIds)
+    rawBoxes = (data ?? []) as unknown as RawBox[]
+  }
 
   const lastSeenMap = new Map((participations ?? []).map(p => [p.box_id, p.last_seen_at]))
   const favoriteSet = new Set((favs ?? []).map(f => f.box_id))
-  type RawBox = Box & { box_participants: { user_id: string; profiles: { avatar_url: string | null; nickname: string } | null }[] }
-  const boxes = (rawBoxes ?? []) as unknown as RawBox[]
+  const boxMap = new Map(rawBoxes.map(b => [b.id, b]))
+
+  // filings(sort) 순서 유지 — 삭제/누락된 상자는 건너뜀
+  const items: FolderBoxItem[] = orderedIds
+    .map(bid => boxMap.get(bid))
+    .filter((b): b is RawBox => !!b)
+    .map(b => ({
+      box: b,
+      participants: b.box_participants,
+      isNew: new Date(b.updated_at) > new Date(lastSeenMap.get(b.id) ?? 0),
+      isFavorite: favoriteSet.has(b.id),
+    }))
 
   return (
-    <main className="flex min-h-dvh flex-col">
-      <PageHeader title={folder.name} right={<AppDrawer nickname={profile?.nickname ?? ''} />} />
-
-      <p className="px-5 pb-4 text-[13px] leading-relaxed text-ink-soft">
-        {folder.name} 폴더에 모아둔 상자예요.
-      </p>
-
-      <div className="flex-1 space-y-2.5 px-5 pb-10">
-        {boxes.length > 0 ? (
-          boxes.map(box => (
-            <BoxCard
-              key={box.id}
-              box={box}
-              participants={box.box_participants}
-              isNew={new Date(box.updated_at) > new Date(lastSeenMap.get(box.id) ?? 0)}
-              isFavorite={favoriteSet.has(box.id)}
-            />
-          ))
-        ) : (
-          <div className="rounded-card border border-dashed border-[#D9D6C2] bg-paper/60 px-6 py-14 text-center">
-            <p className="text-[13.5px] font-bold text-ink">이 폴더는 비어 있어요</p>
-            <p className="mt-1 text-[12px] text-ink-soft">상자 상세의 메뉴에서 이 폴더로 넣어보세요.</p>
-          </div>
-        )}
-      </div>
-    </main>
+    <FolderView
+      folderId={folder.id}
+      folderName={folder.name}
+      nickname={profile?.nickname ?? ''}
+      initialBoxes={items}
+    />
   )
 }

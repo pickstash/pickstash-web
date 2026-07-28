@@ -73,3 +73,19 @@ export async function setBoxFolder(boxId: string, folderId: string | null): Prom
     if (error) throw error
   }
 }
+
+/** 폴더 안 상자 순서 저장 (편집 모드 '완료' 시). orderedBoxIds 순서대로 sort=0,1,2… (본인 행만, RLS). */
+export async function reorderBoxFolders(folderId: string, orderedBoxIds: string[]): Promise<void> {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  if (orderedBoxIds.length === 0) return
+  const rows = orderedBoxIds.map((boxId, i) => ({
+    user_id: user.id,
+    box_id: boxId,
+    folder_id: folderId,
+    sort: i,
+  }))
+  const { error } = await supabase.from('box_folders').upsert(rows, { onConflict: 'user_id,box_id' })
+  if (error) throw error
+}
