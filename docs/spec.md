@@ -176,15 +176,14 @@ function getBoxStatus(box: { closed_at: string | null }): BoxStatus {
 
 ## 5. DB 스키마 (Supabase SQL)
 
-> **v2 스키마 델타 (2026-07-24 — 구현 시 idempotent 마이그레이션으로 반영. 아래 v1 SQL과 충돌하면 이 델타가 우선):**
-> - `boxes`: **`decision_mode text not null default 'manual'`** 추가 (`'manual'` | `'auto_deadline'`). `deadline_at`은 `auto_deadline`에서만 사용. **`current_round` 폐기**(미사용, 드롭은 선택).
-> - `options`: **`decided_at timestamptz`** 추가 — null=미결정, 값 있으면 결정된 선택지. 한 상자에 **여러 개 가능**(중복 결정).
-> - `votes`: **`round` 폐기**(단일 라운드). `vote_type`은 `'like'`만 사용.
-> - `box_activities.type`: `'rematch_started'` 제거, 결정은 `'box_decided'`(또는 기존 `'box_closed'` 재사용).
-> - **RLS**: "정리된 상자 쓰기 가드" **폐기** — 정리완료 상자에서도 선택지·좋아요·댓글 편집 허용(§3-4). 참여자면 상태 무관.
-> - **RPC**: `start_rematch` **삭제**. `close_box` → **`decide_box(p_box_id, p_option_ids uuid[])`**(선택 옵션 `decided_at` + `closed_at` 세팅)로 대체. `reopen_box(p_box_id)`는 마감 인자 없이 `closed_at`·`decided_at` 해제만.
->
-> **폴더 델타 (2026-07-28 — 마이그레이션 `012_folders.sql`):** `folders`(각자 자기 폴더) + `box_folders(user_id, box_id, folder_id)` 조인 신규. 개인별 폴더링 — 사람마다 독립 분류, 방장 무관. 상세 §3-7. RLS: 폴더·분류 모두 본인 행만.
+> **스키마 적용 이력 (007~014 전부 라이브 적용 완료 — 아래 SQL 블록은 이미 이 변경들을 반영한 현재 상태다):**
+> - **007 v2 결정**: `boxes.decision_mode`(`'manual'`|`'auto_deadline'`) + `options.decided_at`(중복 결정 가능) 추가. `start_rematch`·2인자 `reopen_box` 드롭. `decide_box(p_box_id, p_option_ids uuid[])`·1인자 `reopen_box`·`auto_decide_box` 신설. "정리된 상자 쓰기 가드" RLS 폐기.
+> - **008 협업 개방**: 상자·선택지 수정/삭제를 `owner`/작성자 한정 → **참여자 누구나**. 상자 직접 삭제 폐기, '나가기'만 + 마지막 1명 나가면 자동 삭제 트리거.
+> - **010 댓글 강화**: `comments.parent_comment_id`(답글, 플랫 2단계 트리거 강제)·`edited_at` + `comment_likes` 테이블 + Realtime 발행.
+> - **011 방장 제거**: **`boxes.owner_id`·`box_participants.role` 컬럼 삭제**. 이를 참조하던 RLS·RPC(`close_box`, 미리보기의 owner_nickname) 재작성.
+> - **012 폴더**: `folders`(각자 자기 폴더) + `box_folders(user_id, box_id, folder_id)` 조인. 개인별 폴더링(사람마다 독립, 방장 무관). §3-7. RLS: 본인 행만.
+> - **014 링크 뷰어**: `get_box_view_by_invite_code`(비로그인 포함 읽기 전용 상자 전체 조회). §6-1.
+> - **휴면(드롭 안 함)**: `boxes.current_round`, `votes.round`(항상 1), `votes.vote_type='dislike'`, options의 레거시 4컬럼. 코드가 아직 일부를 읽어(예: `current_round` 전달) 물리 삭제하지 않음.
 
 ```sql
 -- 프로필 (auth.users 1:1)
@@ -195,18 +194,18 @@ create table profiles (
   created_at timestamptz not null default now()
 );
 
--- 상자
+-- 상자  (owner_id·role은 011에서 제거됨 — 참여자 누구나 동등)
 create table boxes (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references profiles(id) on delete cascade,
   title text not null,
   memo text,
-  deadline_at timestamptz,               -- null = 마감 없는 상자 (혼자 모드)
-  closed_at timestamptz,                 -- 수동 "이대로 결정하기" 시각. null이면 미완료
-  current_round int not null default 1,  -- 끝장전 시작 시 +1
+  decision_mode text not null default 'manual',  -- 'manual'(직접 정하기) | 'auto_deadline'(마감 투표). 007
+  deadline_at timestamptz,               -- auto_deadline에서만 사용. manual은 null(마감 없음)
+  closed_at timestamptz,                 -- 정리완료 시각. null이면 정리중 (상태는 여기서만 파생)
   invite_code text not null unique default substr(md5(random()::text), 1, 8),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
+  -- (휴면) current_round: v1 끝장전 잔재. 미사용이나 드롭 안 함(코드가 아직 값을 읽어 전달) — types.ts에도 남음.
 );
 
 -- 선택지
@@ -215,31 +214,32 @@ create table options (
   box_id uuid not null references boxes(id) on delete cascade,
   name text not null,
   content jsonb not null default '[]',   -- 본문 블록(순서 배치): [{type:'text',id,text} | {type:'image',id,url} | {type:'link',id,label,url}, ...]
+  decided_at timestamptz,                -- null=미결정, 값=결정된 선택지. 한 상자에 여러 개 가능(중복 결정). 007
   created_by uuid not null references profiles(id),
   created_at timestamptz not null default now()
   -- (레거시/휴면) summary·links·memo·images 컬럼은 006에서 content로 이관 후 미사용. 드롭하지 않고 스키마에만 남김.
 );
 
--- 투표 (유저당 선택지×라운드 하나에 좋아요 1개 — 싫어요 없음)
+-- 투표 (유저당 선택지 하나에 좋아요 1개 — 싫어요 없음, 라운드 없음)
 create table votes (
   id uuid primary key default gen_random_uuid(),
   option_id uuid not null references options(id) on delete cascade,
   user_id uuid not null references profiles(id) on delete cascade,
-  vote_type text not null check (vote_type in ('like', 'dislike')),
-  round int not null default 1,          -- 끝장전 재투표는 round 2, 3...
+  vote_type text not null check (vote_type in ('like', 'dislike')),  -- 실제로는 'like'만 사용('dislike' 휴면)
+  round int not null default 1,          -- (휴면) v1 끝장전 잔재. 항상 1. 미사용이나 코드가 값을 전달해 드롭 안 함
   created_at timestamptz not null default now(),
   unique (option_id, user_id, round)
 );
 
--- 상자 참여자
+-- 상자 참여자  (role은 011에서 제거 — 참여자 누구나 동등. 생성자=첫 참여자일 뿐 특권 없음)
 create table box_participants (
   box_id uuid not null references boxes(id) on delete cascade,
   user_id uuid not null references profiles(id) on delete cascade,
-  role text not null default 'member' check (role in ('owner', 'member')),
   last_seen_at timestamptz not null default now(),  -- NEW 라벨·들썩이는 상자 판정용
   joined_at timestamptz not null default now(),
   primary key (box_id, user_id)
 );
+-- 라이프사이클(008): 상자 직접 삭제 없음 = '나가기'(box_participants delete)만. 마지막 1명이 나가면 트리거가 상자 자동 삭제(cascade).
 
 -- 그룹
 create table groups (
@@ -333,18 +333,19 @@ create index box_activities_box_created_idx on box_activities (box_id, created_a
 - `box_activities` AFTER INSERT 트리거 → `boxes.updated_at = new.created_at` 갱신
 - 이로써 **이벤트 매트릭스**가 서버에서 보장된다: 선택지 추가·투표·댓글·참여·정리완료·재오픈·재투표 시작·마감 변경 전부가 들썩임(NEW) 신호를 만든다.
 
-### RLS 방침
+### RLS 방침  (008·011 반영 — 상자 단위는 방장 없이 "참여자면 누구나")
 - 모든 테이블 RLS 활성화
 - `boxes`/`options`/`votes`/`comments`: 해당 상자의 `box_participants`만 select/insert
-- `boxes` 수정(정리 완료, 재투표 시작, 마감일 변경, 제목 수정): `role = 'owner'`만
+- **`boxes` 수정**(제목·메모·마감·결정방식): **참여자 누구나**(008/011 — `role='owner'` 조건 폐기). 직접 delete 정책 없음(나가기 트리거만).
+- **`options` 수정/삭제**: **참여자 누구나**(008 — 구 "작성자·owner" 조건 폐기). insert는 `created_by = self` + 참여자.
 - `votes`/`comments`/`favorites`: 본인 row만 insert/update/delete (`user_id = auth.uid()`)
-- `options` 수정/삭제: `created_by = auth.uid()` 또는 상자 owner
-- **정리된 상자 쓰기 가드 (서버 강제)**: 상자가 종결 상태(`closed_at IS NOT NULL` 또는 `deadline_at < now()`)면 `votes` insert/update/delete와 `options` insert/update/delete를 RLS에서 거부한다. UI disabled에만 의존하지 않는다. 예외: `comments`는 종결 상자에서도 허용(기록에 대한 대화), 본인 삭제·수정도 허용(상태 무관)
-- `comments`: 답글은 플랫 2단계로 서버 트리거가 강제한다(답글의 답글 insert는 거부). 댓글 수정 시 트리거가 `edited_at`을 자동 기록. `@[닉네임](userId)` 멘션이 포함된 댓글을 등록하면 멘션된 사용자에게 "OO님이 언급했어요" 타겟 push를 별도 발송(상자 참여자 전체 브로드캐스트와 별개)
-- `comment_likes`: `votes`처럼 참여자면 select 가능, insert/delete는 본인 row만(`favorites`처럼 update 없는 순수 토글)
-- `groups`: 멤버만 조회, owner만 수정. `group_members`: 본인 행 delete(그룹 나가기) 가능
-- 예외: `/invite/[code]`, `/group-invite/[code]` 랜딩은 비참여자도 이름 조회 필요 → invite_code 기반 조회용 RPC 함수(`security definer`)로 처리
-- 탈퇴: `auth.users` 삭제 → cascade로 전부 정리. 단 본인이 owner인 상자/그룹은 탈퇴 전 처리 정책 필요(가장 단순: 함께 삭제하고 탈퇴 화면에서 경고 문구 표시)
+- **정리된 상자 쓰기 가드 폐기**(007, §3-4): 정리완료(`closed_at IS NOT NULL`) 상자에서도 좋아요·선택지·댓글 편집을 RLS가 막지 않는다. *(투표 차단은 UI 레벨에서만 — "정리된 상자에선 투표할 수 없어요".)*
+- `comments`: 답글은 플랫 2단계로 서버 트리거가 강제(답글의 답글 insert 거부). 수정 시 트리거가 `edited_at` 자동 기록. `@[닉네임](userId)` 멘션 포함 댓글 등록 시 멘션된 사용자에게 "OO님이 언급했어요" 타겟 push 별도 발송(참여자 전체 브로드캐스트와 별개).
+- `comment_likes`: 참여자면 select, insert/delete는 본인 row만(update 없는 순수 토글).
+- `folders`/`box_folders`(012): 본인 행만 select/insert/update/delete (`user_id = auth.uid()`).
+- `groups`: 멤버만 조회, owner만 수정. `group_members`: 본인 행 delete(그룹 나가기). *(그룹은 별개 기능이라 `owner_id` 유지 — 상자의 방장 제거와 무관.)*
+- 예외: `/invite/[code]`, `/group-invite/[code]` 랜딩은 비참여자·비로그인도 조회 필요 → invite_code 기반 `security definer` RPC로 처리(`get_box_by_invite_code`·`get_box_view_by_invite_code`·그룹 대응).
+- 탈퇴: `auth.users` 삭제 → cascade로 전부 정리. 상자는 방장이 없으므로(011) 탈퇴=나가기 취급 → 마지막 참여자면 상자 자동 삭제(008). 그룹은 owner면 별도 정책.
 
 ### RPC 함수 (웹·앱이 공유하는 서버 로직)
 
@@ -387,17 +388,18 @@ begin
 end;
 $$ language plpgsql security definer;
 
--- 이대로 결정하기 (owner 검증 + 활동 기록, 2026-07 추가)
-create or replace function close_box(p_box_id uuid) returns void ...;
+-- 결정하기 (참여자 검증 + 활동 기록). 선택 옵션(들)에 decided_at + closed_at 세팅, 나머지 해제. 007
+create or replace function decide_box(p_box_id uuid, p_option_ids uuid[]) returns void ...;
 
--- 다시 정리하기: closed_at 해제 + (선택) 새 마감. EXPIRED 상자는 새 마감 필수 (2026-07 추가)
-create or replace function reopen_box(p_box_id uuid, p_deadline timestamptz) returns void ...;
+-- 다시 정리하기(번복): closed_at·decided_at 모두 해제 → 정리중 복귀. 마감 인자 없음. 007
+create or replace function reopen_box(p_box_id uuid) returns void ...;
 
--- 재투표 시작: current_round += 1 + 새 마감 (owner 검증, 2026-07 추가)
-create or replace function start_rematch(p_box_id uuid, p_deadline timestamptz) returns void ...;
+-- 마감 투표 자동 결정(lazy commit): auto_deadline + 마감경과 + 미결일 때 좋아요 최다(들) 결정. 신호 없으면 no-op. 007/011
+create or replace function auto_decide_box(p_box_id uuid) returns void ...;
 ```
 
-(세 함수 전문은 `supabase/migrations/004_replan.sql`에 있다. 모두 `security definer` + owner 검증 + `box_activities` 기록 포함.)
+- 위 결정계 RPC 전문은 `supabase/migrations/007_v2_decision.sql`(+011 patch)에 있다. **owner 검증이 아니라 참여자 검증**(`box_participants`에 auth.uid()) + `box_activities` 기록.
+- **폐기됨(드롭)**: `close_box(uuid)`(011), `start_rematch`·2인자 `reopen_box`(007). 재투표·`current_round` 개념 없음(§3 v2).
 
 호출 방식: `supabase.rpc('함수명', { 파라미터 })` — 웹과 RN 앱에서 완전히 동일하다.
 
@@ -442,11 +444,15 @@ create or replace function start_rematch(p_box_id uuid, p_deadline timestamptz) 
 
 ## 7. 화면별 명세
 
-> **v2 화면 델타 (2026-07-24 — 구현 시 반영):**
-> - **상자 생성**: "마감 기한 설정" 체크박스 → **결정 방식 선택**(직접 정하기 / 마감 투표)으로 교체. 마감일시는 마감 투표를 고를 때만 노출.
-> - **상자 상세**: 재투표(결승전)·시간만료 UI 제거. "이걸로 정하기"(선택지 1+ 선택→확정, 여럿 상자는 누구나) + 정리완료 후 "다시 정리하기"(번복). 여럿 상자엔 "지금 1위" 실시간, 혼자 상자엔 좋아요 미표시. 정리완료여도 전부 편집 가능.
-> - **창고 목록**: `closed_at` 기준(정리중/정리완료) 단순 판정. 결정된 선택지 형광펜 강조.
-> - **그룹/그룹초대**: 개념 정립 전까지 UI 숨김(드로어 "그룹 관리", 초대 화면 "그룹으로 초대" 제거 — 코드/페이지는 유지).
+> **화면 현황 (전부 구현 완료 — 아래 개별 명세와 충돌하면 이 요약이 현재 동작 기준):**
+> - **상자 생성**: **결정 방식 선택**(직접 정하기 / 마감 투표) 카드. 마감일시는 마감 투표를 고를 때만 노출.
+> - **상자 상세**: 재투표·시간만료 UI 없음. "이걸로 정하기"(선택지 1+, 참여자 누구나) + 정리완료 후 "다시 정리하기"(번복). 여럿 상자 "지금 1위" 실시간, 혼자 상자 좋아요 미표시. 정리완료여도 편집 가능. 편집 메뉴에 결정 방식 변경·폴더 지정·나가기.
+> - **창고 목록**: `closed_at` 기준(정리중/정리완료) 판정. 결정된 선택지 형광펜 강조.
+> - **폴더(§3-7)**: 드로어 "폴더" 섹션(목록+생성), `/folder/[id]` 뷰(상태 무관), 상세 편집 메뉴 "폴더 지정"(개인별). 구현 완료.
+> - **댓글**: 답글(플랫 2단계)·좋아요·수정("· 수정됨")·`@`멘션 자동완성/강조·Realtime 전부 구현.
+> - **초대 링크 = 읽기 전용 뷰어(§6-1)**: `/invite/[code]`에서 비로그인 포함 전체 열람.
+> - **그룹/그룹초대**: 개념 정립 전까지 UI 숨김(드로어 "그룹 관리", 초대 화면 "그룹으로 초대" 주석 처리 — 코드/페이지/`/group-invite`는 유지).
+> - **푸시 알림**: `push_subscriptions` + Serwist SW + send-push Edge Function. 활동/멘션 시 발송(§7-11).
 
 ### 7-1. 메인 `/`
 - 헤더: "{닉네임}님의 결정창고" + 햄버거 메뉴
@@ -465,24 +471,24 @@ create or replace function start_rematch(p_box_id uuid, p_deadline timestamptz) 
 - "상자 만들기" 버튼 → 생성 후 상자 상세로 이동, 생성자는 box_participants에 자동 insert(첫 참여자 — 별도 role/owner 없음)
 
 ### 7-3. 상자 상세 `/box/[id]`
+> 상태는 2종(OPEN/RESOLVED)뿐 — EXPIRED 없음. 모든 편집 액션은 **참여자 누구나**(방장 없음, 008/011). 편집 메뉴(⋯)에 제목·메모·결정방식·마감·폴더 지정·나가기를 모은다.
 - 헤더: 뒤로가기(**내비 스택 유지** — 진입한 창고로 복귀), 제목, 즐겨찾기 토글
-- 정리상태 라벨 + 상자 제목 + 수정하기(owner만) + 메모
-- 생성일 / 마감일(없으면 "마감 없음") 표시 + "변경하기"(owner만, 바텀시트 재사용)
+- 정리상태 라벨 + 상자 제목 + 메모 + 편집 메뉴(제목·메모 수정)
+- 마감일(`auto_deadline`만 표시, `manual`은 마감 없음) + "변경하기"(바텀시트) / 결정 방식 변경(정리중일 때)
 - 참여 인원 수 + 아바타 목록 + "+친구초대" → `/box/[id]/invite`. **참여자가 나 혼자면 초대 유도를 강요하지 않는다** (혼자 모드)
-- 선택지 N개 목록: 카드마다 이름·본문 미리보기(첫 사진 + 첫 글 스니펫)·좋아요 버튼+카운트, 상단에 정렬 토글(최신순/좋아요순) + 무한스크롤, 탭하면 선택지 상세로
-- 하단 버튼: "선택지 추가하기" / "이대로 결정하기"(owner만, 결과형 카피)
-- RESOLVED: 결정 결과 + 스탬프 + "다시 정리하기"(owner) / EXPIRED: 상황별 재투표 제안 배너(6장 참조) + "다시 정리하기"(owner)
-- RESOLVED/EXPIRED 상자는 투표·선택지 추가·수정·삭제 비활성 (서버 가드 병행). 댓글은 허용
+- 선택지 N개 목록: 카드마다 이름·본문 미리보기(첫 사진 + 첫 글 스니펫)·(여럿 상자만)좋아요 버튼+카운트·"1위" 뱃지·"결정" 뱃지, 상단에 정렬 토글(최신순/좋아요순) + 무한스크롤, 탭하면 선택지 상세로
+- 하단 버튼: "선택지 추가하기" / `manual`·정리중이면 "이걸로 정하기"(선택지 1+ 선택→확정, 참여자 누구나)
+- **정리완료(RESOLVED)**: 결정 결과("○○(으)로 결정!", 없으면 "결정 없이 마무리") + 스탬프 + "다시 정리하기"(번복, 누구나). **정리완료여도 제목·메모·선택지·댓글·좋아요·폴더 편집은 계속 가능**(§3-4). 단 투표(좋아요)만 UI에서 비활성("정리된 상자에선 투표할 수 없어요").
 
 ### 7-4. 친구 초대 `/box/[id]/invite`
 - 상자 이름 표시
-- 버튼 3개: "카카오톡 초대" / "초대링크 복사" / "그룹으로 초대"
-- 그룹으로 초대 → **그룹 검색 바텀시트**: 그룹명 검색 input, 내 그룹 목록(멤버 수 표시), 선택 → "초대하기"
+- 버튼: "카카오톡 초대" / "초대링크 복사" *("그룹으로 초대"는 현재 숨김 — §7-8 그룹 UI 숨김과 정합)*
+- (숨김) 그룹으로 초대 → **그룹 검색 바텀시트**: 그룹명 검색 input, 내 그룹 목록(멤버 수 표시), 선택 → "초대하기"
 - 현재 참여 친구 목록
 
 ### 7-5. 선택지 상세 `/box/[id]/option/[optionId]`
-- 선택지 이름 + 편집(작성자 또는 owner) / 삭제(작성자만). **RESOLVED/EXPIRED 상자에서는 편집·삭제 UI를 숨긴다** (서버 가드 병행)
-- 좋아요 버튼 + 카운트 (현재 라운드 기준)
+- 선택지 이름 + 편집 메뉴(수정·삭제 — **참여자 누구나**, 008). 정리완료 상자에서도 편집 가능(§3-4).
+- (여럿 상자만) 좋아요 버튼 + 카운트. 정리완료 상자는 좋아요 비활성. 혼자 상자는 좋아요 미표시.
 - 본문: `content` 블록을 순서대로 렌더 — 글(문단)·사진·라벨 링크가 자유롭게 섞인다. 링크는 라벨 칩(비면 도메인명) + URL 형태로 표시
 - 댓글: 입력창("댓글을 입력하세요" + 등록) + 작성자 아바타·닉네임·작성 시각(상대 시간)·내용 목록, Realtime 반영
   - 답글(플랫 2단계, 부모 아래 들여쓰기), 좋아요(하트+카운트 토글), 본인 댓글 수정("· 수정됨" 표시)·삭제(답글도 함께 삭제)
@@ -506,7 +512,8 @@ create or replace function start_rematch(p_box_id uuid, p_deadline timestamptz) 
 - 상자 카드: 라벨(NEW/즐겨찾기/정리상태), 제목, 최다득표 강조 텍스트(정리된 창고), 생성일·마감일, 참여 친구/그룹 칩
 - 무한 스크롤 또는 더보기 페이지네이션
 
-### 7-8. 그룹 `/groups`, `/groups/[id]`
+### 7-8. 그룹 `/groups`, `/groups/[id]`  ⚠️ 현재 진입 UI 숨김(개념 정립 전까지 — 코드·페이지·RPC는 유지)
+> 그룹은 상자의 방장 제거(011)와 무관한 별개 기능이라 `groups.owner_id`를 유지한다. 아래는 코드에 남아있는 명세.
 - 그룹 관리: 설명 문구("초대하고 수락하는 과정 없이, 언제나 함께 상자를 정리할 수 있는 모임이에요"), 소속 그룹 목록(이름 + 멤버 N명), "새로운 그룹 만들기"
     - **그룹 만들기 모달**: 그룹명 input + "중복확인" 버튼 (동일 이름 존재 시 "동일한 이름의 그룹이 존재합니다."), 취소/확인. 생성자는 자동으로 멤버+owner
 - 그룹 상세: 그룹명, 설명("상자 정리를 같이 할 친구를 초대해보세요. (최대 N명)"), "카카오톡 초대" / "초대링크 복사"(`/group-invite/[code]`), 현재 참여 친구 목록, "그룹 나가기"
@@ -516,24 +523,35 @@ create or replace function start_rematch(p_box_id uuid, p_deadline timestamptz) 
 - 프로필 관리: 프로필 이미지(탭하여 변경 — 기본 프로필 이미지 또는 카카오 프로필), 닉네임 변경 input, "로그아웃", "탈퇴하기"
 - 탈퇴하기: "결정창고를 정말 탈퇴하시겠어요?", 탈퇴 사유 체크박스(복수 선택: 사유1, 사유2, 직접입력 → 사유 입력 textarea), "정말 탈퇴하기"
     - 처리: withdraw_reasons에 사유 저장 → auth.users 삭제(cascade) → 로그인 페이지로
-    - 본인이 owner인 상자/그룹이 있으면 함께 삭제됨을 경고
+    - 상자엔 방장이 없으므로(011) 탈퇴=나가기 취급 → 내가 마지막 참여자인 상자만 함께 삭제(008). 본인이 owner인 **그룹**이 있으면 함께 삭제 경고.
 
 ### 7-10. 공통: 햄버거 메뉴 (드로어)
 - 결정창고: 어질러진 창고 / 정리된 창고 / 즐겨찾는 창고
-- 마이페이지: 그룹 관리 / 프로필 관리
+- **폴더**(§3-7): 내 폴더 목록(각각 `/folder/[id]`) + 인라인 "새 폴더" 생성
+- 마이페이지: 프로필 관리 *(그룹 관리는 현재 숨김 — §7-8)*
 
-## 8. 권장 구현 순서
+### 7-11. 푸시 알림 (Web Push)
+- **구독**: `PushNotificationBanner`가 권한 요청(1회, localStorage로 dismiss 기억) → `subscribeToPush`가 VAPID 키로 구독해 `push_subscriptions`(user_id, endpoint, keys) upsert. 프로필에서 on/off.
+- **발송**: `send-push` **Edge Function**(`supabase/functions/send-push`)을 `lib/api`에서 `functions.invoke('send-push', …)`로 호출 — 선택지 추가(options)·댓글/멘션(comments)·결정 등 활동 시 상자 참여자에게. 멘션은 대상자에게 별도 타겟 발송.
+- SW는 Serwist(`src/app/sw.ts`)가 push 이벤트 수신·표시.
 
-기능 구현 1~8단계(구 순서)는 2026-06까지 완료됨. **현재는 2026-07 리뉴얼 국면** — 아래 순서로 진행한다. 각 단계는 빌드 가능한 상태로 끝낸다.
+## 8. 구현 현황 (2026-07-28 기준)
 
-1. **스키마 리뉴얼**: `004_replan.sql` — box_activities + 활동 트리거 + close/reopen/rematch RPC + deadline_at nullable + 정리된 상자 쓰기 가드 RLS + 초대 미리보기 RPC
-2. **도메인·데이터 레이어**: getBoxStatus(null 마감), 라벨 4종, activities API/훅, 이벤트 매트릭스
-3. **공통 리스킨 기반**: max-width 컨테이너, to-be 토큰(디자인 시스템 v1) 공통 컴포넌트, 테스트 로그인 숨김
-4. **화면 재구현**: 로그인 → 메인(들썩 활동·빈 상태) → 창고 3종(라벨 4종·NEW 확대) → 상자 상세(결정/재투표/재오픈) → 선택지 → 생성(무마감) → 초대 착지(미리보기)
-5. **마감재**: 드로어·그룹·프로필 리스킨, 전수 검증
+**대부분 구현·라이브 반영 완료.** 아래는 완료된 굵직한 마일스톤과 남은 일.
 
-완료(2026-07): 사진 첨부(005), 선택지 정렬(최신/좋아요순)·무한스크롤, 선택지 본문 블록-라이트 모델(006 — summary/memo/images/links → content 블록).
-Later(이번 범위 아님): 친구 자동 등록, 그룹 라벨 파생, 다크모드, 검색/필터 완성
+완료:
+- 스키마·데이터 레이어(004 box_activities/활동 트리거, getBoxStatus, 라벨, 이벤트 매트릭스) + "다정한 손그림 창고" 전 화면 리스킨(디자인 시스템 v1).
+- 선택지: 사진 첨부(005), 본문 블록-라이트 모델(006 content jsonb), 정렬(최신/좋아요순)·무한스크롤, 링크 미리보기(OG 언퍼·SSRF 하드닝)·유튜브 인라인.
+- 결정 모델 **v2**(007): 상태 2종(closed_at), 결정 방식(manual/auto_deadline), decided_at 중복 결정, 번복, 마감 투표 lazy commit.
+- 협업 개방(008): 방장 특권 폐기 → 참여자 누구나 + 나가기 기반 라이프사이클. **방장 개념 완전 제거(011)**.
+- 댓글 강화(010): 답글·좋아요·수정·`@`멘션·Realtime.
+- 폴더(012, §3-7), 푸시 알림(§7-11), **초대 링크 읽기 전용 뷰어(014, §6-1)**.
+
+Later(미완/차기):
+- **그룹 기능 UI 확정** — 현재 숨김. 개념 정립 후 재노출.
+- **다크모드** — 토큰화는 됨, `globals.css` 다크 값 대기.
+- 창고 목록 **검색·친구/그룹 필터** 완성, 친구 자동 등록.
+- **휴면 컬럼 정리**(`current_round`·`votes.round`·`dislike`·options 레거시 4컬럼) — 코드 의존 제거 후 드롭 검토.
 
 ## 9. AI 작업 규칙
 
