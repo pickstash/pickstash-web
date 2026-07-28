@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { BoxCard } from '@/components/box-card'
 import { PageHeader } from '@/components/page-header'
+import { AppDrawer } from '@/components/app-drawer'
 import { getBoxStatus, isDoneStatus } from '@/lib/domain/box-status'
 import type { Box } from '@/lib/api/boxes'
 
@@ -10,13 +11,14 @@ export default async function FavoritesPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: rawFavs }, { data: participations }] = await Promise.all([
+  const [{ data: rawFavs }, { data: participations }, { data: profile }] = await Promise.all([
     supabase
       .from('favorites')
       .select(`box_id, boxes(*, box_participants(user_id, profiles(avatar_url, nickname)), options(id, name, decided_at))`)
       .eq('user_id', user.id)
       .order('created_at', { ascending: false }),
     supabase.from('box_participants').select('box_id, last_seen_at').eq('user_id', user.id),
+    supabase.from('profiles').select('nickname').eq('id', user.id).single(),
   ])
 
   const lastSeenMap = new Map((participations ?? []).map(p => [p.box_id, p.last_seen_at]))
@@ -32,7 +34,7 @@ export default async function FavoritesPage() {
 
   return (
     <main className="flex min-h-dvh flex-col">
-      <PageHeader title="즐겨찾는 창고" />
+      <PageHeader title="즐겨찾는 창고" right={<AppDrawer nickname={profile?.nickname ?? ''} />} />
 
       <p className="px-5 pb-4 text-[13px] leading-relaxed text-ink-soft">
         다시 꺼내보고 싶은 상자들이 모였어요.

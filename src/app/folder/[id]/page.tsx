@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { BoxCard } from '@/components/box-card'
 import { PageHeader } from '@/components/page-header'
+import { AppDrawer } from '@/components/app-drawer'
 import type { Box } from '@/lib/api/boxes'
 
 // 폴더 뷰 — 주제별 상자 묶음(§3-7). 개인별: 내가 이 폴더에 넣은 상자만. 상태(어질러진/정리된) 무관.
@@ -19,7 +20,7 @@ export default async function FolderPage({ params }: { params: Promise<{ id: str
   const { data: filings } = await supabase.from('box_folders').select('box_id').eq('folder_id', id)
   const boxIds = (filings ?? []).map(f => f.box_id)
 
-  const [{ data: rawBoxes }, { data: participations }, { data: favs }] = await Promise.all([
+  const [{ data: rawBoxes }, { data: participations }, { data: favs }, { data: profile }] = await Promise.all([
     supabase
       .from('boxes')
       .select('*, box_participants(user_id, profiles(avatar_url, nickname))')
@@ -27,6 +28,7 @@ export default async function FolderPage({ params }: { params: Promise<{ id: str
       .order('updated_at', { ascending: false }),
     supabase.from('box_participants').select('box_id, last_seen_at').eq('user_id', user.id),
     supabase.from('favorites').select('box_id').eq('user_id', user.id),
+    supabase.from('profiles').select('nickname').eq('id', user.id).single(),
   ])
 
   const lastSeenMap = new Map((participations ?? []).map(p => [p.box_id, p.last_seen_at]))
@@ -36,7 +38,7 @@ export default async function FolderPage({ params }: { params: Promise<{ id: str
 
   return (
     <main className="flex min-h-dvh flex-col">
-      <PageHeader title={folder.name} />
+      <PageHeader title={folder.name} right={<AppDrawer nickname={profile?.nickname ?? ''} />} />
 
       <p className="px-5 pb-4 text-[13px] leading-relaxed text-ink-soft">
         {folder.name} 폴더에 모아둔 상자예요.

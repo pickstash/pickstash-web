@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { BoxCard } from '@/components/box-card'
 import { PageHeader } from '@/components/page-header'
+import { AppDrawer } from '@/components/app-drawer'
 import type { Box } from '@/lib/api/boxes'
 
 export default async function DonePage() {
@@ -9,7 +10,7 @@ export default async function DonePage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: rawBoxes }, { data: participations }, { data: favs }] = await Promise.all([
+  const [{ data: rawBoxes }, { data: participations }, { data: favs }, { data: profile }] = await Promise.all([
     supabase
       .from('boxes')
       .select(`*, box_participants(user_id, profiles(avatar_url, nickname)), options(id, name, decided_at)`)
@@ -17,6 +18,7 @@ export default async function DonePage() {
       .order('updated_at', { ascending: false }),
     supabase.from('box_participants').select('box_id, last_seen_at').eq('user_id', user.id),
     supabase.from('favorites').select('box_id').eq('user_id', user.id),
+    supabase.from('profiles').select('nickname').eq('id', user.id).single(),
   ])
 
   const lastSeenMap = new Map((participations ?? []).map(p => [p.box_id, p.last_seen_at]))
@@ -31,7 +33,7 @@ export default async function DonePage() {
 
   return (
     <main className="flex min-h-dvh flex-col">
-      <PageHeader title="정리된 창고" />
+      <PageHeader title="정리된 창고" right={<AppDrawer nickname={profile?.nickname ?? ''} />} />
 
       <p className="px-5 pb-4 text-[13px] leading-relaxed text-ink-soft">
         결정이 끝난 상자들이 기록으로 남아있어요.

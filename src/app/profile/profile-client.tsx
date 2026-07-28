@@ -7,6 +7,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { updateNickname, updateAvatarUrl, uploadAvatar } from '@/lib/api/profile'
 import { signOut } from '@/lib/api/auth'
 import { PageHeader } from '@/components/page-header'
+import { AppDrawer } from '@/components/app-drawer'
 
 interface ProfileClientProps {
   userId: string
@@ -89,7 +90,7 @@ export function ProfileClient({ userId, nickname, avatarUrl, kakaoAvatarUrl }: P
 
   return (
     <main className="flex min-h-dvh flex-col">
-      <PageHeader title="프로필 관리" />
+      <PageHeader title="프로필 관리" right={<AppDrawer nickname={nickname} />} />
 
       <div className="flex-1 space-y-3 px-5 pb-6 pt-1">
         {/* 프로필 사진 */}
