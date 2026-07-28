@@ -76,15 +76,16 @@ src/
 상자 상태는 `closed_at` **하나**에서 조회 시점에 파생한다. cron 불필요.
 
 ```ts
-type BoxStatus = 'OPEN' | 'DECIDED';   // 정리중 / 정리완료
+// 실제 구현: src/lib/domain/box-status.ts
+type BoxStatus = 'OPEN' | 'RESOLVED';   // 정리중 / 정리완료
 
-function getBoxStatus(box: { closedAt: Date | null }): BoxStatus {
-  return box.closedAt ? 'DECIDED' : 'OPEN';
+function getBoxStatus(box: { closed_at: string | null }): BoxStatus {
+  return box.closed_at ? 'RESOLVED' : 'OPEN';
 }
 ```
 
 - **정리중(OPEN)** = `closed_at IS NULL` — 아직 안 정함
-- **정리완료(DECIDED)** = `closed_at IS NOT NULL` — 정함(기록/아카이브)
+- **정리완료(RESOLVED)** = `closed_at IS NOT NULL` — 정함(기록/아카이브)
 
 `SHOWDOWN`·`EXPIRED`·`current_round`·시간만료 limbo는 **없다.**
 
@@ -150,7 +151,7 @@ function getBoxStatus(box: { closedAt: Date | null }): BoxStatus {
 
 | 라우트 | 화면 | 비고 |
 |---|---|---|
-| `/login` | 로그인 | 카카오 로그인 버튼만. 비로그인 시 전 페이지가 여기로 리다이렉트. 비회원 둘러보기 없음 |
+| `/login` | 로그인 | 카카오 로그인 버튼만. 비로그인 시 대부분 페이지가 여기로 리다이렉트. 예외: `/invite/[code]`·`/group-invite/[code]`는 비로그인 접근 허용(§6-1 뷰어) |
 | `/auth/callback` | OAuth 콜백 | Supabase 세션 교환 |
 | `/` | 메인 | 7-1 참조 |
 | `/box/new` | 상자 생성 | 7-2 |
@@ -163,7 +164,7 @@ function getBoxStatus(box: { closedAt: Date | null }): BoxStatus {
 | `/done` | 정리된 창고 | 7-7 |
 | `/favorites` | 즐겨찾는 창고 | 7-7 |
 | `/folder/[id]` | 폴더 (주제별 상자 묶음) | 상태 무관 전체. §3-7 |
-| `/invite/[code]` | 상자 초대 랜딩 | **generateMetadata로 OG 동적 렌더링** + 로그인 전 상자 미리보기 |
+| `/invite/[code]` | 상자 초대 랜딩 = **읽기 전용 뷰어** | **generateMetadata로 OG 동적 렌더링** + 비로그인 포함 누구나 상자 전체(선택지·내용·결과·좋아요수·댓글)를 읽기 전용으로 열람. 참여자는 `/box/[id]`로 리다이렉트. §6-1 |
 | `/groups` | 그룹 관리 | 7-8 |
 | `/groups/[id]` | 그룹 상세 | 7-8 |
 | `/group-invite/[code]` | 그룹 초대 랜딩 | OG 동적 렌더링 |
@@ -348,11 +349,20 @@ create index box_activities_box_created_idx on box_activities (box_id, created_a
 ### RPC 함수 (웹·앱이 공유하는 서버 로직)
 
 ```sql
--- 비참여자가 초대 랜딩에서 상자 이름만 조회 (RLS 우회, 제한적 노출)
+-- 비참여자가 초대 랜딩에서 상자 이름만 조회 (RLS 우회, 제한적 노출 — OG/메타태그용)
 create or replace function get_box_by_invite_code(p_code text)
 returns table (id uuid, title text) as $$
   select id, title from boxes where invite_code = p_code;
 $$ language sql security definer;
+
+-- 초대 링크 읽기 전용 뷰어(§6-1): 비로그인 포함 누구나 상자 전체 스냅샷을 jsonb로 조회.
+--   (상자·참여자·선택지(내용/결정/좋아요수)·댓글(답글/좋아요수/작성자)). invite_code로만 제한.
+--   014_public_box_view.sql. anon·authenticated 모두 execute grant. 순수 조회(쓰기 없음).
+create or replace function get_box_view_by_invite_code(p_code text)
+returns jsonb language sql security definer stable set search_path = public as $$
+  select jsonb_build_object( /* box + participants + options[+comments] ... */ )
+  from boxes b where b.invite_code = p_code;
+$$;
 
 -- 초대 수락: 현재 로그인 유저를 참여자로 등록
 create or replace function join_box_by_invite_code(p_code text)
@@ -393,9 +403,18 @@ create or replace function start_rematch(p_box_id uuid, p_deadline timestamptz) 
 
 ## 6. 핵심 플로우
 
+### 6-1. 초대 링크 = 읽기 전용 뷰어 (노션식, 2026-07-28 추가)
+
+`/invite/[code]`는 **로그인 안 한 사람을 포함해 누구나** 상자 전체를 **읽기 전용**으로 볼 수 있는 페이지다(노션 공개 페이지처럼 "링크를 아는 사람은 열람 가능"). 예측 불가한 8자 `invite_code`가 접근 키.
+
+- **노출 범위**: 상자 제목·메모·참여 인원/아바타·결정 상태·결정 결과 + **모든 선택지**(이름·본문 블록(글/사진/링크/유튜브)·좋아요 수·"지금 1위"·결정 표시) + **모든 댓글**(답글·좋아요 수·멘션·수정됨 표시). 여럿 상자만 좋아요/1위 노출(혼자 상자는 미표시 — 앱과 동일).
+- **읽기 전용**: 좋아요·댓글·결정·참여 등 **쓰기 액션은 전부 없음**. 하단 고정 CTA "카카오로 로그인하고 참여하기"로만 유도. RLS는 그대로(쓰기는 로그인+참여자만) — 뷰어는 `get_box_view_by_invite_code`(security definer, invite_code 제한) 하나로 조회.
+- **분기**: 비로그인/비참여자 → 뷰어. 이미 **참여자**면 편집 가능한 `/box/[id]`로 즉시 리다이렉트. 유효하지 않은 코드 → "유효하지 않은 초대 링크예요."
+- **lazy commit**: 로그인 사용자가 마감 지난 `auto_deadline` 상자를 뷰어로 열면 `auto_decide_box` 호출 후 재조회(비로그인 열람은 쓰기 유발 없이 저장된 상태 그대로).
+
 ### 초대 플로우 (3가지 방식)
 1. **카카오톡 초대**: Kakao JS SDK `Share.sendDefault`로 초대 메시지 전송 (제목: 상자 이름, 버튼: 초대링크)
-2. **초대링크 복사**: `https://<도메인>/invite/<invite_code>` 클립보드 복사. 링크 클릭 시 OG 미리보기(상자 이름 + "투표하러 가기") 노출 → **랜딩에서 로그인 전에 상자 미리보기**(제목·메모·선택지 이름·참여 인원 — S2 마찰 제로의 핵심, `get_box_preview_by_invite_code` RPC) → 카카오 로그인 → `box_participants` insert → 상자 상세로
+2. **초대링크 복사**: `https://<도메인>/invite/<invite_code>` 클립보드 복사. 링크 클릭 시 OG 미리보기(상자 이름 + "함께 정하러 가기") 노출 → **랜딩 = 읽기 전용 뷰어(§6-1)로 로그인 전에 상자 전체 열람** → "카카오로 로그인하고 참여하기" → `box_participants` insert → 상자 상세로. *(구 미리보기 카드(`get_box_preview_by_invite_code`)는 뷰어로 대체됐고 RPC는 OG/메타용으로 잔존.)*
 3. **그룹으로 초대**: 그룹 검색 바텀시트에서 그룹 선택 → 해당 그룹 멤버 전원을 `box_participants`에 insert
 
 ### 좋아요(선호 표시) 플로우 — 여럿 상자만

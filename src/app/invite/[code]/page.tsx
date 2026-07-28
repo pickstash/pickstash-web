@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation'
 import type { Metadata } from 'next'
-import Image from 'next/image'
 import { createClient } from '@/lib/supabase/server'
-import { JoinClient } from './join-client'
+import type { BoxViewerData } from '@/lib/api/invites'
+import { BoxViewer } from './box-viewer'
 
 interface Props {
   params: Promise<{ code: string }>
@@ -17,8 +17,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = box?.title ? `${box.title} — 결정창고` : '결정창고 초대'
   return {
     title,
-    description: '투표하러 가기',
-    openGraph: { title, description: '투표하러 가기', siteName: '결정창고' },
+    description: '함께 정하러 가기',
+    openGraph: { title, description: '함께 정하러 가기', siteName: '결정창고' },
   }
 }
 
@@ -26,26 +26,14 @@ export default async function InviteLandingPage({ params }: Props) {
   const { code } = await params
   const supabase = await createClient()
 
-  const [{ data: { user } }, { data: previewData }] = await Promise.all([
+  const [{ data: { user } }, viewRes] = await Promise.all([
     supabase.auth.getUser(),
-    supabase.rpc('get_box_preview_by_invite_code', { p_code: code }),
+    supabase.rpc('get_box_view_by_invite_code', { p_code: code }),
   ])
 
-  const preview = previewData?.[0]
+  let view = viewRes.data as unknown as BoxViewerData | null
 
-  // 이미 참여자면 바로 이동
-  if (user && preview) {
-    const { data: participant } = await supabase
-      .from('box_participants')
-      .select('user_id')
-      .eq('box_id', preview.id)
-      .eq('user_id', user.id)
-      .maybeSingle()
-
-    if (participant) redirect(`/box/${preview.id}`)
-  }
-
-  if (!preview) {
+  if (!view) {
     return (
       <main className="flex min-h-dvh flex-col items-center justify-center px-6 text-center">
         <p className="text-base text-ink-soft">유효하지 않은 초대 링크예요.</p>
@@ -53,43 +41,25 @@ export default async function InviteLandingPage({ params }: Props) {
     )
   }
 
-  const optionNames = (preview.option_names ?? []).filter(Boolean)
+  // 이미 참여자면 편집 가능한 상자 상세로 바로 이동 (뷰어 대신)
+  if (user && view.participants.some(p => p.id === user.id)) {
+    redirect(`/box/${view.id}`)
+  }
 
-  return (
-    <main className="flex min-h-dvh flex-col justify-center px-6 py-12">
-      <div className="mx-auto flex w-full max-w-[360px] flex-col gap-6">
-        <div className="flex flex-col items-center gap-2 text-center">
-          <Image src="/icons/icon-192.png" alt="" width={56} height={56} className="rounded-[18px]" />
-          <p className="text-[12px] font-semibold text-ink-faint">
-            함께 정하자고 초대했어요
-          </p>
-        </div>
+  // 마감 투표 lazy commit: 로그인 사용자가 열람할 때 마감 지난 auto 상자를 자동 결정 후 재조회.
+  // (비로그인 뷰어는 쓰기 유발 없이 저장된 상태 그대로 본다 — 참여자가 열면 어차피 커밋됨.)
+  if (
+    user &&
+    view.decision_mode === 'auto_deadline' &&
+    !view.closed_at &&
+    view.deadline_at &&
+    new Date(view.deadline_at) <= new Date()
+  ) {
+    await supabase.rpc('auto_decide_box', { p_box_id: view.id })
+    const refetched = (await supabase.rpc('get_box_view_by_invite_code', { p_code: code }))
+      .data as unknown as BoxViewerData | null
+    if (refetched) view = refetched
+  }
 
-        {/* 로그인 전 미리보기 — 무엇을 정하는 상자인지 보여준다 (S2 마찰 제로) */}
-        <div className="space-y-3 rounded-card border border-[#ECEADC] bg-paper p-5 shadow-[0_2px_10px_rgba(42,42,39,0.05)]">
-          <h1 className="text-[19px] font-extrabold leading-snug tracking-tight text-ink">{preview.title}</h1>
-          {preview.memo && (
-            <p className="rounded-[14px] border border-dashed border-[#D9D6C2] px-3 py-2.5 text-[12.5px] text-ink-soft">
-              ✏️ {preview.memo}
-            </p>
-          )}
-          {optionNames.length > 0 && (
-            <div>
-              <p className="mb-1.5 text-[11.5px] font-bold text-ink-faint">선택지 {optionNames.length}개</p>
-              <div className="flex flex-wrap gap-1.5">
-                {optionNames.map((name, i) => (
-                  <span key={i} className="rounded-full bg-butter-tint px-2.5 py-1 text-[12px] font-semibold text-ink">
-                    {name}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-          <p className="text-[11.5px] text-ink-faint">{preview.participant_count}명 참여 중</p>
-        </div>
-
-        <JoinClient code={code} isLoggedIn={!!user} />
-      </div>
-    </main>
-  )
+  return <BoxViewer view={view} isLoggedIn={!!user} code={code} />
 }

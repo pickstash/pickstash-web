@@ -454,6 +454,10 @@ export interface Database {
           option_names: string[]
         }[]
       }
+      get_box_view_by_invite_code: {
+        Args: { p_code: string }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never
