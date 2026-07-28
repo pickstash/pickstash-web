@@ -20,6 +20,7 @@ import { OptionsSection } from '@/components/options-section'
 import { Icon } from '@/components/icon'
 import { AppDrawer } from '@/components/app-drawer'
 import { PageHeader } from '@/components/page-header'
+import { ShareViewLinkButton } from './share-view-link-button'
 import { getBoxStatus, isDoneStatus, BOX_STATUS_LABEL, type BoxStatus } from '@/lib/domain/box-status'
 import { parseBlocks, linkBlocksOf } from '@/lib/domain/option-content'
 import { formatDeadlineCompact, defaultDeadline } from '@/lib/utils'
@@ -410,7 +411,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
         </div>
       )}
 
-      {/* 폴더 지정 (방장) — 주제별 상자 묶음 §3-7 */}
+      {/* 폴더 지정 (개인별 — 참여자 누구나 자기 폴더에) — 주제별 상자 묶음 §3-7 */}
       {folderModal && (
         <div className="fixed inset-0 z-50 flex flex-col justify-end">
           <div className="absolute inset-0 bg-ink/45" onClick={() => setFolderModal(false)} />
@@ -634,10 +635,11 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
             </p>
           ) : null}
 
-          {/* 마감(마감 투표만) + 참여자 */}
+          {/* 마감(마감 투표만) + 참여자 + 뷰어 링크 공유(로그인 없이 구경 가능) */}
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
             {deadlineNode}
             {participantsNode}
+            <ShareViewLinkButton inviteCode={box.invite_code} />
           </div>
         </div>
 
