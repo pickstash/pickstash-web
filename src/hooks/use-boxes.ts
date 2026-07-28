@@ -141,7 +141,7 @@ export function useDeleteBox() {
     mutationFn: (boxId: string) => deleteBox(boxId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['boxes'] })
-      router.push('/')
+      router.replace('/') // 삭제된 상자로 back하면 리다이렉트 루프 → 교체
     },
   })
 }
@@ -153,7 +153,7 @@ export function useLeaveBox() {
     mutationFn: (boxId: string) => leaveBox(boxId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['boxes'] })
-      router.push('/')
+      router.replace('/') // 나간 상자로 back하면 '참여자 아님→/' 리다이렉트 루프 → 교체
     },
   })
 }

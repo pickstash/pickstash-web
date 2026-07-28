@@ -16,11 +16,10 @@ export function PageHeader({ title, fallbackHref = '/', right }: PageHeaderProps
   const router = useRouter()
 
   function handleBack() {
-    // Next.js App Router가 관리하는 히스토리 인덱스. 앱 내부에서 진입했으면 > 0.
-    // window.history.length는 브라우저의 이전 페이지까지 포함해 부정확하고,
-    // 리다이렉트되는 페이지로 back 하면 무한루프가 나므로 idx를 기준으로 삼는다.
-    const idx = typeof window !== 'undefined' ? window.history.state?.idx : undefined
-    if (typeof idx === 'number' && idx > 0) {
+    // Next App Router는 history.state에 idx를 두지 않는다(항상 undefined). 이 값을 기준으로 삼던
+    // 이전 로직은 매번 push(fallback)로 빠져 히스토리가 쌓였고, OS 뒤로가기가 같은 화면을
+    // 오가는 루프를 만들었다. → 앱 내부 히스토리가 있으면 pop(뒤로), 없으면(딥링크 새 진입) 상위로.
+    if (typeof window !== 'undefined' && window.history.length > 1) {
       router.back()
     } else {
       router.push(fallbackHref)

@@ -21,7 +21,8 @@ export function JoinClient({ code, isLoggedIn }: JoinClientProps) {
     setLoading(true)
     try {
       const boxId = await joinBoxByInviteCode(code)
-      router.push(`/box/${boxId}`)
+      // replace: 참여 후 /invite로 back하면 (이제 참여자라) 다시 /box로 리다이렉트돼 루프가 남 → 히스토리에서 교체
+      router.replace(`/box/${boxId}`)
     } catch {
       setLoading(false)
     }

@@ -23,7 +23,8 @@ export function JoinClient({ code, isLoggedIn }: JoinClientProps) {
     setError(null)
     try {
       const groupId = await joinGroupByInviteCode(code)
-      router.push(`/groups/${groupId}`)
+      // replace: 참여 후 /group-invite로 back하면 다시 /groups로 리다이렉트돼 루프 → 히스토리에서 교체
+      router.replace(`/groups/${groupId}`)
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : ''
       setError(msg.includes('group_full') ? '그룹 멤버가 가득 찼어요. (최대 30명)' : '참여에 실패했어요.')

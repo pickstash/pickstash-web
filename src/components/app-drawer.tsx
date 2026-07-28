@@ -123,7 +123,7 @@ export function AppDrawer({ nickname }: AppDrawerProps) {
 
   async function handleLogout() {
     await signOut()
-    router.push('/login')
+    router.replace('/login') // 로그아웃 후 앱으로 back하면 인증가드 리다이렉트 → 교체
   }
 
   return (

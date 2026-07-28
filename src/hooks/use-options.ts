@@ -59,7 +59,8 @@ export function useDeleteOption(boxId: string) {
     mutationFn: (optionId: string) => deleteOption(optionId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['options', boxId] })
-      router.push(`/box/${boxId}`)
+      // replace: 삭제된 선택지 상세로 back하면 빈 화면/리다이렉트가 되므로 히스토리에서 교체
+      router.replace(`/box/${boxId}`)
     },
   })
 }

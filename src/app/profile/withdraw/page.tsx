@@ -41,7 +41,7 @@ export default function WithdrawPage() {
     setError(null)
     try {
       await deleteAccount(finalReasons, finalDetail)
-      router.push('/login')
+      router.replace('/login') // 탈퇴 후 앱으로 back하면 인증가드 리다이렉트 → 교체
     } catch {
       setError('탈퇴 처리에 실패했어요. 잠시 후 다시 시도해 주세요.')
       setLoading(false)

@@ -41,7 +41,7 @@ export function useLeaveGroup(groupId: string) {
     mutationFn: () => leaveGroup(groupId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['groups'] })
-      router.push('/groups')
+      router.replace('/groups') // 나간 그룹으로 back하면 '멤버 아님→/groups' 리다이렉트 루프 → 교체
     },
   })
 }
