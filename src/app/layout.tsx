@@ -4,9 +4,15 @@ import './globals.css'
 import { Providers } from '@/components/providers'
 
 export const metadata: Metadata = {
+  // 상대 og:image를 절대 URL로 해석(카카오 등 크롤러가 썸네일 로드하려면 절대 URL 필요)
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://pickstash-web.vercel.app'),
   title: '결정창고',
   description: '친구들과 함께 의사결정하는 앱',
   manifest: '/manifest.json',
+  openGraph: {
+    siteName: '결정창고',
+    images: ['/icons/icon-512.png'],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',

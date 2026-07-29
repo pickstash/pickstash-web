@@ -5,13 +5,14 @@ import Link from 'next/link'
 import { useOptions } from '@/hooks/use-options'
 import { useBoxVotes } from '@/hooks/use-votes'
 import { useRealtimeVotes } from '@/hooks/use-realtime-votes'
+import { useRealtimeOptions } from '@/hooks/use-realtime-options'
 import { useInfiniteReveal } from '@/hooks/use-infinite-reveal'
 import { sortOptions, OPTION_SORT_MODES, OPTION_SORT_LABELS, type OptionSortMode } from '@/lib/domain/option-sort'
 import { parseBlocks, getOptionPreview } from '@/lib/domain/option-content'
 import { proxiedImageUrl } from '@/lib/api/unfurl'
 import { VoteButtons } from './vote-buttons'
 import { Icon } from './icon'
-import type { Option } from '@/lib/api/options'
+import type { Option, OptionWithCounts } from '@/lib/api/options'
 
 const PAGE_SIZE = 6
 
@@ -32,8 +33,9 @@ export function OptionsSection({ boxId, round, initialOptions, canVote, showLike
   const [sortMode, setSortMode] = useState<OptionSortMode>('latest')
 
   useRealtimeVotes(boxId, round)
+  useRealtimeOptions(boxId)
 
-  const sorted = sortOptions(options, votes, sortMode)
+  const sorted = sortOptions(options, votes, sortMode) as OptionWithCounts[]
   const { visibleCount, sentinelRef, hasMore } = useInfiniteReveal(sorted.length, PAGE_SIZE, sortMode)
   const visible = sorted.slice(0, visibleCount)
 
@@ -145,18 +147,26 @@ export function OptionsSection({ boxId, round, initialOptions, canVote, showLike
                       )}
                     </div>
 
-                    {showLikes && (
-                      <div className="relative z-10 w-fit">
-                        <VoteButtons
-                          optionId={option.id}
-                          boxId={boxId}
-                          round={round}
-                          counts={counts}
-                          disabled={!canVote}
-                          compact
-                        />
-                      </div>
-                    )}
+                    <div className="flex items-center gap-3">
+                      {showLikes && (
+                        <div className="relative z-10 w-fit">
+                          <VoteButtons
+                            optionId={option.id}
+                            boxId={boxId}
+                            round={round}
+                            counts={counts}
+                            disabled={!canVote}
+                            compact
+                          />
+                        </div>
+                      )}
+                      {(option.comment_count ?? 0) > 0 && (
+                        <span className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-ink-faint">
+                          <Icon name="comment" size={12} />
+                          {option.comment_count}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* 오른쪽: 56px 썸네일 (없으면 플레이스홀더로 공간 유지) */}

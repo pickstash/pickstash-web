@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title,
     description: '그룹 참여하기',
-    openGraph: { title, description: '그룹 참여하기', siteName: '결정창고' },
+    openGraph: { title, description: '그룹 참여하기', siteName: '결정창고', images: ['/icons/icon-512.png'] },
   }
 }
 

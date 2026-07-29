@@ -3,6 +3,8 @@ import type { Database } from '@/lib/supabase/types'
 import type { OptionBlock } from '@/lib/domain/option-content'
 
 export type Option = Database['public']['Tables']['options']['Row']
+/** 선택지 + 파생 카운트(댓글 수). comment_count는 목록 조회에서만 채워진다(optional). */
+export type OptionWithCounts = Option & { comment_count?: number }
 export type { OptionBlock } from '@/lib/domain/option-content'
 
 export interface CreateOptionInput {
@@ -35,15 +37,16 @@ export async function uploadOptionImage(boxId: string, file: File): Promise<stri
   return publicUrl
 }
 
-export async function getOptions(boxId: string): Promise<Option[]> {
+export async function getOptions(boxId: string): Promise<OptionWithCounts[]> {
   const supabase = createClient()
   const { data, error } = await supabase
     .from('options')
-    .select('*')
+    .select('*, comments(count)')
     .eq('box_id', boxId)
     .order('created_at', { ascending: true })
   if (error) throw error
-  return data ?? []
+  const rows = (data ?? []) as unknown as (Option & { comments: { count: number }[] })[]
+  return rows.map(({ comments, ...o }) => ({ ...o, comment_count: comments?.[0]?.count ?? 0 }))
 }
 
 export async function getOption(id: string): Promise<Option | null> {

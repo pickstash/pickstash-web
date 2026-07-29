@@ -1,7 +1,8 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-const PUBLIC_ROUTES = ['/login', '/auth/callback', '/invite', '/group-invite']
+// 비로그인 접근 허용 랜딩(§6-1 뷰어). /folder-invite도 폴더 공유 뷰어라 반드시 포함(018·019).
+const PUBLIC_ROUTES = ['/login', '/auth/callback', '/invite', '/group-invite', '/folder-invite']
 
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
