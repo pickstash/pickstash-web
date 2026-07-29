@@ -30,29 +30,19 @@ export interface CreateBoxInput {
 export async function createBox(input: CreateBoxInput): Promise<Box> {
   const supabase = createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Not authenticated')
+  // 상자 + 생성자 참여자 행을 원자적으로 생성한다 (RPC).
+  // 직접 .insert().select() 하면 INSERT ... RETURNING이 boxes의 SELECT 정책(EXISTS box_participants)을
+  // 타는데, 이 시점엔 참여자 행이 없어 42501("violates RLS")로 실패한다. RPC 안에서 참여자까지 넣고 조회해 반환.
+  const { data: box, error } = await supabase.rpc('create_box', {
+    p_title: input.title,
+    p_memo: input.memo ?? null,
+    p_decision_mode: input.decision_mode,
+    p_deadline_at: input.decision_mode === 'auto_deadline' ? input.deadline_at : null,
+  })
 
-  const { data: box, error: boxError } = await supabase
-    .from('boxes')
-    .insert({
-      title: input.title,
-      memo: input.memo ?? null,
-      decision_mode: input.decision_mode,
-      deadline_at: input.decision_mode === 'auto_deadline' ? input.deadline_at : null,
-    })
-    .select()
-    .single()
-
-  if (boxError) throw boxError
-
-  const { error: participantError } = await supabase
-    .from('box_participants')
-    .insert({ box_id: box.id, user_id: user.id })
-
-  if (participantError) throw participantError
-
-  return box
+  if (error) throw error
+  if (!box) throw new Error('상자 생성에 실패했어요.')
+  return box as Box
 }
 
 export async function getBox(id: string): Promise<BoxWithParticipants | null> {

@@ -395,6 +395,15 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
+      create_box: {
+        Args: {
+          p_title: string
+          p_memo?: string | null
+          p_decision_mode?: string
+          p_deadline_at?: string | null
+        }
+        Returns: Database['public']['Tables']['boxes']['Row']
+      }
       get_box_by_invite_code: {
         Args: { p_code: string }
         Returns: { id: string; title: string }[]
