@@ -64,6 +64,6 @@ export function toTimeInput(date: Date): string {
 /** 마감일 기본값 = 지금으로부터 1시간 뒤 (오늘 날짜 + 현재시각+1h) */
 export function defaultDeadline(): Date {
   const d = new Date()
-  d.setHours(d.getHours() + 1)
+  d.setMinutes(d.getMinutes() + 10)  // 현재 시각 + 10분
   return d
 }
