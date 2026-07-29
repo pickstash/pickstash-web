@@ -45,6 +45,9 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    // sw.js·manifest.json 제외 필수: 인증 가드가 이들을 /login으로 리다이렉트하면
+    // 서비스워커 등록·매니페스트 로드가 실패해 PWA가 '설치 가능'으로 인식되지 않는다
+    // (beforeinstallprompt 미발생 → 설치 버튼 비활성).
+    '/((?!_next/static|_next/image|favicon.ico|sw.js|manifest.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
