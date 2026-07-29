@@ -1,7 +1,7 @@
-import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { InviteClient } from './invite-client'
+import { PageHeader } from '@/components/page-header'
 import type { BoxWithParticipants } from '@/lib/api/boxes'
 
 export default async function InvitePage({ params }: { params: Promise<{ id: string }> }) {
@@ -34,14 +34,7 @@ export default async function InvitePage({ params }: { params: Promise<{ id: str
 
   return (
     <main className="flex min-h-dvh flex-col">
-      <header className="flex items-center gap-3 px-4 pt-[calc(env(safe-area-inset-top)+1rem)] pb-3">
-        <Link href={`/box/${id}`} aria-label="뒤로가기" className="-ml-2 flex h-9 w-9 items-center justify-center rounded-full text-ink active:bg-butter-tint">
-          <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
-        </Link>
-        <h1 className="text-[17px] font-extrabold tracking-tight text-ink">친구 초대</h1>
-      </header>
+      <PageHeader title="친구 초대" fallbackHref={`/box/${id}`} />
 
       <div className="flex-1 space-y-4 px-5 pb-6 pt-1">
         <div className="rounded-card border border-[#ECEADC] bg-paper p-5">

@@ -142,6 +142,15 @@ export function AppDrawer({ nickname }: AppDrawerProps) {
             </div>
 
             <nav className="flex-1 space-y-1 px-2.5 py-4">
+              <Link
+                href="/"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2.5 rounded-[14px] px-3 py-2.5 text-sm font-semibold text-ink hover:bg-cream active:bg-butter-tint"
+              >
+                <Icon name="home" size={18} className="text-ink-soft" />
+                홈으로
+              </Link>
+
               <p className="px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.08em] text-ink-faint">결정창고</p>
               {([
                 { href: '/messy', icon: 'box', name: '어질러진 창고' },

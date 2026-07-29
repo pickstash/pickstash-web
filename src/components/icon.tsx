@@ -25,6 +25,7 @@ export type IconName =
   | 'calendar'
   | 'edit'
   | 'folder'
+  | 'home'
 
 function inner(name: IconName): ReactNode {
   switch (name) {
@@ -100,6 +101,13 @@ function inner(name: IconName): ReactNode {
       )
     case 'play':
       return <polygon points="5 3 19 12 5 21 5 3" />
+    case 'home':
+      return (
+        <>
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+          <polyline points="9 22 9 12 15 12 15 22" />
+        </>
+      )
     case 'box':
       return (
         <>
