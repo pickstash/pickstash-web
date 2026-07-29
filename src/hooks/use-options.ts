@@ -36,7 +36,8 @@ export function useCreateOption(boxId: string) {
     onSuccess: (option) => {
       qc.invalidateQueries({ queryKey: ['options', boxId] })
       qc.invalidateQueries({ queryKey: ['box', boxId] })
-      router.push(`/box/${boxId}/option/${option.id}`)
+      // replace: 추가 폼(/new)을 히스토리에서 교체 — 새 선택지 상세에서 뒤로가기 시 빈 폼으로 안 돌아가게
+      router.replace(`/box/${boxId}/option/${option.id}`)
     },
   })
 }
