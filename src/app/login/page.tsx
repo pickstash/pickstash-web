@@ -3,7 +3,7 @@ import { KakaoLoginButton } from './kakao-login-button'
 
 export default function LoginPage() {
   return (
-    <main className="flex h-dvh flex-col items-center overflow-hidden px-6 py-12">
+    <main className="flex min-h-dvh flex-col items-center px-6 py-12">
       <div className="flex w-full max-w-[340px] flex-1 flex-col items-center">
         <div className="flex flex-1 flex-col items-center justify-center gap-1 text-center">
           <Image
