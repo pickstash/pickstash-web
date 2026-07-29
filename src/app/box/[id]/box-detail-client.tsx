@@ -544,7 +544,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
                 onKeyDown={e => e.key === 'Enter' && handleSaveTitle()}
                 maxLength={50}
                 autoFocus
-                className="flex-1 border-b-[1.5px] border-butter-dark bg-transparent pb-1 text-[22px] font-extrabold leading-tight text-ink focus:outline-none"
+                className="min-w-0 flex-1 border-b-[1.5px] border-butter-dark bg-transparent pb-1 text-[22px] font-extrabold leading-tight text-ink focus:outline-none"
               />
               <button
                 onClick={handleSaveTitle}
