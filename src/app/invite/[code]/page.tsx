@@ -1,8 +1,8 @@
-import { redirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import type { BoxViewerData } from '@/lib/api/invites'
 import { BoxViewer } from './box-viewer'
+import { RedirectToBox } from './redirect-to-box'
 
 interface Props {
   params: Promise<{ code: string }>
@@ -41,9 +41,10 @@ export default async function InviteLandingPage({ params }: Props) {
     )
   }
 
-  // 이미 참여자면 편집 가능한 상자 상세로 바로 이동 (뷰어 대신)
+  // 이미 참여자면 편집 가능한 상자 상세로 이동 (뷰어 대신).
+  // 서버 redirect()가 아니라 client replace를 쓰는 이유는 RedirectToBox 주석 참고 (뒤로가기 무한루프 방지).
   if (user && view.participants.some(p => p.id === user.id)) {
-    redirect(`/box/${view.id}`)
+    return <RedirectToBox boxId={view.id} />
   }
 
   // 마감 투표 lazy commit: 로그인 사용자가 열람할 때 마감 지난 auto 상자를 자동 결정 후 재조회.
