@@ -149,6 +149,7 @@ function getBoxStatus(box: { closed_at: string | null }): BoxStatus {
 - **폴더 공유 (018)**: 폴더도 상자처럼 `folders.invite_code`(예측불가 8자)로 **통째 링크 공유**한다. 링크(`/folder-invite/[code]`)는 상자 초대(§6-1)를 폴더 단위로 미러링한다.
   - **뷰어(비로그인 포함)**: `get_folder_view_by_invite_code`(security definer)로 폴더 + 그 안 상자 목록 스냅샷을 읽기 전용 노출. 각 상자는 자기 `invite_code`로 **상자 읽기전용 뷰어(§6-1)**로 연결(선택지·결과·댓글까지 열람).
   - **참여(로그인)**: `join_folder_by_invite_code` — 폴더 안 **모든 상자에 참여자로 즉시 등록**(`on conflict do nothing` — 이미 참여 중인 상자는 그대로 유지) + **폴더를 내 계정으로 복사**(`folders`+`box_folders`, 초대자가 만든 것처럼). 복사본은 `source_folder_id`로 원본을 기억해 **재참여 멱등**(중복 폴더 안 생김). 복사 후 내 폴더(`/folder/[id]`)로 이동.
+  - **라이브 동기화 (019)**: 참여는 스냅샷 복사가 아니라 원본 폴더 **구독**이다. 소유자가 폴더에 상자를 추가하면 구독자 전원 그 상자에 자동 참여 + 복사본 폴더에 추가되고, 소유자가 폴더에서 상자를 제외하면 구독자 복사본에서도 그 상자 분류가 제거된다(참여 자격은 유지). `box_folders` 트리거 `sync_folder_box_to_subscribers`(security definer)로 서버 일원화(웹·RN 공통). **폴더 삭제는 전파하지 않음**(복사본 독립 유지, `source_folder_id` on delete set null로 구독만 종료).
   - 폴더 소유자/이미 참여(복사)한 사용자가 링크를 열면 자기 폴더로 리다이렉트(상자 뷰어의 "참여자→/box/[id]"와 동형).
 
 ## 4. 라우트 맵
@@ -189,6 +190,7 @@ function getBoxStatus(box: { closed_at: string | null }): BoxStatus {
 > - **012 폴더**: `folders`(각자 자기 폴더) + `box_folders(user_id, box_id, folder_id)` 조인. 개인별 폴더링(사람마다 독립, 방장 무관). §3-7. RLS: 본인 행만.
 > - **014 링크 뷰어**: `get_box_view_by_invite_code`(비로그인 포함 읽기 전용 상자 전체 조회). §6-1.
 > - **018 폴더 공유**: `folders.invite_code`·`folders.source_folder_id` 추가. **`box_folders` PK → `(user_id, box_id, folder_id)`**(상자 다중 폴더 포함). RPC 3종(`get_folder_by_invite_code`·`get_folder_view_by_invite_code`·`join_folder_by_invite_code`). §3-7.
+> - **019 폴더 라이브 동기화**: `box_folders` AFTER INSERT/DELETE 트리거 `sync_folder_box_to_subscribers`(security definer) — 소유자 원본 폴더의 상자 추가/제외를 구독 복사본(`source_folder_id`)에 전파(추가=참여+분류, 제외=분류 제거, 폴더 삭제는 전파 안 함). 순수 DB, 앱 코드 변경 없음. §3-7.
 > - **휴면(드롭 안 함)**: `boxes.current_round`, `votes.round`(항상 1), `votes.vote_type='dislike'`, options의 레거시 4컬럼. 코드가 아직 일부를 읽어(예: `current_round` 전달) 물리 삭제하지 않음.
 
 ```sql
