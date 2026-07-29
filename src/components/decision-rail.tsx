@@ -1,7 +1,32 @@
 import Link from 'next/link'
 import { Icon } from '@/components/icon'
 import { formatDday } from '@/lib/utils'
-import { leadersLabel, type OpenBoxCard } from '@/components/decision-hero'
+import { leadersLabel, type HeroParticipant, type OpenBoxCard } from '@/components/decision-hero'
+
+/** 미니 카드용 소형 참여자 아바타 스택 (히어로보다 작게). */
+function RailAvatars({ participants, max = 3 }: { participants: HeroParticipant[]; max?: number }) {
+  const shown = participants.slice(0, max)
+  const extra = participants.length - shown.length
+  return (
+    <div className="flex -space-x-1">
+      {shown.map(p => (
+        <div key={p.user_id} className="flex h-[18px] w-[18px] items-center justify-center overflow-hidden rounded-full border-[1.5px] border-paper bg-cream text-[8px] font-bold text-ink">
+          {p.profiles?.avatar_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={p.profiles.avatar_url} alt="" className="h-full w-full object-cover" />
+          ) : (
+            p.profiles?.nickname?.[0] ?? '?'
+          )}
+        </div>
+      ))}
+      {extra > 0 && (
+        <div className="flex h-[18px] w-[18px] items-center justify-center rounded-full border-[1.5px] border-paper bg-cream text-[8px] font-extrabold text-ink-soft">
+          +{extra}
+        </div>
+      )}
+    </div>
+  )
+}
 
 function DeadlineChip({ deadlineAt }: { deadlineAt: string }) {
   const label = formatDday(deadlineAt)
@@ -80,7 +105,10 @@ export function DecisionRail({ boxes, totalOpen }: { boxes: OpenBoxCard[]; total
                     {box.totalLikes}
                   </span>
                 ) : (
-                  <span className="text-[11px] font-semibold text-ink-faint">아직 좋아요 없음</span>
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-ink-faint">
+                    <RailAvatars participants={box.participants} />
+                    {box.participants.length}명 참여 중
+                  </span>
                 )}
               </div>
             </div>
