@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { toDateInput, toTimeInput, defaultDeadline } from '@/lib/utils'
 
 interface DeadlineBottomSheetProps {
@@ -12,19 +12,18 @@ interface DeadlineBottomSheetProps {
   onClear?: () => void
 }
 
-export function DeadlineBottomSheet({ open, defaultValue, onClose, onConfirm, onClear }: DeadlineBottomSheetProps) {
-  const [date, setDate] = useState('')
-  const [time, setTime] = useState('')
-  const [error, setError] = useState('')
+export function DeadlineBottomSheet({ open, ...props }: DeadlineBottomSheetProps) {
+  // 열릴 때만 본문을 마운트해 useState 초기값으로 시드한다. 열려 있는 동안 부모 리렌더
+  // (예: 저장 중 isPending)로는 사용자가 고른 값을 이전 마감시간으로 덮어쓰지 않는다.
+  if (!open) return null
+  return <DeadlineSheetBody {...props} />
+}
 
-  useEffect(() => {
-    if (open) {
-      const d = defaultValue ?? defaultDeadline()
-      setDate(toDateInput(d))
-      setTime(toTimeInput(d))
-      setError('')
-    }
-  }, [open, defaultValue])
+function DeadlineSheetBody({ defaultValue, onClose, onConfirm, onClear }: Omit<DeadlineBottomSheetProps, 'open'>) {
+  const initial = defaultValue ?? defaultDeadline()
+  const [date, setDate] = useState(() => toDateInput(initial))
+  const [time, setTime] = useState(() => toTimeInput(initial))
+  const [error, setError] = useState('')
 
   function handleSetNow(checked: boolean) {
     if (checked) {
@@ -51,8 +50,6 @@ export function DeadlineBottomSheet({ open, defaultValue, onClose, onConfirm, on
     }
     onConfirm(selected)
   }
-
-  if (!open) return null
 
   return (
     <div className="fixed inset-0 z-50">

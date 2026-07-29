@@ -141,11 +141,15 @@ function getBoxStatus(box: { closed_at: string | null }): BoxStatus {
 사용자가 만든 **이름 있는 상자 묶음**. 예: "여행" 폴더에 *여행지·항공권·음식·숙소* 결정 상자를 모아둠. 상태(어질러진/정리된)·즐겨찾기에 이은 **세 번째 분류 축**(주제)이다.
 
 - **⚠️ 그룹(사람 묶음)과 다름**: `groups`/`group_members`는 *같이 초대할 친구 집합*(현재 UI 숨김). 폴더는 *상자 조직화*로 완전히 별개 축이다. 이름을 "그룹"으로 재사용하지 않는다.
-- **모델 (개인별 폴더링)**: 폴더는 **각자 자기 것**(`folders.user_id`). 상자를 폴더에 넣는 것도 **사람마다 독립**(`box_folders(user_id, box_id, folder_id)` 조인) — 같은 공유 상자를 나는 "여행", 친구는 "모임"에 따로 넣어도 안 부딪힌다. **방장 개념에 의존하지 않음**(011의 owner/role 폐기와 정합). 사용자별 상자당 폴더 **0~1개**(PK `(user_id, box_id)`로 단일 보장).
+- **모델 (개인별 폴더링)**: 폴더는 **각자 자기 것**(`folders.user_id`). 상자를 폴더에 넣는 것도 **사람마다 독립**(`box_folders(user_id, box_id, folder_id)` 조인) — 같은 공유 상자를 나는 "여행", 친구는 "모임"에 따로 넣어도 안 부딪힌다. **방장 개념에 의존하지 않음**(011의 owner/role 폐기와 정합). 사용자별 상자를 **여러 폴더에 중복 포함 가능**(018 — PK `(user_id, box_id, folder_id)`). 상자 상세 "폴더 지정"은 **다중 선택**.
 - **상태 가로지름**: 폴더는 어질러진/정리된을 가로지른다(즐겨찾기처럼). 폴더 뷰(`/folder/[id]`)는 내가 그 폴더에 넣은 상자 전체를 **상태 무관** 노출.
 - **미분류**(내 `box_folders` 행 없음) 상자는 기존 어질러진/정리된/즐겨찾는에 그대로 노출(폴더는 추가 뷰일 뿐 기존 뷰를 대체하지 않음).
 - **폴더 삭제 시 상자는 지우지 않는다** — 분류(`box_folders`)만 FK cascade로 사라지고 상자는 그대로(미분류 복귀).
 - **진입**: 햄버거 드로어에 "폴더" 섹션(내 폴더 목록 + 새 폴더). 상자 상세 편집 메뉴 "폴더 지정"(참여자 누구나 자기 폴더에).
+- **폴더 공유 (018)**: 폴더도 상자처럼 `folders.invite_code`(예측불가 8자)로 **통째 링크 공유**한다. 링크(`/folder-invite/[code]`)는 상자 초대(§6-1)를 폴더 단위로 미러링한다.
+  - **뷰어(비로그인 포함)**: `get_folder_view_by_invite_code`(security definer)로 폴더 + 그 안 상자 목록 스냅샷을 읽기 전용 노출. 각 상자는 자기 `invite_code`로 **상자 읽기전용 뷰어(§6-1)**로 연결(선택지·결과·댓글까지 열람).
+  - **참여(로그인)**: `join_folder_by_invite_code` — 폴더 안 **모든 상자에 참여자로 즉시 등록**(`on conflict do nothing` — 이미 참여 중인 상자는 그대로 유지) + **폴더를 내 계정으로 복사**(`folders`+`box_folders`, 초대자가 만든 것처럼). 복사본은 `source_folder_id`로 원본을 기억해 **재참여 멱등**(중복 폴더 안 생김). 복사 후 내 폴더(`/folder/[id]`)로 이동.
+  - 폴더 소유자/이미 참여(복사)한 사용자가 링크를 열면 자기 폴더로 리다이렉트(상자 뷰어의 "참여자→/box/[id]"와 동형).
 
 ## 4. 라우트 맵
 
@@ -164,6 +168,7 @@ function getBoxStatus(box: { closed_at: string | null }): BoxStatus {
 | `/done` | 정리된 창고 | 7-7 |
 | `/favorites` | 즐겨찾는 창고 | 7-7 |
 | `/folder/[id]` | 폴더 (주제별 상자 묶음) | 상태 무관 전체. §3-7 |
+| `/folder-invite/[code]` | 폴더 초대 랜딩 = **읽기 전용 뷰어** | OG 동적 렌더링 + 비로그인 포함 누구나 폴더 안 상자 목록을 열람(각 상자는 §6-1 상자 뷰어로). 로그인 후 참여 시 전체 상자 참여+폴더 복사. 소유자/기참여자는 `/folder/[id]`로 리다이렉트. §3-7·018 |
 | `/invite/[code]` | 상자 초대 랜딩 = **읽기 전용 뷰어** | **generateMetadata로 OG 동적 렌더링** + 비로그인 포함 누구나 상자 전체(선택지·내용·결과·좋아요수·댓글)를 읽기 전용으로 열람. 참여자는 `/box/[id]`로 리다이렉트. §6-1 |
 | `/groups` | 그룹 관리 | 7-8 |
 | `/groups/[id]` | 그룹 상세 | 7-8 |
@@ -183,6 +188,7 @@ function getBoxStatus(box: { closed_at: string | null }): BoxStatus {
 > - **011 방장 제거**: **`boxes.owner_id`·`box_participants.role` 컬럼 삭제**. 이를 참조하던 RLS·RPC(`close_box`, 미리보기의 owner_nickname) 재작성.
 > - **012 폴더**: `folders`(각자 자기 폴더) + `box_folders(user_id, box_id, folder_id)` 조인. 개인별 폴더링(사람마다 독립, 방장 무관). §3-7. RLS: 본인 행만.
 > - **014 링크 뷰어**: `get_box_view_by_invite_code`(비로그인 포함 읽기 전용 상자 전체 조회). §6-1.
+> - **018 폴더 공유**: `folders.invite_code`·`folders.source_folder_id` 추가. **`box_folders` PK → `(user_id, box_id, folder_id)`**(상자 다중 폴더 포함). RPC 3종(`get_folder_by_invite_code`·`get_folder_view_by_invite_code`·`join_folder_by_invite_code`). §3-7.
 > - **휴면(드롭 안 함)**: `boxes.current_round`, `votes.round`(항상 1), `votes.vote_type='dislike'`, options의 레거시 4컬럼. 코드가 아직 일부를 읽어(예: `current_round` 전달) 물리 삭제하지 않음.
 
 ```sql
@@ -267,21 +273,26 @@ create table favorites (
 );
 
 -- 폴더 (주제별 상자 묶음, 사용자 정의). 그룹(사람 묶음)과 무관 — §3-7. 개인별: box_folders 조인으로 연결.
+-- 018: invite_code(공유 링크)·source_folder_id(참여 복사 원본) 추가.
 create table folders (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references profiles(id) on delete cascade,  -- 폴더 만든 사람(각자 자기 폴더)
   name text not null,
   sort int not null default 0,           -- 드로어 표시 순서
+  invite_code text not null unique default substr(md5(random()::text), 1, 8),  -- 018 공유 링크
+  source_folder_id uuid references folders(id) on delete set null,             -- 018 참여로 복사된 원본(멱등 재참여)
   created_at timestamptz not null default now()
 );
 
--- 상자↔폴더 분류 (개인별). "이 사용자가 이 상자를 이 폴더에 넣음". 사용자별 상자당 0~1개.
+-- 상자↔폴더 분류 (개인별). "이 사용자가 이 상자를 이 폴더에 넣음".
+-- 018: PK에 folder_id 포함 → 한 상자를 여러 폴더에 중복 포함 가능(사용자별).
 create table box_folders (
   user_id uuid not null references profiles(id) on delete cascade,
   box_id uuid not null references boxes(id) on delete cascade,
   folder_id uuid not null references folders(id) on delete cascade,
+  sort int not null default 0,           -- 폴더 안 상자 순서(015)
   created_at timestamptz not null default now(),
-  primary key (user_id, box_id)
+  primary key (user_id, box_id, folder_id)
 );
 
 -- 댓글 (선택지에 달림). 답글은 플랫 2단계(parent_comment_id, 답글의 답글 금지)
@@ -344,7 +355,7 @@ create index box_activities_box_created_idx on box_activities (box_id, created_a
 - `comment_likes`: 참여자면 select, insert/delete는 본인 row만(update 없는 순수 토글).
 - `folders`/`box_folders`(012): 본인 행만 select/insert/update/delete (`user_id = auth.uid()`).
 - `groups`: 멤버만 조회, owner만 수정. `group_members`: 본인 행 delete(그룹 나가기). *(그룹은 별개 기능이라 `owner_id` 유지 — 상자의 방장 제거와 무관.)*
-- 예외: `/invite/[code]`, `/group-invite/[code]` 랜딩은 비참여자·비로그인도 조회 필요 → invite_code 기반 `security definer` RPC로 처리(`get_box_by_invite_code`·`get_box_view_by_invite_code`·그룹 대응).
+- 예외: `/invite/[code]`, `/group-invite/[code]`, `/folder-invite/[code]` 랜딩은 비참여자·비로그인도 조회 필요 → invite_code 기반 `security definer` RPC로 처리(`get_box_by_invite_code`·`get_box_view_by_invite_code`·그룹 대응·폴더 대응 `get_folder_by_invite_code`·`get_folder_view_by_invite_code`·`join_folder_by_invite_code`).
 - 탈퇴: `auth.users` 삭제 → cascade로 전부 정리. 상자는 방장이 없으므로(011) 탈퇴=나가기 취급 → 마지막 참여자면 상자 자동 삭제(008). 그룹은 owner면 별도 정책.
 
 ### RPC 함수 (웹·앱이 공유하는 서버 로직)
@@ -387,6 +398,23 @@ begin
   on conflict do nothing;
 end;
 $$ language plpgsql security definer;
+
+-- 폴더 공유(018): 이름 조회(OG)·뷰어 스냅샷·참여(전체 상자 참여 + 폴더 복사). 상세 = 018_folder_sharing.sql.
+create or replace function get_folder_by_invite_code(p_code text)
+returns table (id uuid, name text) as $$
+  select id, name from folders where invite_code = p_code;
+$$ language sql security definer;  -- anon·authenticated grant
+
+-- 뷰어: 폴더 + 그 안 상자 목록(공유자의 box_folders 분류) 스냅샷 jsonb. 각 상자에 invite_code 포함(상자 뷰어 링크).
+create or replace function get_folder_view_by_invite_code(p_code text)
+returns jsonb language sql security definer stable set search_path = public as $$
+  select jsonb_build_object('id', f.id, 'name', f.name, 'owner_id', f.user_id, 'boxes', /* … */ '[]'::jsonb)
+  from folders f where f.invite_code = p_code;
+$$;  -- anon·authenticated grant
+
+-- 참여: 폴더 안 모든 상자에 참여자 등록(on conflict do nothing) + 폴더를 내 계정으로 복사(source_folder_id로 멱등). 내 폴더 id 반환.
+create or replace function join_folder_by_invite_code(p_code text)
+returns uuid language plpgsql security definer set search_path = public as $$ /* … */ $$;  -- authenticated grant
 
 -- 결정하기 (참여자 검증 + 활동 기록). 선택 옵션(들)에 decided_at + closed_at 세팅, 나머지 해제. 007
 create or replace function decide_box(p_box_id uuid, p_option_ids uuid[]) returns void ...;

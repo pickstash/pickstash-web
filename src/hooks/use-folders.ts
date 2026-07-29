@@ -6,8 +6,9 @@ import {
   createFolder,
   renameFolder,
   deleteFolder,
-  getMyBoxFolderId,
-  setBoxFolder,
+  getMyBoxFolderIds,
+  setBoxFolders,
+  removeBoxFromFolder,
   reorderBoxFolders,
 } from '@/lib/api/folders'
 
@@ -42,20 +43,20 @@ export function useDeleteFolder() {
   })
 }
 
-/** 내가 이 상자를 넣어둔 폴더 id (없으면 null) */
-export function useMyBoxFolder(boxId: string) {
+/** 내가 이 상자를 넣어둔 폴더 id 목록 (018 다중 포함. 미분류면 빈 배열) */
+export function useMyBoxFolders(boxId: string) {
   return useQuery({
     queryKey: ['boxFolder', boxId],
-    queryFn: () => getMyBoxFolderId(boxId),
+    queryFn: () => getMyBoxFolderIds(boxId),
     enabled: !!boxId,
   })
 }
 
-/** 상자를 내 폴더에 넣기/빼기 (folderId=null이면 미분류) */
-export function useSetBoxFolder(boxId: string) {
+/** 상자가 속할 내 폴더 집합을 folderIds로 맞추기 (018 다중 선택) */
+export function useSetBoxFolders(boxId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (folderId: string | null) => setBoxFolder(boxId, folderId),
+    mutationFn: (folderIds: string[]) => setBoxFolders(boxId, folderIds),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['boxFolder', boxId] })
       queryClient.invalidateQueries({ queryKey: ['folders'] })
@@ -63,13 +64,13 @@ export function useSetBoxFolder(boxId: string) {
   })
 }
 
-/** 편집 모드: 상자를 이 폴더에서 제외 (boxId 인자형). */
+/** 편집 모드: 상자를 특정 폴더에서만 제외 */
 export function useRemoveBoxFromFolder() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (boxId: string) => setBoxFolder(boxId, null),
-    onSuccess: (_d, boxId) => {
-      queryClient.invalidateQueries({ queryKey: ['boxFolder', boxId] })
+    mutationFn: (arg: { boxId: string; folderId: string }) => removeBoxFromFolder(arg.boxId, arg.folderId),
+    onSuccess: (_d, arg) => {
+      queryClient.invalidateQueries({ queryKey: ['boxFolder', arg.boxId] })
       queryClient.invalidateQueries({ queryKey: ['folders'] })
     },
   })

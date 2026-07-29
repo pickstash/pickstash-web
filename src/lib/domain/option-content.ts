@@ -96,12 +96,18 @@ function truncate(s: string, maxLen: number): string {
 export interface OptionPreview {
   image?: string
   snippet?: string
+  /**
+   * 링크 메모(라벨). 스니펫이 "링크 제목"에서 왔을 때만 함께 노출한다.
+   * 더 상단에 글 블록이 있어 그 글이 스니펫을 차지하면 메모는 생략된다.
+   */
+  memo?: string
 }
 
-/** 카드 미리보기: 첫 사진(없으면 링크 썸네일/영상 썸네일) + 첫 글(없으면 링크 제목). */
+/** 카드 미리보기: 첫 사진(없으면 링크 썸네일/영상 썸네일) + 첫 글(없으면 링크 제목 + 메모). */
 export function getOptionPreview(blocks: OptionBlock[], maxLen = 60): OptionPreview {
   let image: string | undefined
   let snippet: string | undefined
+  let memo: string | undefined
   for (const b of blocks) {
     if (!image) {
       if (b.type === 'image') image = b.url
@@ -114,12 +120,18 @@ export function getOptionPreview(blocks: OptionBlock[], maxLen = 60): OptionPrev
       }
     }
     if (!snippet) {
-      if (b.type === 'text' && b.text.trim()) snippet = truncate(b.text, maxLen)
-      else if (b.type === 'link' && b.title) snippet = truncate(b.title, maxLen)
+      if (b.type === 'text' && b.text.trim()) {
+        snippet = truncate(b.text, maxLen)
+      } else if (b.type === 'link' && b.title) {
+        snippet = truncate(b.title, maxLen)
+        // 링크에서 스니펫이 왔을 때만 그 링크의 메모(라벨)를 함께 노출. 제목과 같으면 중복이라 생략.
+        const label = b.label.trim()
+        if (label && label !== b.title.trim()) memo = truncate(label, maxLen)
+      }
     }
     if (image && snippet) break
   }
-  return { image, snippet }
+  return { image, snippet, memo }
 }
 
 /** OG 제목을 못 가져왔을 때 표시할 대체 제목(도메인명). 메모(라벨)는 별개로 표시하므로 여기 섞지 않는다. */

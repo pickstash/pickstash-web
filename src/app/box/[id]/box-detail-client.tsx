@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   useUpdateBoxTitle,
@@ -12,7 +13,7 @@ import {
   useReopenBox,
 } from '@/hooks/use-boxes'
 import { useToggleFavorite } from '@/hooks/use-favorites'
-import { useFolders, useMyBoxFolder, useSetBoxFolder, useCreateFolder } from '@/hooks/use-folders'
+import { useFolders, useMyBoxFolders, useSetBoxFolders, useCreateFolder } from '@/hooks/use-folders'
 import { useOptions } from '@/hooks/use-options'
 import { useBoxVotes } from '@/hooks/use-votes'
 import { DeadlineBottomSheet } from '@/components/deadline-bottom-sheet'
@@ -105,6 +106,7 @@ function PencilCircle({ children }: { children: ReactNode }) {
 }
 
 export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions, initialIsFavorite }: BoxDetailClientProps) {
+  const router = useRouter()
   const [box, setBox] = useState(initialBox)
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleInput, setTitleInput] = useState(box.title)
@@ -123,6 +125,23 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
   const [deciding, setDeciding] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
+  // 이 상자를 여는 순간 서버(page.tsx)의 auto_decide_box가 "방금" 자동 마감했다면,
+  // 홈·목록(서버 컴포넌트)의 Router Cache가 stale하게 남는다(마감 상자가 계속 최상단에 뜸).
+  // 최초 1회 router.refresh()로 캐시를 비워 뒤로가기/재방문 때 정상 반영되게 한다.
+  const refreshedForAutoClose = useRef(false)
+  useEffect(() => {
+    if (refreshedForAutoClose.current) return
+    const closedAt = initialBox.closed_at ? new Date(initialBox.closed_at).getTime() : 0
+    const justAutoClosed =
+      initialBox.decision_mode === 'auto_deadline' && closedAt > 0 && Date.now() - closedAt < 60_000
+    if (justAutoClosed) {
+      refreshedForAutoClose.current = true
+      router.refresh()
+    }
+    // 마운트 시점의 initialBox 상태로 1회만 판단(refresh는 클라이언트 상태를 보존해 재실행/루프 없음).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const updateTitle = useUpdateBoxTitle(box.id)
   const updateMemo = useUpdateBoxMemo(box.id)
   const updateDeadline = useUpdateBoxDeadline(box.id)
@@ -132,8 +151,8 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
   const reopenBox = useReopenBox(box.id)
   const toggleFavorite = useToggleFavorite(box.id)
   const { data: folders = [] } = useFolders()
-  const { data: myFolderId = null } = useMyBoxFolder(box.id)
-  const assignFolder = useSetBoxFolder(box.id)
+  const { data: myFolderIds = [] } = useMyBoxFolders(box.id)
+  const setFolders = useSetBoxFolders(box.id)
   const createFolder = useCreateFolder()
 
   const { data: options = initialOptions } = useOptions(box.id)
@@ -147,10 +166,12 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
   const isAuto = box.decision_mode === 'auto_deadline'
   const showLikes = !isSolo                          // 혼자 상자는 좋아요 미표시
 
-  // 폴더 지정/해제 (개인별 — 참여자 누구나 자기 폴더에). 무효화로 체크 표시 갱신.
-  function assignToFolder(folderId: string | null) {
-    assignFolder.mutate(folderId)
-    setFolderModal(false)
+  // 폴더 지정/해제 (개인별 — 참여자 누구나 자기 폴더에). 018: 다중 선택 토글(모달 유지). 무효화로 체크 갱신.
+  function toggleFolder(folderId: string) {
+    const set = new Set(myFolderIds)
+    if (set.has(folderId)) set.delete(folderId)
+    else set.add(folderId)
+    setFolders.mutate(Array.from(set))
   }
 
   const decidedOptions = options.filter(o => o.decided_at)
@@ -431,32 +452,39 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
           <div className="absolute inset-0 bg-ink/45" onClick={() => setFolderModal(false)} />
           <div className="relative mx-auto w-full max-w-[430px] rounded-t-sheet bg-paper px-5 pb-10 pt-3">
             <div className="mx-auto mb-4 h-1 w-9 rounded-full bg-line" />
-            <div className="mb-3 flex items-center justify-between">
+            <div className="mb-1 flex items-center justify-between">
               <h3 className="text-base font-extrabold tracking-tight text-ink">폴더 지정</h3>
               <button onClick={() => setFolderModal(false)} className="text-[13px] text-ink-faint">닫기</button>
             </div>
+            <p className="mb-3 text-[12px] text-ink-soft">여러 폴더에 담을 수 있어요. 아무것도 안 고르면 미분류예요.</p>
 
             <div className="max-h-[46vh] space-y-1 overflow-y-auto">
-              <button
-                onClick={() => assignToFolder(null)}
-                className="flex w-full items-center justify-between rounded-[12px] px-3 py-3 text-left text-sm font-semibold text-ink active:bg-cream"
-              >
-                미분류
-                {!myFolderId && <Icon name="check" size={16} strokeWidth={3} className="text-butter-dark" />}
-              </button>
-              {folders.map(f => (
-                <button
-                  key={f.id}
-                  onClick={() => assignToFolder(f.id)}
-                  className="flex w-full items-center justify-between gap-2 rounded-[12px] px-3 py-3 text-left text-sm font-semibold text-ink active:bg-cream"
-                >
-                  <span className="flex min-w-0 items-center gap-2">
-                    <Icon name="folder" size={16} className="shrink-0 text-ink-soft" />
-                    <span className="truncate">{f.name}</span>
-                  </span>
-                  {myFolderId === f.id && <Icon name="check" size={16} strokeWidth={3} className="shrink-0 text-butter-dark" />}
-                </button>
-              ))}
+              {folders.length === 0 && (
+                <p className="px-3 py-6 text-center text-[13px] text-ink-faint">아직 폴더가 없어요. 아래에서 만들어보세요.</p>
+              )}
+              {folders.map(f => {
+                const checked = myFolderIds.includes(f.id)
+                return (
+                  <button
+                    key={f.id}
+                    onClick={() => toggleFolder(f.id)}
+                    aria-pressed={checked}
+                    className="flex w-full items-center justify-between gap-2 rounded-[12px] px-3 py-3 text-left text-sm font-semibold text-ink active:bg-cream"
+                  >
+                    <span className="flex min-w-0 items-center gap-2">
+                      <Icon name="folder" size={16} className="shrink-0 text-ink-soft" />
+                      <span className="truncate">{f.name}</span>
+                    </span>
+                    <span
+                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${
+                        checked ? 'border-butter-dark bg-butter' : 'border-line bg-paper'
+                      }`}
+                    >
+                      {checked && <Icon name="check" size={13} strokeWidth={3.2} className="text-ink" />}
+                    </span>
+                  </button>
+                )
+              })}
             </div>
 
             <form
@@ -467,7 +495,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
                 createFolder.mutate(n, {
                   onSuccess: folder => {
                     setFolderNameInput('')
-                    assignToFolder(folder.id)
+                    setFolders.mutate([...myFolderIds, folder.id])
                   },
                 })
               }}

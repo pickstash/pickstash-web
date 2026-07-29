@@ -12,7 +12,7 @@ export default async function FolderPage({ params }: { params: Promise<{ id: str
   if (!user) redirect('/login')
 
   // 폴더는 본인 것만 조회 가능(RLS) — 없거나 남의 폴더면 notFound
-  const { data: folder } = await supabase.from('folders').select('id, name').eq('id', id).single()
+  const { data: folder } = await supabase.from('folders').select('id, name, invite_code').eq('id', id).single()
   if (!folder) notFound()
 
   // 이 폴더에 담긴 상자 id를 sort 순으로 (box_folders RLS: 본인 행만)
@@ -58,6 +58,7 @@ export default async function FolderPage({ params }: { params: Promise<{ id: str
     <FolderView
       folderId={folder.id}
       folderName={folder.name}
+      inviteCode={folder.invite_code}
       nickname={profile?.nickname ?? ''}
       initialBoxes={items}
     />

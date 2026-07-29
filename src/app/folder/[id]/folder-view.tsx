@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/page-header'
 import { AppDrawer } from '@/components/app-drawer'
 import { BoxCard } from '@/components/box-card'
 import { Icon } from '@/components/icon'
+import { ShareFolderLinkButton } from './share-folder-link-button'
 import {
   useRenameFolder,
   useDeleteFolder,
@@ -27,11 +28,12 @@ export interface FolderBoxItem {
 interface FolderViewProps {
   folderId: string
   folderName: string
+  inviteCode: string
   nickname: string
   initialBoxes: FolderBoxItem[]
 }
 
-export function FolderView({ folderId, folderName, nickname, initialBoxes }: FolderViewProps) {
+export function FolderView({ folderId, folderName, inviteCode, nickname, initialBoxes }: FolderViewProps) {
   const router = useRouter()
   const [title, setTitle] = useState(folderName)
   const [items, setItems] = useState(initialBoxes)
@@ -57,7 +59,7 @@ export function FolderView({ folderId, folderName, nickname, initialBoxes }: Fol
 
   function exclude(boxId: string) {
     setItems(prev => prev.filter(i => i.box.id !== boxId))
-    removeBox.mutate(boxId)
+    removeBox.mutate({ boxId, folderId })
   }
 
   function finishEdit() {
@@ -91,9 +93,12 @@ export function FolderView({ folderId, folderName, nickname, initialBoxes }: Fol
         }
       />
 
-      <p className="px-5 pb-4 text-[13px] leading-relaxed text-ink-soft">
-        {editing ? '순서를 바꾸거나 폴더에서 뺄 수 있어요.' : `${title} 폴더에 모아둔 상자예요.`}
-      </p>
+      <div className="flex items-start justify-between gap-3 px-5 pb-4">
+        <p className="text-[13px] leading-relaxed text-ink-soft">
+          {editing ? '순서를 바꾸거나 폴더에서 뺄 수 있어요.' : `${title} 폴더에 모아둔 상자예요.`}
+        </p>
+        {!editing && <ShareFolderLinkButton inviteCode={inviteCode} />}
+      </div>
 
       <div className={`flex-1 space-y-2.5 px-5 ${editing ? 'pb-28' : 'pb-10'}`}>
         {items.length === 0 ? (

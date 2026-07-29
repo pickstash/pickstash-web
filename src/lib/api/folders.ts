@@ -44,34 +44,57 @@ export async function deleteFolder(id: string): Promise<void> {
   if (error) throw error
 }
 
-/** 내가 이 상자를 넣어둔 폴더 id (없으면 null = 미분류). */
-export async function getMyBoxFolderId(boxId: string): Promise<string | null> {
+/** 내가 이 상자를 넣어둔 폴더 id 목록 (018 — 상자 다중 폴더 포함. 미분류면 빈 배열). */
+export async function getMyBoxFolderIds(boxId: string): Promise<string[]> {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
+  if (!user) return []
   const { data } = await supabase
     .from('box_folders')
     .select('folder_id')
     .eq('user_id', user.id)
     .eq('box_id', boxId)
-    .maybeSingle()
-  return data?.folder_id ?? null
+  return (data ?? []).map(r => r.folder_id)
 }
 
-/** 이 상자를 내 폴더에 넣기/빼기 (folderId=null이면 미분류). 개인별 — 남 분류엔 영향 없음. */
-export async function setBoxFolder(boxId: string, folderId: string | null): Promise<void> {
+/**
+ * 이 상자가 속할 내 폴더 집합을 folderIds로 맞춘다 (018 다중 선택).
+ * 빠진 폴더 행은 지우고, 새 폴더 행은 추가(기존 sort는 보존 — insert on conflict do nothing).
+ * 개인별 — 남 분류엔 영향 없음.
+ */
+export async function setBoxFolders(boxId: string, folderIds: string[]): Promise<void> {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
-  if (folderId === null) {
-    const { error } = await supabase.from('box_folders').delete().eq('user_id', user.id).eq('box_id', boxId)
-    if (error) throw error
-  } else {
+
+  // 1) 더 이상 선택 안 된 폴더에서 제외
+  let del = supabase.from('box_folders').delete().eq('user_id', user.id).eq('box_id', boxId)
+  if (folderIds.length > 0) del = del.not('folder_id', 'in', `(${folderIds.join(',')})`)
+  const { error: delErr } = await del
+  if (delErr) throw delErr
+
+  // 2) 새로 선택된 폴더에 추가 (이미 있으면 sort 보존)
+  if (folderIds.length > 0) {
+    const rows = folderIds.map(folderId => ({ user_id: user.id, box_id: boxId, folder_id: folderId }))
     const { error } = await supabase
       .from('box_folders')
-      .upsert({ user_id: user.id, box_id: boxId, folder_id: folderId }, { onConflict: 'user_id,box_id' })
+      .upsert(rows, { onConflict: 'user_id,box_id,folder_id', ignoreDuplicates: true })
     if (error) throw error
   }
+}
+
+/** 이 상자를 특정 폴더에서만 뺀다 (폴더 화면 편집 '빼기'). 다른 폴더 분류엔 영향 없음. */
+export async function removeBoxFromFolder(boxId: string, folderId: string): Promise<void> {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  const { error } = await supabase
+    .from('box_folders')
+    .delete()
+    .eq('user_id', user.id)
+    .eq('box_id', boxId)
+    .eq('folder_id', folderId)
+  if (error) throw error
 }
 
 /** 폴더 안 상자 순서 저장 (편집 모드 '완료' 시). orderedBoxIds 순서대로 sort=0,1,2… (본인 행만, RLS). */
@@ -86,6 +109,6 @@ export async function reorderBoxFolders(folderId: string, orderedBoxIds: string[
     folder_id: folderId,
     sort: i,
   }))
-  const { error } = await supabase.from('box_folders').upsert(rows, { onConflict: 'user_id,box_id' })
+  const { error } = await supabase.from('box_folders').upsert(rows, { onConflict: 'user_id,box_id,folder_id' })
   if (error) throw error
 }

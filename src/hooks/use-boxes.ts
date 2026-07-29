@@ -97,6 +97,7 @@ export function useUpdateBoxDecisionMode(boxId: string) {
 
 /** 결정: 선택한 선택지(들)로 정리완료 */
 export function useDecideBox(boxId: string) {
+  const router = useRouter()
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (optionIds: string[]) => decideBox(boxId, optionIds),
@@ -118,18 +119,22 @@ export function useDecideBox(boxId: string) {
       queryClient.invalidateQueries({ queryKey: ['box', boxId] })
       queryClient.invalidateQueries({ queryKey: ['boxes'] })
       queryClient.invalidateQueries({ queryKey: ['options', boxId] })
+      // 홈·목록(서버 컴포넌트) Router Cache 무효화 — 결정 후 뒤로가기 stale 방지.
+      router.refresh()
     },
   })
 }
 
 /** 마감 투표 자동 결정 (lazy commit) */
 export function useAutoDecideBox(boxId: string) {
+  const router = useRouter()
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: () => autoDecideBox(boxId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['box', boxId] })
       queryClient.invalidateQueries({ queryKey: ['options', boxId] })
+      router.refresh()
     },
   })
 }
@@ -159,6 +164,7 @@ export function useLeaveBox() {
 }
 
 export function useReopenBox(boxId: string) {
+  const router = useRouter()
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: () => reopenBox(boxId),
@@ -166,6 +172,8 @@ export function useReopenBox(boxId: string) {
       queryClient.invalidateQueries({ queryKey: ['box', boxId] })
       queryClient.invalidateQueries({ queryKey: ['boxes'] })
       queryClient.invalidateQueries({ queryKey: ['options', boxId] })  // 번복 시 decided_at 해제 반영
+      // 홈·목록은 서버 컴포넌트라 TanStack 무효화로는 안 갱신됨. Router Cache를 비워 뒤로가기 stale 방지.
+      router.refresh()
     },
   })
 }

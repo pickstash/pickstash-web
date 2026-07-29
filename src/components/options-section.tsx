@@ -133,9 +133,17 @@ export function OptionsSection({ boxId, round, initialOptions, canVote, showLike
                       </span>
                     </div>
 
-                    <p className="truncate text-xs leading-relaxed text-ink-soft">
-                      {preview.snippet || ' '}
-                    </p>
+                    <div className="space-y-0.5">
+                      <p className="truncate text-xs leading-relaxed text-ink-soft">
+                        {preview.snippet || ' '}
+                      </p>
+                      {preview.memo && (
+                        <p className="flex items-center gap-1 text-[11px] leading-relaxed text-ink-faint">
+                          <Icon name="edit" size={11} className="shrink-0" />
+                          <span className="truncate">{preview.memo}</span>
+                        </p>
+                      )}
+                    </div>
 
                     {showLikes && (
                       <div className="relative z-10 w-fit">

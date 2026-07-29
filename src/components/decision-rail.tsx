@@ -77,40 +77,46 @@ export function DecisionRail({ boxes, totalOpen }: { boxes: OpenBoxCard[]; total
                 )}
               </div>
 
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                {box.isAuto && box.deadlineAt && <DeadlineChip deadlineAt={box.deadlineAt} />}
-                {box.isSolo ? (
+              {box.isSolo ? (
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  {box.isAuto && box.deadlineAt && <DeadlineChip deadlineAt={box.deadlineAt} />}
                   <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-ink-faint">
                     <Icon name="box" size={11} />
                     혼자 쓰는 상자
                   </span>
-                ) : box.leaders.length > 0 ? (
-                  <>
-                    <span className="inline-flex items-center gap-1 text-[11.5px] font-bold text-ink">
-                      <span className="rounded-full bg-butter px-1.5 py-0.5 text-[10px] font-extrabold">
-                        {box.leaders.length > 1 ? '공동 1위' : '1위'}
-                      </span>
-                      <span className="truncate">{leadersLabel(box.leaders)}</span>
-                    </span>
-                    {box.totalLikes > 0 && (
-                      <span className="inline-flex items-center gap-1 text-[11.5px] font-bold text-ink-faint tabular-nums">
-                        <Icon name="heart" size={11} />
-                        {box.totalLikes}
-                      </span>
-                    )}
-                  </>
-                ) : box.totalLikes > 0 ? (
-                  <span className="inline-flex items-center gap-1 text-[11.5px] font-bold text-ink-faint tabular-nums">
-                    <Icon name="heart" size={11} />
-                    {box.totalLikes}
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-ink-faint">
-                    <RailAvatars participants={box.participants} />
-                    {box.participants.length}명 참여 중
-                  </span>
-                )}
-              </div>
+                </div>
+              ) : (
+                <>
+                  {/* 마감 · 1위 · 좋아요 (있는 것만) */}
+                  {((box.isAuto && box.deadlineAt) || box.leaders.length > 0 || box.totalLikes > 0) && (
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      {box.isAuto && box.deadlineAt && <DeadlineChip deadlineAt={box.deadlineAt} />}
+                      {box.leaders.length > 0 && (
+                        <span className="inline-flex min-w-0 items-center gap-1 text-[11.5px] font-bold text-ink">
+                          <span className="shrink-0 rounded-full bg-butter px-1.5 py-0.5 text-[10px] font-extrabold">
+                            {box.leaders.length > 1 ? '공동 1위' : '1위'}
+                          </span>
+                          <span className="truncate">{leadersLabel(box.leaders)}</span>
+                        </span>
+                      )}
+                      {box.totalLikes > 0 && (
+                        <span className="inline-flex items-center gap-1 text-[11.5px] font-bold text-ink-faint tabular-nums">
+                          <Icon name="heart" size={11} />
+                          {box.totalLikes}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 누가 참여 중인지 — 1위 유무와 무관하게 항상 노출 */}
+                  {box.participants.length > 1 && (
+                    <div className="flex items-center gap-1.5">
+                      <RailAvatars participants={box.participants} />
+                      <span className="text-[11px] font-semibold text-ink-faint">{box.participants.length}명 참여 중</span>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </Link>
         ))}

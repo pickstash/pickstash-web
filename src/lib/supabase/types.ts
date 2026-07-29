@@ -225,6 +225,8 @@ export interface Database {
           user_id: string
           name: string
           sort: number
+          invite_code: string
+          source_folder_id: string | null
           created_at: string
         }
         Insert: {
@@ -232,6 +234,8 @@ export interface Database {
           user_id: string
           name: string
           sort?: number
+          invite_code?: string
+          source_folder_id?: string | null
           created_at?: string
         }
         Update: {
@@ -239,6 +243,8 @@ export interface Database {
           user_id?: string
           name?: string
           sort?: number
+          invite_code?: string
+          source_folder_id?: string | null
           created_at?: string
         }
         Relationships: []
@@ -469,6 +475,18 @@ export interface Database {
       get_box_view_by_invite_code: {
         Args: { p_code: string }
         Returns: Json
+      }
+      get_folder_by_invite_code: {
+        Args: { p_code: string }
+        Returns: { id: string; name: string }[]
+      }
+      get_folder_view_by_invite_code: {
+        Args: { p_code: string }
+        Returns: Json
+      }
+      join_folder_by_invite_code: {
+        Args: { p_code: string }
+        Returns: string
       }
     }
     Enums: {
