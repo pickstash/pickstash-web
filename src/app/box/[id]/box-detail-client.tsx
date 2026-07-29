@@ -112,6 +112,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
   const [memoInput, setMemoInput] = useState(box.memo ?? '')
   const [deadlineSheet, setDeadlineSheet] = useState(false)
   const [modeModal, setModeModal] = useState(false)
+  const [selectedMode, setSelectedMode] = useState<DecisionMode>('manual')
   const [switchingToAuto, setSwitchingToAuto] = useState(false)
   const [confirmLeave, setConfirmLeave] = useState(false)
   const [confirmReopen, setConfirmReopen] = useState(false)
@@ -250,6 +251,12 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
     }
   }
 
+  // 결정 방식 모달 열기: 현재(또는 지정) 방식을 선택 상태로 세팅해 연다
+  function openModeModal(initial: DecisionMode) {
+    setSelectedMode(initial)
+    setModeModal(true)
+  }
+
   // 결정 방식 변경 (참여자 누구나): 직접 정하기는 즉시, 마감 투표는 마감일 시트를 거쳐 적용
   function chooseMode(mode: DecisionMode) {
     if (mode === box.decision_mode) { setModeModal(false); return }
@@ -274,7 +281,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
       onSuccess: () => {
         setBox(prev => ({ ...prev, closed_at: null, deadline_at: null, decision_mode: 'manual' }))
         setConfirmReopen(false)
-        setModeModal(true)
+        openModeModal('manual')
       },
     })
   }
@@ -381,19 +388,17 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
           <div className="absolute inset-0 bg-ink/45" onClick={() => setModeModal(false)} />
           <div className="relative mx-auto w-full max-w-[430px] rounded-t-sheet bg-paper px-5 pb-10 pt-3">
             <div className="mx-auto mb-4 h-1 w-9 rounded-full bg-line" />
-            <div className="mb-3 flex items-center justify-between">
+            <div className="mb-3">
               <h3 className="text-base font-extrabold tracking-tight text-ink">결정 방식 변경</h3>
-              <button onClick={() => setModeModal(false)} className="text-[13px] text-ink-faint">닫기</button>
             </div>
             <div className="space-y-2">
               {DECISION_MODES.map(m => {
-                const active = box.decision_mode === m.value
+                const active = selectedMode === m.value
                 return (
                   <button
                     key={m.value}
-                    onClick={() => chooseMode(m.value)}
-                    disabled={updateDecisionMode.isPending}
-                    className={`flex w-full items-start gap-2.5 rounded-field border-[1.5px] px-4 py-3 text-left transition-colors disabled:opacity-50 ${
+                    onClick={() => setSelectedMode(m.value)}
+                    className={`flex w-full items-start gap-2.5 rounded-field border-[1.5px] px-4 py-3 text-left transition-colors ${
                       active ? 'border-butter-dark bg-butter-tint' : 'border-line bg-paper'
                     }`}
                   >
@@ -409,6 +414,13 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
               })}
             </div>
             <p className="mt-3 text-[11.5px] text-ink-faint">마감 투표로 바꾸면 마감일을 정하게 돼요.</p>
+            <button
+              onClick={() => chooseMode(selectedMode)}
+              disabled={updateDecisionMode.isPending}
+              className="mt-4 w-full rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80 disabled:opacity-50"
+            >
+              {updateDecisionMode.isPending ? '적용 중...' : '확인'}
+            </button>
           </div>
         </div>
       )}
@@ -586,7 +598,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
                       </button>
                       {!isDone && (
                         <button
-                          onClick={() => { setMenuOpen(false); setModeModal(true) }}
+                          onClick={() => { setMenuOpen(false); openModeModal(box.decision_mode as DecisionMode) }}
                           className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-ink active:bg-cream"
                         >
                           결정 방식 변경
