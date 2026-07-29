@@ -267,12 +267,14 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
     }
   }
 
-  // 번복(다시 정리하기): 정리완료·결정 표시 해제 → 정리중 (참여자 누구나)
+  // 번복(다시 정리하기): 정리완료·결정 표시 해제 + 마감일·결정방식 초기화(RPC 019와 동일) → 정리중,
+  // 이어서 결정 방식 모달을 띄워 사용자가 방식부터 다시 고르게 한다.
   function handleReopen() {
     reopenBox.mutate(undefined, {
       onSuccess: () => {
-        setBox(prev => ({ ...prev, closed_at: null }))
+        setBox(prev => ({ ...prev, closed_at: null, deadline_at: null, decision_mode: 'manual' }))
         setConfirmReopen(false)
+        setModeModal(true)
       },
     })
   }
