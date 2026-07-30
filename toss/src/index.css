@@ -1,6 +1,8 @@
-:root {
-  font-family: sans-serif;
-}
+/* 웹과 동일한 디자인 토큰·Tailwind를 단일 소스로 공유한다.
+   globals.css가 `@import "tailwindcss"` + `@theme`(색·라디우스 토큰) + body를 모두 포함하므로
+   여기서 그대로 가져오면 토스앱도 웹과 똑같은 디자인 시스템을 쓴다.
+   (Pretendard 폰트는 웹 layout.tsx에서 로드 — 토스는 추후 연결, 그전엔 시스템 폰트 폴백) */
+@import "../../src/app/globals.css";
 
 * {
   -webkit-tap-highlight-color: transparent;
@@ -9,14 +11,4 @@
 body {
   margin: 0;
   min-width: 320px;
-  min-height: 100vh;
-}
-
-@media (min-width: 481px) {
-  body {
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    background-color: #f5f5f5 !important;
-  }
 }
