@@ -1,21 +1,10 @@
 import { AppLink } from '@/lib/nav/nav'
 import { Icon } from '@/components/icon'
 import { formatDday } from '@/lib/utils'
+import type { HeroParticipant, OpenBoxCard } from '@/lib/domain/home'
 
-export type HeroParticipant = { user_id: string; profiles: { avatar_url: string | null; nickname: string } | null }
-
-export interface OpenBoxCard {
-  id: string
-  title: string
-  isNew: boolean
-  isFavorite: boolean
-  isSolo: boolean
-  isAuto: boolean
-  deadlineAt: string | null
-  participants: HeroParticipant[]
-  totalLikes: number
-  leaders: string[] // 좋아요 1위 이름들 (0=없음, 1=단독, 2+=공동)
-}
+// 타입은 공유 도메인(home.ts)에 단일 정의 — 기존 임포터 호환 위해 여기서 re-export.
+export type { HeroParticipant, OpenBoxCard }
 
 /** 1위 이름 라벨: 여럿(공동)이면 첫 이름 + "외 N개". */
 export function leadersLabel(leaders: string[]): string {

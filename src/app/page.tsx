@@ -3,20 +3,13 @@ import Image from 'next/image'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { AppDrawer } from '@/components/app-drawer'
-import { DecisionHero, type OpenBoxCard } from '@/components/decision-hero'
+import { DecisionHero } from '@/components/decision-hero'
 import { DecisionRail } from '@/components/decision-rail'
 import { FolderChips } from '@/components/folder-chips'
 import { PushNotificationBanner } from '@/components/push-notification-banner'
 import { Icon } from '@/components/icon'
-import { getVoteResult } from '@/lib/domain/winner'
-import type { Box } from '@/lib/api/boxes'
+import { sortOpenBoxes, buildHomeCards, HOME_RAIL_LIMIT, type RawOpenBox } from '@/lib/domain/home'
 import type { Folder } from '@/lib/api/folders'
-
-type RawOpenBox = Box & {
-  box_participants: { user_id: string; profiles: { avatar_url: string | null; nickname: string } | null }[]
-}
-
-const RAIL_LIMIT = 8 // 히어로 1개 + 레일 최대 8개까지만 좋아요 집계/표시
 
 export default async function HomePage() {
   const supabase = await createClient()
@@ -47,67 +40,29 @@ export default async function HomePage() {
   const favoriteSet = new Set((favs ?? []).map(f => f.box_id))
   const openBoxes = (rawOpenBoxes ?? []) as unknown as RawOpenBox[]
 
-  // 정렬: 마감 임박(auto+deadline) 먼저 → NEW → 최근. 히어로 = 가장 급한 상자.
-  const deadlineTime = (b: RawOpenBox) =>
-    b.decision_mode === 'auto_deadline' && b.deadline_at ? new Date(b.deadline_at).getTime() : Infinity
-  const isNewOf = (b: RawOpenBox) => new Date(b.updated_at) > new Date(lastSeenMap.get(b.id) ?? 0)
+  // 정렬(마감 임박 → NEW → 최근)은 공유 도메인 로직. 표시 대상만 좋아요 fetch.
+  const sorted = sortOpenBoxes(openBoxes, lastSeenMap)
+  const displayed = sorted.slice(0, HOME_RAIL_LIMIT + 1)
 
-  const sorted = [...openBoxes].sort((a, b) => {
-    const da = deadlineTime(a), db = deadlineTime(b)
-    if (da !== db) return da - db
-    const na = isNewOf(a), nb = isNewOf(b)
-    if (na !== nb) return na ? -1 : 1
-    return 0 // 쿼리의 updated_at desc 유지
-  })
-
-  const displayed = sorted.slice(0, RAIL_LIMIT + 1)
-
-  // 표시할 상자들의 좋아요 집계(총합 + 1위/공동 1위)
-  const likeByBox = new Map<string, { total: number; leaders: string[] }>()
   const ids = displayed.map(b => b.id)
+  let options: { id: string; box_id: string; name: string }[] = []
+  let votes: { option_id: string; vote_type: string }[] = []
   if (ids.length > 0) {
     const { data: opts } = await supabase.from('options').select('id, box_id, name').in('box_id', ids)
-    const optIds = (opts ?? []).map(o => o.id)
-    const { data: votes } = optIds.length
-      ? await supabase.from('votes').select('option_id, vote_type').in('option_id', optIds)
-      : { data: [] as { option_id: string; vote_type: string }[] }
-
-    const likePerOption = new Map<string, number>()
-    for (const v of votes ?? []) {
-      if (v.vote_type === 'like') likePerOption.set(v.option_id, (likePerOption.get(v.option_id) ?? 0) + 1)
-    }
-    const perBox = new Map<string, { name: string; like: number }[]>()
-    for (const o of opts ?? []) {
-      const arr = perBox.get(o.box_id) ?? []
-      arr.push({ name: o.name, like: likePerOption.get(o.id) ?? 0 })
-      perBox.set(o.box_id, arr)
-    }
-    for (const [boxId, summaries] of perBox) {
-      const total = summaries.reduce((s, o) => s + o.like, 0)
-      const r = getVoteResult(summaries)
-      likeByBox.set(boxId, { total, leaders: r.winner ? [r.winner] : r.coLeaders })
+    options = opts ?? []
+    const optIds = options.map(o => o.id)
+    if (optIds.length > 0) {
+      const { data: v } = await supabase.from('votes').select('option_id, vote_type').in('option_id', optIds)
+      votes = v ?? []
     }
   }
 
-  const toCard = (box: RawOpenBox): OpenBoxCard => {
-    const like = likeByBox.get(box.id)
-    return {
-      id: box.id,
-      title: box.title,
-      isNew: isNewOf(box),
-      isFavorite: favoriteSet.has(box.id),
-      isSolo: box.box_participants.length <= 1,
-      isAuto: box.decision_mode === 'auto_deadline',
-      deadlineAt: box.deadline_at,
-      participants: box.box_participants,
-      totalLikes: like?.total ?? 0,
-      leaders: like?.leaders ?? [],
-    }
-  }
-
-  const cards = displayed.map(toCard)
-  const hero = cards[0] ?? null
-  const railCards = cards.slice(1)
+  const { hero, railCards } = buildHomeCards(displayed, {
+    lastSeen: lastSeenMap,
+    favorites: favoriteSet,
+    options,
+    votes,
+  })
 
   const openCount = openBoxes.length
   const favoriteCount = favs?.length ?? 0
