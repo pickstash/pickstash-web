@@ -1,56 +1,80 @@
 import { useEffect, useState } from "react";
-import { Top } from "@toss/tds-mobile";
+import { Top, Button } from "@toss/tds-mobile";
 import { getAnonymousKey } from "@apps-in-toss/web-framework";
+import type { Session } from "@supabase/supabase-js";
 import { BOX_STATUS_LABEL, getBoxStatus } from "@/lib/domain/box-status";
 import { supabase } from "./lib/supabase";
+import { loginWithToss, logout } from "./lib/auth";
 import "./App.css";
 
-// 첫 세로 슬라이스 — 파이프라인 배선 확인용 화면.
-// 1) 웹과 공유하는 코어(도메인 로직)를 그대로 import해서 쓰는지
-// 2) Supabase(웹과 같은 프로젝트)에 연결되는지
-// 3) 토스 SDK(getAnonymousKey)가 호출되는지  (실제 동작은 토스 앱 런타임에서만)
 function App() {
-  // (1) 공유 코어 재사용 증명: 순수 함수라 Vite에서 그대로 동작
+  // 공유 코어(웹 domain) 재사용 증명 — 순수 함수라 Vite에서 그대로 동작
   const sharedLabel = BOX_STATUS_LABEL[getBoxStatus({ closed_at: null })];
 
-  const [supabaseStatus, setSupabaseStatus] = useState("확인 중…");
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [tossKey, setTossKey] = useState("확인 중…");
 
   useEffect(() => {
-    // (2) Supabase 연결 확인 — RLS로 결과는 비어도 요청이 통하면 연결 성공
-    supabase
-      .from("boxes")
-      .select("id")
-      .limit(1)
-      .then(({ error }) => {
-        setSupabaseStatus(error ? `실패: ${error.message}` : "성공");
-      });
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
+    return () => sub.subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
-    // (3) 토스 익명 키 — 토스 앱 밖(일반 브라우저/dev)에서는 미지원/오류가 정상
+    // 토스 익명 키 — 토스 앱 런타임에서만 동작 (일반 브라우저/dev에선 미지원 정상)
     getAnonymousKey()
       .then((res) => {
-        if (!res) setTossKey("미지원 (토스 앱 밖이거나 낮은 버전)");
+        if (!res) setTossKey("미지원 (토스 앱 밖)");
         else if (res === "ERROR") setTossKey("오류");
         else setTossKey(res.hash);
       })
       .catch(() => setTossKey("토스 앱 밖에서는 호출 불가"));
   }, []);
 
+  async function handleLogin() {
+    setLoading(true);
+    setError(null);
+    try {
+      await loginWithToss();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "로그인에 실패했어요");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <>
       <Top
-        title={<Top.TitleParagraph size={22}>결정창고 · 토스 미니앱</Top.TitleParagraph>}
+        title={<Top.TitleParagraph size={22}>결정창고 · 토스</Top.TitleParagraph>}
         subtitleBottom={
-          <Top.SubtitleParagraph size={15}>배선 확인용 화면이에요.</Top.SubtitleParagraph>
+          <Top.SubtitleParagraph size={15}>
+            {session ? "로그인됨" : "토스로 로그인하세요"}
+          </Top.SubtitleParagraph>
         }
       />
 
       <div style={{ display: "flex", flexDirection: "column", gap: 16, padding: 24 }}>
         <StatusRow label="공유 코어(도메인) import" value={`OK — 라벨 "${sharedLabel}"`} />
-        <StatusRow label="Supabase 연결" value={supabaseStatus} />
         <StatusRow label="토스 익명 키(getAnonymousKey)" value={tossKey} />
+
+        {session ? (
+          <>
+            <StatusRow label="Supabase 세션 (auth.uid)" value={session.user.id} />
+            <Button variant="weak" onClick={() => void logout()}>
+              로그아웃
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button onClick={() => void handleLogin()} loading={loading}>
+              토스로 로그인
+            </Button>
+            {error && <span style={{ color: "#DE5B41", fontSize: 13, wordBreak: "break-all" }}>{error}</span>}
+          </>
+        )}
       </div>
     </>
   );

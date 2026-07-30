@@ -8,6 +8,7 @@ declare module "*.css" {
 interface ImportMetaEnv {
   readonly VITE_SUPABASE_URL: string;
   readonly VITE_SUPABASE_PUBLISHABLE_KEY: string;
+  readonly VITE_TOSS_LOGIN_ENDPOINT: string;
 }
 
 interface ImportMeta {
