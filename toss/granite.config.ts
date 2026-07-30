@@ -15,6 +15,16 @@ export default defineConfig({
       build: "vite build",
     },
   },
+  // 토스 네이티브 내비게이션 바(흰 바)를 투명화 + 제목/버튼 숨김 → 크림 배경이 비쳐
+  // 우리 자체 헤더(캐릭터·이름·햄버거)와 이중 헤더가 되지 않게 한다.
+  // 홈은 루트라 뒤로가기 없음. theme:dark = 크림 위 어두운 버튼/상태바 톤.
+  navigationBar: {
+    withBackButton: false,
+    withHomeButton: false,
+    withTitle: false,
+    transparentBackground: true,
+    theme: "dark",
+  },
   permissions: [],
   outdir: "dist",
 });
