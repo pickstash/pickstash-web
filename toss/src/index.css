@@ -4,6 +4,11 @@
    (Pretendard 폰트는 웹 layout.tsx에서 로드 — 토스는 추후 연결, 그전엔 시스템 폰트 폴백) */
 @import "../../src/app/globals.css";
 
+/* Tailwind v4는 빌드 위치(toss/)만 자동 스캔한다. 공유 컴포넌트(repo/src)는 toss 밖이라
+   명시적으로 스캔 소스에 추가해야 그 화면들의 유틸리티 클래스가 생성된다. */
+@source "../../src";
+@source "./";
+
 * {
   -webkit-tap-highlight-color: transparent;
 }
