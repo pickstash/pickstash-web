@@ -7,6 +7,16 @@
 drop trigger if exists trg_sync_folder_box on box_folders;
 drop function if exists public.sync_folder_box_to_subscribers();
 
+-- 0.5) 옛 RLS 정책 먼저 제거 — user_id 컬럼을 참조하므로 컬럼 드롭(4·5) 전에 반드시 없애야 함.
+drop policy if exists "folders: 본인 조회" on folders;
+drop policy if exists "folders: 본인 insert" on folders;
+drop policy if exists "folders: 본인 update" on folders;
+drop policy if exists "folders: 본인 delete" on folders;
+drop policy if exists "box_folders: 본인 조회" on box_folders;
+drop policy if exists "box_folders: 본인 insert" on box_folders;
+drop policy if exists "box_folders: 본인 update" on box_folders;
+drop policy if exists "box_folders: 본인 delete" on box_folders;
+
 -- 1) folder_members — 폴더 멤버(참여자). 개인 폴더=멤버1, 공유=멤버2+.
 create table if not exists folder_members (
   folder_id uuid not null references folders(id) on delete cascade,
@@ -49,6 +59,8 @@ delete from box_folders a using box_folders b
   where a.folder_id = b.folder_id and a.box_id = b.box_id and a.ctid > b.ctid;
 alter table box_folders drop column if exists user_id;
 alter table box_folders add constraint box_folders_pkey primary key (folder_id, box_id);
+-- user_id 컬럼과 함께 자동 삭제된 (user_id,folder_id,sort) 인덱스를 폴더 스코프로 재생성
+create index if not exists box_folders_folder_sort_idx on box_folders(folder_id, sort);
 
 -- 5) folders에서 오너/복사 컬럼 제거
 alter table folders drop column if exists source_folder_id;
