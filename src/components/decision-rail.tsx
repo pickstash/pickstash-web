@@ -96,7 +96,7 @@ export function DecisionRail({ boxes, totalOpen }: { boxes: OpenBoxCard[]; total
                           <span className="shrink-0 whitespace-nowrap rounded-full bg-butter px-1.5 py-0.5 text-[10px] font-extrabold">
                             {box.leaders.length > 1 ? '공동 1위' : '1위'}
                           </span>
-                          <span className="min-w-0 break-words">{leadersLabel(box.leaders)}</span>
+                          <span className="min-w-0 truncate">{leadersLabel(box.leaders)}</span>
                         </span>
                       )}
                       {box.totalLikes > 0 && (
