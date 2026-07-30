@@ -23,14 +23,29 @@ export interface AppNav {
 
 const NavContext = createContext<AppNav | null>(null)
 
+// provider 밖(전역 에러 페이지·not-found 등 root layout 밖 렌더)에서도 크래시하지 않도록
+// 브라우저 기본 내비게이션으로 폴백한다. 서버(window 없음)에선 no-op.
+const FALLBACK_NAV: AppNav = {
+  push: href => {
+    if (typeof window !== 'undefined') window.location.assign(href)
+  },
+  replace: href => {
+    if (typeof window !== 'undefined') window.location.replace(href)
+  },
+  back: () => {
+    if (typeof window !== 'undefined') window.history.back()
+  },
+  refresh: () => {
+    if (typeof window !== 'undefined') window.location.reload()
+  },
+}
+
 export function NavProvider({ nav, children }: { nav: AppNav; children: ReactNode }) {
   return <NavContext.Provider value={nav}>{children}</NavContext.Provider>
 }
 
 export function useNav(): AppNav {
-  const nav = useContext(NavContext)
-  if (!nav) throw new Error('useNav는 NavProvider 안에서만 사용할 수 있어요')
-  return nav
+  return useContext(NavContext) ?? FALLBACK_NAV
 }
 
 type AppLinkProps = AnchorHTMLAttributes<HTMLAnchorElement> & {
