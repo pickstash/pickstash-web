@@ -4,6 +4,7 @@ node_modules
 # build output
 dist
 *.ait
+.granite
 
 # env (publishable key는 공개값이지만 파일은 커밋하지 않음)
 .env
