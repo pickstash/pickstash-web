@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { signOut } from '@/lib/api/auth'
 import { Icon } from '@/components/icon'
-import { useFolders, useCreateFolder } from '@/hooks/use-folders'
+import { useFolders } from '@/hooks/use-folders'
 
 type PwaPrompt = Event & { prompt(): Promise<void> }
 declare global { interface Window { __pwaPrompt?: PwaPrompt } }
@@ -29,63 +29,20 @@ interface AppDrawerProps {
   nickname: string
 }
 
-/** 드로어 폴더 섹션 — 열렸을 때만 마운트해 folders 쿼리를 그때 실행(프리렌더/무프로바이더 컨텍스트 안전). */
+/** 드로어 폴더 진입 — 무한 목록 대신 '폴더 모아보기'(/folders) 한 줄. 폴더가 많아도 드로어가 안 길어진다. */
 function DrawerFolders({ onNavigate }: { onNavigate: () => void }) {
   const { data: folders = [] } = useFolders()
-  const createFolder = useCreateFolder()
-  const [adding, setAdding] = useState(false)
-  const [name, setName] = useState('')
-
   return (
-    <div className="pt-3">
-      <div className="flex items-center justify-between px-3 py-1">
-        <p className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-ink-faint">폴더</p>
-        <button
-          onClick={() => setAdding(v => !v)}
-          aria-label="새 폴더"
-          className="rounded-full p-0.5 text-ink-faint active:text-ink"
-        >
-          <Icon name="plus" size={16} strokeWidth={2.4} />
-        </button>
-      </div>
-
-      {adding && (
-        <form
-          onSubmit={e => {
-            e.preventDefault()
-            const n = name.trim()
-            if (!n || createFolder.isPending) return
-            createFolder.mutate(n, { onSuccess: () => { setName(''); setAdding(false) } })
-          }}
-          className="px-2 pb-1.5"
-        >
-          <input
-            autoFocus
-            value={name}
-            onChange={e => setName(e.target.value)}
-            placeholder="폴더 이름 (예: 여행)"
-            maxLength={20}
-            className="w-full rounded-[12px] border-[1.5px] border-line bg-paper px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none"
-          />
-        </form>
-      )}
-
-      {folders.map(f => (
-        <Link
-          key={f.id}
-          href={`/folder/${f.id}`}
-          onClick={onNavigate}
-          className="flex items-center gap-2.5 rounded-[14px] px-3 py-2.5 text-sm font-semibold text-ink hover:bg-cream active:bg-butter-tint"
-        >
-          <Icon name="folder" size={18} className="text-ink-soft" />
-          <span className="truncate">{f.name}</span>
-        </Link>
-      ))}
-
-      {folders.length === 0 && !adding && (
-        <p className="px-3 py-1.5 text-[12px] leading-relaxed text-ink-faint">여행·집들이처럼 주제로 상자를 묶어보세요.</p>
-      )}
-    </div>
+    <Link
+      href="/folders"
+      onClick={onNavigate}
+      className="mt-1 flex items-center gap-2.5 rounded-[14px] px-3 py-2.5 text-sm font-semibold text-ink hover:bg-cream active:bg-butter-tint"
+    >
+      <Icon name="folder" size={18} className="text-ink-soft" />
+      <span className="flex-1">폴더</span>
+      {folders.length > 0 && <span className="text-[12px] font-bold tabular-nums text-ink-faint">{folders.length}</span>}
+      <span className="text-ink-faint">›</span>
+    </Link>
   )
 }
 
