@@ -6,11 +6,17 @@ import { fileURLToPath, URL } from "node:url";
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
-    alias: {
+    // 배열 형태: 더 구체적인 alias를 먼저 둔다(순서대로 매칭).
+    alias: [
+      // 공유 api 레이어가 부르는 브라우저 supabase 클라이언트를 토스 shim으로 치환.
+      // (웹은 @supabase/ssr+process.env, 토스는 supabase-js+VITE env)
+      {
+        find: "@/lib/supabase/client",
+        replacement: fileURLToPath(new URL("./src/lib/supabase-client.ts", import.meta.url)),
+      },
       // 웹(Next)과 공유하는 코어(domain·api·hooks) 재사용: 웹 src를 '@'로 참조.
-      // 코어는 프레임워크 독립적이라 Vite에서 그대로 동작한다.
-      "@": fileURLToPath(new URL("../src", import.meta.url)),
-    },
+      { find: "@", replacement: fileURLToPath(new URL("../src", import.meta.url)) },
+    ],
   },
   server: {
     // 토스 앱 루트(toss/) 밖의 공유 파일(../src)을 dev에서 읽을 수 있게 허용
