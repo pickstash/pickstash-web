@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import Image from 'next/image'
 import { Icon } from '@/components/icon'
 import { formatDday } from '@/lib/utils'
 
@@ -99,11 +98,11 @@ export function DecisionHero({ box }: { box: OpenBoxCard | null }) {
 
           <div className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
             {!box.isSolo && box.leaders.length > 0 && (
-              <span className="flex items-center gap-1.5 text-[12.5px] font-extrabold text-ink">
-                <span className="rounded-full bg-butter px-[7px] py-0.5 text-[10.5px] font-extrabold">
+              <span className="flex min-w-0 max-w-full items-center gap-1.5 text-[12.5px] font-extrabold text-ink">
+                <span className="shrink-0 whitespace-nowrap rounded-full bg-butter px-[7px] py-0.5 text-[10.5px] font-extrabold">
                   {box.leaders.length > 1 ? '공동 1위' : '지금 1위'}
                 </span>
-                <span className="truncate">{leadersLabel(box.leaders)}</span>
+                <span className="min-w-0 truncate">{leadersLabel(box.leaders)}</span>
               </span>
             )}
             {!box.isSolo && box.totalLikes > 0 && (

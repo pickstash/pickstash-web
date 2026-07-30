@@ -92,11 +92,11 @@ export function DecisionRail({ boxes, totalOpen }: { boxes: OpenBoxCard[]; total
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       {box.isAuto && box.deadlineAt && <DeadlineChip deadlineAt={box.deadlineAt} />}
                       {box.leaders.length > 0 && (
-                        <span className="inline-flex min-w-0 items-center gap-1 text-[11.5px] font-bold text-ink">
-                          <span className="shrink-0 rounded-full bg-butter px-1.5 py-0.5 text-[10px] font-extrabold">
+                        <span className="inline-flex min-w-0 max-w-full items-center gap-1 text-[11.5px] font-bold text-ink">
+                          <span className="shrink-0 whitespace-nowrap rounded-full bg-butter px-1.5 py-0.5 text-[10px] font-extrabold">
                             {box.leaders.length > 1 ? '공동 1위' : '1위'}
                           </span>
-                          <span className="truncate">{leadersLabel(box.leaders)}</span>
+                          <span className="min-w-0 truncate">{leadersLabel(box.leaders)}</span>
                         </span>
                       )}
                       {box.totalLikes > 0 && (
