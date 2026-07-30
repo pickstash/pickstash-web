@@ -17,10 +17,10 @@ export interface OpenBoxCard {
   leaders: string[] // 좋아요 1위 이름들 (0=없음, 1=단독, 2+=공동)
 }
 
-/** 1위 이름 라벨: 공동이면 앞 2개 + "외 N". */
+/** 1위 이름 라벨: 여럿(공동)이면 첫 이름 + "외 N개". */
 export function leadersLabel(leaders: string[]): string {
-  if (leaders.length <= 2) return leaders.join(' · ')
-  return `${leaders.slice(0, 2).join(' · ')} 외 ${leaders.length - 2}`
+  if (leaders.length <= 1) return leaders[0] ?? ''
+  return `${leaders[0]} 외 ${leaders.length - 1}개`
 }
 
 function HeroAvatars({ participants, max = 4 }: { participants: HeroParticipant[]; max?: number }) {
@@ -102,7 +102,7 @@ export function DecisionHero({ box }: { box: OpenBoxCard | null }) {
                 <span className="shrink-0 whitespace-nowrap rounded-full bg-butter px-[7px] py-0.5 text-[10.5px] font-extrabold">
                   {box.leaders.length > 1 ? '공동 1위' : '지금 1위'}
                 </span>
-                <span className="min-w-0 truncate">{leadersLabel(box.leaders)}</span>
+                <span className="min-w-0 break-words">{leadersLabel(box.leaders)}</span>
               </span>
             )}
             {!box.isSolo && box.totalLikes > 0 && (
