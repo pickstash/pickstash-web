@@ -3,11 +3,10 @@ import { LegalDoc, LegalSection, LegalList } from '@/components/legal-doc'
 
 export const metadata: Metadata = { title: '개인정보처리방침 · 결정창고' }
 
-// 시행일·운영자·보호책임자 정보는 실제 서비스 정보로 교체하세요.
 const EFFECTIVE_DATE = '2026년 7월 30일'
-const OPERATOR = '[운영자명]'
-const OFFICER = '[개인정보 보호책임자 성명]'
-const CONTACT = '[문의 이메일]'
+const OPERATOR = '꼼영'
+const OFFICER = '김영애'
+const CONTACT = 'kya754@gmail.com'
 
 export default function PrivacyPage() {
   return (

@@ -3,10 +3,10 @@ import { LegalDoc, LegalSection, LegalList } from '@/components/legal-doc'
 
 export const metadata: Metadata = { title: '서비스 이용약관 · 결정창고' }
 
-// 시행일·운영자 정보는 실제 서비스 정보로 교체하세요.
 const EFFECTIVE_DATE = '2026년 7월 30일'
-const OPERATOR = '[운영자명]'
-const CONTACT = '[문의 이메일]'
+const OPERATOR = '꼼영'
+const REPRESENTATIVE = '김영애'
+const CONTACT = 'kya754@gmail.com'
 
 export default function TermsPage() {
   return (
@@ -115,7 +115,7 @@ export default function TermsPage() {
       <LegalSection title="제11조 (문의처)">
         <p>서비스 이용과 관련한 문의는 아래로 연락해 주시기 바랍니다.</p>
         <p>
-          운영자: {OPERATOR}
+          운영자: {OPERATOR} (대표 {REPRESENTATIVE})
           <br />
           문의: {CONTACT}
         </p>
