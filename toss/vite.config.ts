@@ -6,6 +6,9 @@ import { fileURLToPath, URL } from "node:url";
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
+    // 공유 코드(../src)와 토스 앱이 각자 node_modules의 사본을 쓰면 인스턴스가 중복돼
+    // Context가 어긋난다(예: "No QueryClient"). 아래 패키지는 단일 인스턴스로 강제.
+    dedupe: ["react", "react-dom", "@tanstack/react-query"],
     // 배열 형태: 더 구체적인 alias를 먼저 둔다(순서대로 매칭).
     alias: [
       // 공유 api 레이어가 부르는 브라우저 supabase 클라이언트를 토스 shim으로 치환.
