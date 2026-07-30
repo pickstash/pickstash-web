@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
+import { AppLink } from '@/lib/nav/nav'
 import { useFolders, useCreateFolder } from '@/hooks/use-folders'
 import { Icon } from '@/components/icon'
 import type { Folder } from '@/lib/api/folders'
@@ -41,14 +41,14 @@ export function FolderChips({ initialFolders }: { initialFolders: Folder[] }) {
 
       <div className="flex gap-2 overflow-x-auto px-5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {folders.map(folder => (
-          <Link
+          <AppLink
             key={folder.id}
             href={`/folder/${folder.id}`}
             className="flex shrink-0 items-center gap-1 rounded-full border border-[#ECEADC] bg-paper px-3.5 py-2 text-[12.5px] font-bold text-ink active:bg-butter-tint/50"
           >
             <span className="text-ink-faint">#</span>
             {folder.name}
-          </Link>
+          </AppLink>
         ))}
 
         {adding ? (

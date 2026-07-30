@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import { AppLink } from '@/lib/nav/nav'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { BoxCard } from '@/components/box-card'
@@ -56,11 +56,11 @@ export default async function MessyPage() {
 
       {/* 하단 고정 CTA */}
       <div className="fixed inset-x-0 bottom-0 z-20 bg-cream px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] xl:inset-x-auto xl:bottom-10 xl:left-1/2 xl:w-[430px] xl:-translate-x-1/2 xl:rounded-b-[30px]">
-        <Link href="/box/new" className="block">
+        <AppLink href="/box/new" className="block">
           <button className="w-full rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80">
             새로운 상자 만들기
           </button>
-        </Link>
+        </AppLink>
       </div>
     </main>
   )

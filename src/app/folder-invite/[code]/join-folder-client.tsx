@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useNav } from '@/lib/nav/nav'
 import { joinFolderByInviteCode } from '@/lib/api/folder-invites'
 
 interface JoinFolderClientProps {
@@ -10,12 +10,12 @@ interface JoinFolderClientProps {
 }
 
 export function JoinFolderClient({ code, isLoggedIn }: JoinFolderClientProps) {
-  const router = useRouter()
+  const nav = useNav()
   const [loading, setLoading] = useState(false)
 
   async function handleJoin() {
     if (!isLoggedIn) {
-      router.push(`/login?next=/folder-invite/${code}`)
+      nav.push(`/login?next=/folder-invite/${code}`)
       return
     }
     setLoading(true)
@@ -23,7 +23,7 @@ export function JoinFolderClient({ code, isLoggedIn }: JoinFolderClientProps) {
       // 폴더 안 모든 상자에 참여 + 폴더를 내 계정으로 복사. 반환된 내 폴더로 이동.
       const folderId = await joinFolderByInviteCode(code)
       // replace: 참여 후 /folder-invite로 back하면 (이제 복사본 보유라) 다시 /folder로 리다이렉트돼 루프 → 교체
-      router.replace(`/folder/${folderId}`)
+      nav.replace(`/folder/${folderId}`)
     } catch {
       setLoading(false)
     }

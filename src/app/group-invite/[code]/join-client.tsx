@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useNav } from '@/lib/nav/nav'
 import { joinGroupByInviteCode } from '@/lib/api/groups'
 
 interface JoinClientProps {
@@ -10,13 +10,13 @@ interface JoinClientProps {
 }
 
 export function JoinClient({ code, isLoggedIn }: JoinClientProps) {
-  const router = useRouter()
+  const nav = useNav()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   async function handleJoin() {
     if (!isLoggedIn) {
-      router.push(`/login?next=/group-invite/${code}`)
+      nav.push(`/login?next=/group-invite/${code}`)
       return
     }
     setLoading(true)
@@ -24,7 +24,7 @@ export function JoinClient({ code, isLoggedIn }: JoinClientProps) {
     try {
       const groupId = await joinGroupByInviteCode(code)
       // replace: 참여 후 /group-invite로 back하면 다시 /groups로 리다이렉트돼 루프 → 히스토리에서 교체
-      router.replace(`/groups/${groupId}`)
+      nav.replace(`/groups/${groupId}`)
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : ''
       setError(msg.includes('group_full') ? '그룹 멤버가 가득 찼어요. (최대 30명)' : '참여에 실패했어요.')

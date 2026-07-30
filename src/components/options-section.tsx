@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
+import { AppLink } from '@/lib/nav/nav'
 import { useOptions } from '@/hooks/use-options'
 import { useBoxVotes } from '@/hooks/use-votes'
 import { useRealtimeVotes } from '@/hooks/use-realtime-votes'
@@ -53,13 +53,13 @@ export function OptionsSection({ boxId, round, initialOptions, canVote, showLike
         <div className="flex items-center gap-2">
           <h3 className="text-[13.5px] font-extrabold text-ink">선택지 {options.length}개</h3>
           {linksHref && (
-            <Link
+            <AppLink
               href={linksHref}
               className="flex items-center gap-1 rounded-full bg-cream px-2 py-0.5 text-[11px] font-bold text-ink-soft active:bg-line"
             >
               <Icon name="link" size={12} />
               링크
-            </Link>
+            </AppLink>
           )}
         </div>
         {showLikes && options.length > 1 && (
@@ -82,7 +82,7 @@ export function OptionsSection({ boxId, round, initialOptions, canVote, showLike
 
       {options.length === 0 ? (
         // 빈 상태 = 그 자체가 추가 버튼 (점선 CTA 중복 제거)
-        <Link
+        <AppLink
           href={`/box/${boxId}/option/new`}
           className="block rounded-card border border-dashed border-[#D9D6C2] bg-paper/60 px-6 py-10 text-center active:bg-cream"
         >
@@ -91,7 +91,7 @@ export function OptionsSection({ boxId, round, initialOptions, canVote, showLike
           </span>
           <p className="text-[13px] font-bold text-ink">아직 선택지가 없어요</p>
           <p className="mt-1 text-[12px] text-ink-soft">떠오르는 후보를 먼저 담아보세요!</p>
-        </Link>
+        </AppLink>
       ) : (
         <div className="space-y-2.5">
           {visible.map(option => {
@@ -109,7 +109,7 @@ export function OptionsSection({ boxId, round, initialOptions, canVote, showLike
                       : 'border-[#ECEADC] bg-paper'
                 }`}
               >
-                <Link
+                <AppLink
                   href={`/box/${boxId}/option/${option.id}`}
                   aria-label={option.name}
                   className="absolute inset-0 rounded-[18px]"

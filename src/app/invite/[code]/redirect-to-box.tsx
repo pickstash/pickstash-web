@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useNav } from '@/lib/nav/nav'
 
 /**
  * 참여자가 초대 뷰어(/invite/[code])에 도달했을 때 편집 가능한 상자 상세로 보낸다.
@@ -12,11 +12,11 @@ import { useRouter } from 'next/navigation'
  * router.replace는 히스토리에서 이 invite 항목을 상자로 "교체"하므로 항목이 소진되어 루프가 안 생긴다.
  */
 export function RedirectToBox({ boxId }: { boxId: string }) {
-  const router = useRouter()
+  const nav = useNav()
 
   useEffect(() => {
-    router.replace(`/box/${boxId}`)
-  }, [boxId, router])
+    nav.replace(`/box/${boxId}`)
+  }, [boxId, nav])
 
   return (
     <main className="flex min-h-dvh items-center justify-center px-6">

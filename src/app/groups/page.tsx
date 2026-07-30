@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
+import { AppLink } from '@/lib/nav/nav'
 import { useMyGroups, useCreateGroup } from '@/hooks/use-groups'
 import { checkGroupNameExists } from '@/lib/api/groups'
 import { PageHeader } from '@/components/page-header'
@@ -51,7 +51,7 @@ export default function GroupsPage() {
           </div>
         ) : (
           groups.map(group => (
-            <Link key={group.id} href={`/groups/${group.id}`} className="block">
+            <AppLink key={group.id} href={`/groups/${group.id}`} className="block">
               <div className="flex items-center justify-between rounded-card border border-[#ECEADC] bg-paper p-4 active:bg-butter-tint/40">
                 <div>
                   <p className="text-[15px] font-extrabold text-ink">{group.name}</p>
@@ -61,7 +61,7 @@ export default function GroupsPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                 </svg>
               </div>
-            </Link>
+            </AppLink>
           ))
         )}
       </div>

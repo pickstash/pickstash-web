@@ -1,7 +1,7 @@
 'use client'
 
 import { use, useState } from 'react'
-import Link from 'next/link'
+import { AppLink } from '@/lib/nav/nav'
 import { PageHeader } from '@/components/page-header'
 import { useOptions } from '@/hooks/use-options'
 import {
@@ -101,12 +101,12 @@ export default function BoxLinksPage({ params }: { params: Promise<{ id: string 
                     📝 {block.label}
                   </p>
                 )}
-                <Link
+                <AppLink
                   href={`/box/${boxId}/option/${optionId}`}
                   className="mt-1.5 inline-block text-[11px] font-semibold text-ink-soft active:text-ink"
                 >
                   선택지 · {optionName}
-                </Link>
+                </AppLink>
               </div>
             ))}
           </div>

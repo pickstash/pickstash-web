@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import { AppLink } from '@/lib/nav/nav'
 import { useState } from 'react'
 import { VoteButtons } from '@/components/vote-buttons'
 import { PageHeader } from '@/components/page-header'
@@ -260,12 +260,12 @@ export function OptionDetailClient({
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
                   <div className="absolute right-0 top-full z-50 mt-1.5 w-32 overflow-hidden rounded-[14px] border border-line bg-paper py-1 shadow-[0_8px_24px_rgba(42,42,39,0.16)]">
-                    <Link
+                    <AppLink
                       href={`/box/${boxId}/option/${option.id}/edit`}
                       className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-ink active:bg-cream"
                     >
                       선택지 수정
-                    </Link>
+                    </AppLink>
                     <button
                       onClick={() => { setMenuOpen(false); setConfirmDelete(true) }}
                       className="block w-full border-t border-line px-4 py-2.5 text-left text-[13px] font-semibold text-tomato active:bg-tomato-tint"

@@ -1,8 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import { useNav, AppLink } from '@/lib/nav/nav'
 import {
   useUpdateBoxTitle,
   useUpdateBoxMemo,
@@ -106,7 +105,7 @@ function PencilCircle({ children }: { children: ReactNode }) {
 }
 
 export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions, initialIsFavorite }: BoxDetailClientProps) {
-  const router = useRouter()
+  const nav = useNav()
   const [box, setBox] = useState(initialBox)
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleInput, setTitleInput] = useState(box.title)
@@ -136,7 +135,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
       initialBox.decision_mode === 'auto_deadline' && closedAt > 0 && Date.now() - closedAt < 60_000
     if (justAutoClosed) {
       refreshedForAutoClose.current = true
-      router.refresh()
+      nav.refresh()
     }
     // 마운트 시점의 initialBox 상태로 1회만 판단(refresh는 클라이언트 상태를 보존해 재실행/루프 없음).
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -206,12 +205,12 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
   // 혼자 상자: 아바타 숨기고 초대 버튼만 (마감된 혼자 상자는 아무것도 안 보임)
   const participantsNode = isSolo ? (
     isDone ? null : (
-      <Link href={`/box/${box.id}/invite`} aria-label="친구 초대" className="inline-flex rounded-full active:opacity-70">
+      <AppLink href={`/box/${box.id}/invite`} aria-label="친구 초대" className="inline-flex rounded-full active:opacity-70">
         {inviteButton}
-      </Link>
+      </AppLink>
     )
   ) : (
-    <Link
+    <AppLink
       href={`/box/${box.id}/invite`}
       aria-label={isDone ? '함께한 사람 보기' : '친구 초대'}
       className="inline-flex rounded-full active:opacity-70"
@@ -220,7 +219,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
         participants={box.box_participants}
         trailing={isDone ? undefined : inviteButton}
       />
-    </Link>
+    </AppLink>
   )
 
   function handleSaveTitle() {
@@ -345,13 +344,13 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
         right={
           <div className="flex items-center gap-0.5">
             {hasLinks && (
-              <Link
+              <AppLink
                 href={`/box/${box.id}/links`}
                 aria-label="링크 모아보기"
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink active:bg-butter-tint"
               >
                 <Icon name="link" size={20} />
-              </Link>
+              </AppLink>
             )}
             <button
               onClick={handleToggleFavorite}
@@ -759,13 +758,13 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
               최종 결정하기
             </button>
           )}
-          <Link
+          <AppLink
             href={`/box/${box.id}/option/new`}
             className={`flex items-center justify-center gap-1.5 rounded-field border border-dashed border-[#D9D6C2] bg-paper/50 py-4 text-[13px] font-bold text-ink-soft active:bg-cream ${!isDone && !isAuto ? '' : 'col-span-2'}`}
           >
             <Icon name="plus" size={16} />
             선택지 추가하기
-          </Link>
+          </AppLink>
         </div>
       )}
 

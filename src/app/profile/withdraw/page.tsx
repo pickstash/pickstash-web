@@ -1,8 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import { useNav, AppLink } from '@/lib/nav/nav'
 import { deleteAccount } from '@/lib/api/profile'
 import { PageHeader } from '@/components/page-header'
 
@@ -14,7 +13,7 @@ const REASONS = [
 ]
 
 export default function WithdrawPage() {
-  const router = useRouter()
+  const nav = useNav()
   const [selected, setSelected] = useState<string[]>([])
   const [showDetail, setShowDetail] = useState(false)
   const [detail, setDetail] = useState('')
@@ -41,7 +40,7 @@ export default function WithdrawPage() {
     setError(null)
     try {
       await deleteAccount(finalReasons, finalDetail)
-      router.replace('/login') // 탈퇴 후 앱으로 back하면 인증가드 리다이렉트 → 교체
+      nav.replace('/login') // 탈퇴 후 앱으로 back하면 인증가드 리다이렉트 → 교체
     } catch {
       setError('탈퇴 처리에 실패했어요. 잠시 후 다시 시도해 주세요.')
       setLoading(false)
@@ -132,11 +131,11 @@ export default function WithdrawPage() {
         >
           {loading ? '처리 중...' : '정말 탈퇴하기'}
         </button>
-        <Link href="/profile" className="block">
+        <AppLink href="/profile" className="block">
           <button className="w-full rounded-field border border-line py-4 text-sm font-bold text-ink-soft">
             취소
           </button>
-        </Link>
+        </AppLink>
       </div>
     </main>
   )

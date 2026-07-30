@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useNav, AppLink } from '@/lib/nav/nav'
 import { signOut } from '@/lib/api/auth'
 import { Icon } from '@/components/icon'
 import { useFolders, useCreateFolder } from '@/hooks/use-folders'
@@ -71,7 +70,7 @@ function DrawerFolders({ onNavigate }: { onNavigate: () => void }) {
       )}
 
       {folders.map(f => (
-        <Link
+        <AppLink
           key={f.id}
           href={`/folder/${f.id}`}
           onClick={onNavigate}
@@ -79,7 +78,7 @@ function DrawerFolders({ onNavigate }: { onNavigate: () => void }) {
         >
           <Icon name="folder" size={18} className="text-ink-soft" />
           <span className="truncate">{f.name}</span>
-        </Link>
+        </AppLink>
       ))}
 
       {folders.length === 0 && !adding && (
@@ -93,7 +92,7 @@ export function AppDrawer({ nickname }: AppDrawerProps) {
   const [open, setOpen] = useState(false)
   const [browser, setBrowser] = useState<BrowserType | null>(null)
   const [pwaPrompt, setPwaPrompt] = useState<PwaPrompt | null>(null)
-  const router = useRouter()
+  const nav = useNav()
 
   useEffect(() => {
     setBrowser(detectBrowser())
@@ -123,7 +122,7 @@ export function AppDrawer({ nickname }: AppDrawerProps) {
 
   async function handleLogout() {
     await signOut()
-    router.replace('/login') // 로그아웃 후 앱으로 back하면 인증가드 리다이렉트 → 교체
+    nav.replace('/login') // 로그아웃 후 앱으로 back하면 인증가드 리다이렉트 → 교체
   }
 
   return (
@@ -142,14 +141,14 @@ export function AppDrawer({ nickname }: AppDrawerProps) {
             </div>
 
             <nav className="flex-1 space-y-1 px-2.5 py-4">
-              <Link
+              <AppLink
                 href="/"
                 onClick={() => setOpen(false)}
                 className="flex items-center gap-2.5 rounded-[14px] px-3 py-2.5 text-sm font-semibold text-ink hover:bg-cream active:bg-butter-tint"
               >
                 <Icon name="home" size={18} className="text-ink-soft" />
                 홈으로
-              </Link>
+              </AppLink>
 
               <p className="px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.08em] text-ink-faint">결정창고</p>
               {([
@@ -157,7 +156,7 @@ export function AppDrawer({ nickname }: AppDrawerProps) {
                 { href: '/done', icon: 'check', name: '정리된 창고' },
                 { href: '/favorites', icon: 'star', name: '즐겨찾는 창고' },
               ] as const).map(({ href, icon, name }) => (
-                <Link
+                <AppLink
                   key={href}
                   href={href}
                   onClick={() => setOpen(false)}
@@ -165,16 +164,16 @@ export function AppDrawer({ nickname }: AppDrawerProps) {
                 >
                   <Icon name={icon} size={18} className="text-ink-soft" />
                   {name}
-                </Link>
+                </AppLink>
               ))}
 
               <DrawerFolders onNavigate={() => setOpen(false)} />
 
               <div className="pt-3">
                 <p className="px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.08em] text-ink-faint">마이페이지</p>
-                <Link href="/profile" onClick={() => setOpen(false)} className="flex items-center rounded-[14px] px-3 py-2.5 text-sm font-semibold text-ink hover:bg-cream active:bg-butter-tint">
+                <AppLink href="/profile" onClick={() => setOpen(false)} className="flex items-center rounded-[14px] px-3 py-2.5 text-sm font-semibold text-ink hover:bg-cream active:bg-butter-tint">
                   프로필 관리
-                </Link>
+                </AppLink>
                 {/* 그룹 개념 정립 전까지 '그룹 관리' 숨김 */}
               </div>
             </nav>

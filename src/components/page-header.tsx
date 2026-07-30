@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useNav } from '@/lib/nav/nav'
 import type { ReactNode } from 'react'
 import { Icon } from './icon'
 
@@ -13,16 +13,16 @@ interface PageHeaderProps {
 }
 
 export function PageHeader({ title, fallbackHref = '/', right }: PageHeaderProps) {
-  const router = useRouter()
+  const nav = useNav()
 
   function handleBack() {
     // Next App Router는 history.state에 idx를 두지 않는다(항상 undefined). 이 값을 기준으로 삼던
     // 이전 로직은 매번 push(fallback)로 빠져 히스토리가 쌓였고, OS 뒤로가기가 같은 화면을
     // 오가는 루프를 만들었다. → 앱 내부 히스토리가 있으면 pop(뒤로), 없으면(딥링크 새 진입) 상위로.
     if (typeof window !== 'undefined' && window.history.length > 1) {
-      router.back()
+      nav.back()
     } else {
-      router.push(fallbackHref)
+      nav.push(fallbackHref)
     }
   }
 

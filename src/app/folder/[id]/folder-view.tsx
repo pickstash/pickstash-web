@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
-import { useRouter } from 'next/navigation'
+import { useNav } from '@/lib/nav/nav'
 import { PageHeader } from '@/components/page-header'
 import { AppDrawer } from '@/components/app-drawer'
 import { BoxCard } from '@/components/box-card'
@@ -62,7 +62,7 @@ function MemberAvatars({ members, max = 6 }: { members: FolderMember[]; max?: nu
 }
 
 export function FolderView({ folderId, folderName, inviteCode, nickname, members, initialBoxes }: FolderViewProps) {
-  const router = useRouter()
+  const nav = useNav()
   const [title, setTitle] = useState(folderName)
   const [items, setItems] = useState(initialBoxes)
   const [editing, setEditing] = useState(false)
@@ -272,7 +272,7 @@ export function FolderView({ folderId, folderName, inviteCode, nickname, members
             <div className="mt-4 flex gap-2">
               <button onClick={() => setConfirmLeave(false)} className="flex-1 rounded-field border border-line py-3 text-[13px] font-bold text-ink-soft">취소</button>
               <button
-                onClick={() => leave.mutate({ folderId, leaveBoxes: alsoLeaveBoxes }, { onSuccess: () => router.replace('/') })}
+                onClick={() => leave.mutate({ folderId, leaveBoxes: alsoLeaveBoxes }, { onSuccess: () => nav.replace('/') })}
                 disabled={leave.isPending}
                 className="flex-1 rounded-field bg-tomato py-3 text-[13px] font-bold text-white disabled:opacity-50"
               >

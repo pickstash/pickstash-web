@@ -1,7 +1,7 @@
 'use client'
 
 import { use } from 'react'
-import { useRouter } from 'next/navigation'
+import { useNav } from '@/lib/nav/nav'
 import { useOption, useUpdateOption } from '@/hooks/use-options'
 import { OptionForm } from '@/components/option-form'
 import { PageHeader } from '@/components/page-header'
@@ -13,7 +13,7 @@ export default function EditOptionPage({
   params: Promise<{ id: string; optionId: string }>
 }) {
   const { id: boxId, optionId } = use(params)
-  const router = useRouter()
+  const nav = useNav()
   const { data: option, isLoading } = useOption(optionId)
   const updateOption = useUpdateOption(optionId, boxId)
 
@@ -26,7 +26,7 @@ export default function EditOptionPage({
   }
 
   if (!option) {
-    router.replace(`/box/${boxId}`)
+    nav.replace(`/box/${boxId}`)
     return null
   }
 
@@ -46,10 +46,10 @@ export default function EditOptionPage({
           onSubmit={data => {
             updateOption.mutate(
               { name: data.name, content: data.content },
-              { onSuccess: () => router.replace(`/box/${boxId}/option/${optionId}`) }
+              { onSuccess: () => nav.replace(`/box/${boxId}/option/${optionId}`) }
             )
           }}
-          onCancel={() => router.replace(`/box/${boxId}/option/${optionId}`)}
+          onCancel={() => nav.replace(`/box/${boxId}/option/${optionId}`)}
         />
       </div>
     </main>

@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import { AppLink } from '@/lib/nav/nav'
 import { getBoxStatus, BOX_STATUS_LABEL, type BoxStatus } from '@/lib/domain/box-status'
 import { formatKoreanDate, formatDeadline } from '@/lib/utils'
 import { Icon } from '@/components/icon'
@@ -51,7 +51,7 @@ export function BoxCard({ box, participants, winnerName, isNew, isFavorite }: Bo
   const isAuto = box.decision_mode === 'auto_deadline'
 
   return (
-    <Link href={`/box/${box.id}`} className="block">
+    <AppLink href={`/box/${box.id}`} className="block">
       <div className="rounded-card border border-[#ECEADC] bg-paper p-4 shadow-[0_2px_10px_rgba(42,42,39,0.05)] transition-colors active:bg-butter-tint/40">
         <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -105,6 +105,6 @@ export function BoxCard({ box, participants, winnerName, isNew, isFavorite }: Bo
           )
         )}
       </div>
-    </Link>
+    </AppLink>
   )
 }

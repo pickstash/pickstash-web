@@ -1,7 +1,7 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useRouter } from 'next/navigation'
+import { useNav } from '@/lib/nav/nav'
 import {
   getOptions,
   getOption,
@@ -30,14 +30,14 @@ export function useOption(optionId: string) {
 
 export function useCreateOption(boxId: string) {
   const qc = useQueryClient()
-  const router = useRouter()
+  const nav = useNav()
   return useMutation({
     mutationFn: (input: CreateOptionInput) => createOption(input),
     onSuccess: (option) => {
       qc.invalidateQueries({ queryKey: ['options', boxId] })
       qc.invalidateQueries({ queryKey: ['box', boxId] })
       // replace: 추가 폼(/new)을 히스토리에서 교체 — 새 선택지 상세에서 뒤로가기 시 빈 폼으로 안 돌아가게
-      router.replace(`/box/${boxId}/option/${option.id}`)
+      nav.replace(`/box/${boxId}/option/${option.id}`)
     },
   })
 }
@@ -55,13 +55,13 @@ export function useUpdateOption(optionId: string, boxId: string) {
 
 export function useDeleteOption(boxId: string) {
   const qc = useQueryClient()
-  const router = useRouter()
+  const nav = useNav()
   return useMutation({
     mutationFn: (optionId: string) => deleteOption(optionId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['options', boxId] })
       // replace: 삭제된 선택지 상세로 back하면 빈 화면/리다이렉트가 되므로 히스토리에서 교체
-      router.replace(`/box/${boxId}`)
+      nav.replace(`/box/${boxId}`)
     },
   })
 }

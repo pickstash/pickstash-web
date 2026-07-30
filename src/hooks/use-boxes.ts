@@ -1,7 +1,7 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useRouter } from 'next/navigation'
+import { useNav } from '@/lib/nav/nav'
 import {
   createBox,
   getBox,
@@ -23,14 +23,14 @@ import {
 import type { Option } from '@/lib/api/options'
 
 export function useCreateBox() {
-  const router = useRouter()
+  const nav = useNav()
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (input: CreateBoxInput) => createBox(input),
     onSuccess: (box) => {
       queryClient.invalidateQueries({ queryKey: ['boxes'] })
-      router.push(`/box/${box.id}`)
+      nav.push(`/box/${box.id}`)
     },
   })
 }
@@ -97,7 +97,7 @@ export function useUpdateBoxDecisionMode(boxId: string) {
 
 /** 결정: 선택한 선택지(들)로 정리완료 */
 export function useDecideBox(boxId: string) {
-  const router = useRouter()
+  const nav = useNav()
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (optionIds: string[]) => decideBox(boxId, optionIds),
@@ -120,51 +120,51 @@ export function useDecideBox(boxId: string) {
       queryClient.invalidateQueries({ queryKey: ['boxes'] })
       queryClient.invalidateQueries({ queryKey: ['options', boxId] })
       // 홈·목록(서버 컴포넌트) Router Cache 무효화 — 결정 후 뒤로가기 stale 방지.
-      router.refresh()
+      nav.refresh()
     },
   })
 }
 
 /** 마감 투표 자동 결정 (lazy commit) */
 export function useAutoDecideBox(boxId: string) {
-  const router = useRouter()
+  const nav = useNav()
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: () => autoDecideBox(boxId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['box', boxId] })
       queryClient.invalidateQueries({ queryKey: ['options', boxId] })
-      router.refresh()
+      nav.refresh()
     },
   })
 }
 
 export function useDeleteBox() {
-  const router = useRouter()
+  const nav = useNav()
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (boxId: string) => deleteBox(boxId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['boxes'] })
-      router.replace('/') // 삭제된 상자로 back하면 리다이렉트 루프 → 교체
+      nav.replace('/') // 삭제된 상자로 back하면 리다이렉트 루프 → 교체
     },
   })
 }
 
 export function useLeaveBox() {
-  const router = useRouter()
+  const nav = useNav()
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (boxId: string) => leaveBox(boxId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['boxes'] })
-      router.replace('/') // 나간 상자로 back하면 '참여자 아님→/' 리다이렉트 루프 → 교체
+      nav.replace('/') // 나간 상자로 back하면 '참여자 아님→/' 리다이렉트 루프 → 교체
     },
   })
 }
 
 export function useReopenBox(boxId: string) {
-  const router = useRouter()
+  const nav = useNav()
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: () => reopenBox(boxId),
@@ -173,7 +173,7 @@ export function useReopenBox(boxId: string) {
       queryClient.invalidateQueries({ queryKey: ['boxes'] })
       queryClient.invalidateQueries({ queryKey: ['options', boxId] })  // 번복 시 decided_at 해제 반영
       // 홈·목록은 서버 컴포넌트라 TanStack 무효화로는 안 갱신됨. Router Cache를 비워 뒤로가기 stale 방지.
-      router.refresh()
+      nav.refresh()
     },
   })
 }

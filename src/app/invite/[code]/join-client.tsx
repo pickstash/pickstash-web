@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useNav } from '@/lib/nav/nav'
 import { joinBoxByInviteCode } from '@/lib/api/invites'
 
 interface JoinClientProps {
@@ -10,19 +10,19 @@ interface JoinClientProps {
 }
 
 export function JoinClient({ code, isLoggedIn }: JoinClientProps) {
-  const router = useRouter()
+  const nav = useNav()
   const [loading, setLoading] = useState(false)
 
   async function handleJoin() {
     if (!isLoggedIn) {
-      router.push(`/login?next=/invite/${code}`)
+      nav.push(`/login?next=/invite/${code}`)
       return
     }
     setLoading(true)
     try {
       const boxId = await joinBoxByInviteCode(code)
       // replace: 참여 후 /invite로 back하면 (이제 참여자라) 다시 /box로 리다이렉트돼 루프가 남 → 히스토리에서 교체
-      router.replace(`/box/${boxId}`)
+      nav.replace(`/box/${boxId}`)
     } catch {
       setLoading(false)
     }

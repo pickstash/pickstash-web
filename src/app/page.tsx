@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import { AppLink } from '@/lib/nav/nav'
 import Image from 'next/image'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
@@ -143,7 +143,7 @@ export default async function HomePage() {
         <section className="px-5 pt-5">
           <div className="flex items-stretch gap-2 rounded-[18px] border border-[#ECEADC] bg-paper p-1.5 shadow-[0_2px_10px_rgba(42,42,39,0.05)]">
             {warehouses.map((w, i) => (
-              <Link
+              <AppLink
                 key={w.href}
                 href={w.href}
                 className={`flex flex-1 flex-col items-center gap-1 rounded-[13px] py-2.5 active:bg-butter-tint/40 ${
@@ -155,7 +155,7 @@ export default async function HomePage() {
                   {w.name}
                 </span>
                 <span className="text-[18px] font-extrabold tabular-nums text-ink">{w.count}</span>
-              </Link>
+              </AppLink>
             ))}
           </div>
         </section>
@@ -166,11 +166,11 @@ export default async function HomePage() {
 
       {/* 하단 고정 CTA */}
       <div className="fixed inset-x-0 bottom-0 z-20 bg-cream px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] xl:inset-x-auto xl:bottom-10 xl:left-1/2 xl:w-[430px] xl:-translate-x-1/2 xl:rounded-b-[30px]">
-        <Link href="/box/new" className="block">
+        <AppLink href="/box/new" className="block">
           <button className="w-full rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80">
             새로운 상자 만들기
           </button>
-        </Link>
+        </AppLink>
       </div>
     </main>
   )

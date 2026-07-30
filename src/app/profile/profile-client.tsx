@@ -1,8 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import { useNav, AppLink } from '@/lib/nav/nav'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { updateNickname, updateAvatarUrl, uploadAvatar } from '@/lib/api/profile'
 import { signOut } from '@/lib/api/auth'
@@ -17,7 +16,7 @@ interface ProfileClientProps {
 }
 
 export function ProfileClient({ userId, nickname, avatarUrl, kakaoAvatarUrl }: ProfileClientProps) {
-  const router = useRouter()
+  const nav = useNav()
   const queryClient = useQueryClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [editingNickname, setEditingNickname] = useState(false)
@@ -31,7 +30,7 @@ export function ProfileClient({ userId, nickname, avatarUrl, kakaoAvatarUrl }: P
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profile', userId] })
       setEditingNickname(false)
-      router.refresh()
+      nav.refresh()
     },
   })
 
@@ -41,7 +40,7 @@ export function ProfileClient({ userId, nickname, avatarUrl, kakaoAvatarUrl }: P
       setCurrentAvatarUrl(url)
       setAvatarError(null)
       queryClient.invalidateQueries({ queryKey: ['profile', userId] })
-      router.refresh()
+      nav.refresh()
     },
   })
 
@@ -51,7 +50,7 @@ export function ProfileClient({ userId, nickname, avatarUrl, kakaoAvatarUrl }: P
       setCurrentAvatarUrl(url)
       setAvatarError(null)
       queryClient.invalidateQueries({ queryKey: ['profile', userId] })
-      router.refresh()
+      nav.refresh()
     },
     onError: () => {
       setAvatarError('사진 업로드에 실패했어요.')
@@ -81,7 +80,7 @@ export function ProfileClient({ userId, nickname, avatarUrl, kakaoAvatarUrl }: P
 
   async function handleLogout() {
     await signOut()
-    router.replace('/login') // 로그아웃 후 앱으로 back하면 인증가드 리다이렉트 → 교체
+    nav.replace('/login') // 로그아웃 후 앱으로 back하면 인증가드 리다이렉트 → 교체
   }
 
   const isAvatarPending = updateAvatarMutation.isPending || uploadAvatarMutation.isPending
@@ -225,7 +224,7 @@ export function ProfileClient({ userId, nickname, avatarUrl, kakaoAvatarUrl }: P
             </svg>
           </button>
           <div className="border-t border-line" />
-          <Link
+          <AppLink
             href="/profile/withdraw"
             className="flex items-center justify-between px-5 py-4 text-sm text-tomato active:bg-cream"
           >
@@ -233,7 +232,7 @@ export function ProfileClient({ userId, nickname, avatarUrl, kakaoAvatarUrl }: P
             <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
             </svg>
-          </Link>
+          </AppLink>
         </div>
       </div>
 

@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import { AppLink } from '@/lib/nav/nav'
 import { Icon } from '@/components/icon'
 import { formatDday } from '@/lib/utils'
 import type { FolderViewerData, FolderViewerBox } from '@/lib/api/folder-invites'
@@ -39,7 +39,7 @@ function ViewerAvatars({ participants, max = 4 }: { participants: FolderViewerBo
 function BoxCard({ box }: { box: FolderViewerBox }) {
   const isAuto = box.decision_mode === 'auto_deadline'
   return (
-    <Link
+    <AppLink
       href={`/invite/${box.invite_code}`}
       className="block rounded-[18px] border border-[#ECEADC] bg-paper p-4 shadow-[0_2px_10px_rgba(42,42,39,0.05)] active:bg-butter-tint/40"
     >
@@ -67,7 +67,7 @@ function BoxCard({ box }: { box: FolderViewerBox }) {
           </span>
         )}
       </div>
-    </Link>
+    </AppLink>
   )
 }
 

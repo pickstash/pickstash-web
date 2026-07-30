@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import { AppLink } from '@/lib/nav/nav'
 import { Icon } from '@/components/icon'
 import { formatDday } from '@/lib/utils'
 
@@ -72,7 +72,7 @@ export function DecisionHero({ box }: { box: OpenBoxCard | null }) {
 
   return (
     <section className="px-5 pt-4">
-      <Link href={`/box/${box.id}`} className="block">
+      <AppLink href={`/box/${box.id}`} className="block">
         <div className="rounded-[24px] border border-butter-deep bg-butter-tint p-[18px] shadow-[0_6px_18px_-6px_rgba(227,185,58,0.35)] active:brightness-[0.98]">
           <div className="flex items-start justify-between gap-2.5">
             <h3 className="min-w-0 text-[21px] font-extrabold leading-tight tracking-tight text-ink text-balance">
@@ -136,7 +136,7 @@ export function DecisionHero({ box }: { box: OpenBoxCard | null }) {
             </span>
           </div>
         </div>
-      </Link>
+      </AppLink>
     </section>
   )
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import { AppLink } from '@/lib/nav/nav'
 import { useShakingBoxes, useMarkAllSeen } from '@/hooks/use-boxes'
 import { formatActivity, type ActivityInfo } from '@/lib/domain/activity-label'
 import { Icon } from '@/components/icon'
@@ -34,7 +34,7 @@ export function ShakingBoxesSection() {
         {items.length > 0 ? (
           <div className="mt-2.5 space-y-2">
             {items.map(({ box, latestActivity }) => (
-              <Link key={box.id} href={`/box/${box.id}`} className="block">
+              <AppLink key={box.id} href={`/box/${box.id}`} className="block">
                 <div className="flex items-center gap-2.5 rounded-field bg-paper px-3.5 py-3 shadow-[0_1px_4px_rgba(42,42,39,0.05)] active:bg-cream">
                   <span className="shrink-0 rounded-full bg-butter px-2 py-0.5 text-[11px] font-extrabold text-ink">N</span>
                   <span className="min-w-0 flex-1">
@@ -47,7 +47,7 @@ export function ShakingBoxesSection() {
                   </span>
                   <span className="shrink-0 font-extrabold text-[#C9C7B6]">›</span>
                 </div>
-              </Link>
+              </AppLink>
             ))}
           </div>
         ) : (

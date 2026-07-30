@@ -1,7 +1,7 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useRouter } from 'next/navigation'
+import { useNav } from '@/lib/nav/nav'
 import {
   getMyGroups,
   getGroup,
@@ -24,24 +24,24 @@ export function useGroup(id: string) {
 
 export function useCreateGroup() {
   const qc = useQueryClient()
-  const router = useRouter()
+  const nav = useNav()
   return useMutation({
     mutationFn: (name: string) => createGroup(name),
     onSuccess: (group) => {
       qc.invalidateQueries({ queryKey: ['groups'] })
-      router.push(`/groups/${group.id}`)
+      nav.push(`/groups/${group.id}`)
     },
   })
 }
 
 export function useLeaveGroup(groupId: string) {
   const qc = useQueryClient()
-  const router = useRouter()
+  const nav = useNav()
   return useMutation({
     mutationFn: () => leaveGroup(groupId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['groups'] })
-      router.replace('/groups') // 나간 그룹으로 back하면 '멤버 아님→/groups' 리다이렉트 루프 → 교체
+      nav.replace('/groups') // 나간 그룹으로 back하면 '멤버 아님→/groups' 리다이렉트 루프 → 교체
     },
   })
 }

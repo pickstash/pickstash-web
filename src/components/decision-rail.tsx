@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import { AppLink } from '@/lib/nav/nav'
 import { Icon } from '@/components/icon'
 import { formatDday } from '@/lib/utils'
 import { leadersLabel, type HeroParticipant, type OpenBoxCard } from '@/components/decision-hero'
@@ -56,15 +56,15 @@ export function DecisionRail({ boxes, totalOpen }: { boxes: OpenBoxCard[]; total
       <div className="mb-2.5 flex items-center justify-between px-5">
         <h2 className="text-[14px] font-extrabold text-ink">이어서 정리할 상자</h2>
         {totalOpen > boxes.length + 1 && (
-          <Link href="/messy" className="text-[12px] font-semibold text-ink-faint active:opacity-70">
+          <AppLink href="/messy" className="text-[12px] font-semibold text-ink-faint active:opacity-70">
             전체 {totalOpen} ›
-          </Link>
+          </AppLink>
         )}
       </div>
 
       <div className="flex gap-2.5 overflow-x-auto px-5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {boxes.map(box => (
-          <Link key={box.id} href={`/box/${box.id}`} className="block shrink-0">
+          <AppLink key={box.id} href={`/box/${box.id}`} className="block shrink-0">
             <div className="flex w-[176px] flex-col gap-2.5 rounded-[18px] border border-[#ECEADC] bg-paper p-3.5 shadow-[0_2px_10px_rgba(42,42,39,0.05)] active:bg-butter-tint/40">
               <div className="flex items-start gap-1.5">
                 <h4 className="line-clamp-2 min-h-[36px] flex-1 text-[14px] font-extrabold leading-snug tracking-tight text-ink">
@@ -118,7 +118,7 @@ export function DecisionRail({ boxes, totalOpen }: { boxes: OpenBoxCard[]; total
                 </>
               )}
             </div>
-          </Link>
+          </AppLink>
         ))}
       </div>
     </section>
