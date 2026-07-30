@@ -17,6 +17,24 @@ export const runtime = 'nodejs' // node:https(mTLS)·admin 사용 → Edge 아�
 
 const TOSS_API = 'https://apps-in-toss-api.toss.im'
 
+// 토스 미니앱 웹뷰는 이 엔드포인트를 교차 출처(cross-origin)로 호출한다 → CORS 필수.
+// 쿠키/자격증명 없이 JSON 본문만 주고받으므로 Origin '*' 허용으로 충분하다.
+const CORS_HEADERS: Record<string, string> = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Max-Age': '86400',
+}
+
+function json(data: unknown, status = 200) {
+  return NextResponse.json(data, { status, headers: CORS_HEADERS })
+}
+
+// CORS preflight 응답. 이 핸들러가 없으면 웹뷰의 POST가 'Failed to fetch'로 막힌다.
+export function OPTIONS() {
+  return new Response(null, { status: 204, headers: CORS_HEADERS })
+}
+
 function tossAgent(): https.Agent {
   const pfx = process.env.TOSS_MTLS_PFX_B64
   if (pfx) {
@@ -70,10 +88,10 @@ export async function POST(request: Request) {
     authorizationCode = body.authorizationCode
     referrer = body.referrer
   } catch {
-    return NextResponse.json({ error: 'invalid body' }, { status: 400 })
+    return json({ error: 'invalid body' }, 400)
   }
   if (!authorizationCode) {
-    return NextResponse.json({ error: 'missing authorizationCode' }, { status: 400 })
+    return json({ error: 'missing authorizationCode' }, 400)
   }
 
   try {
@@ -86,7 +104,7 @@ export async function POST(request: Request) {
     )
     const token = tokenRes.json as TokenResp
     if (tokenRes.status !== 200 || token?.resultType !== 'SUCCESS' || !token.success?.accessToken) {
-      return NextResponse.json({ error: 'toss token exchange failed', detail: tokenRes.json }, { status: 502 })
+      return json({ error: 'toss token exchange failed', detail: tokenRes.json }, 502)
     }
 
     // 2) accessToken → userKey (+프로필 정보)
@@ -97,7 +115,7 @@ export async function POST(request: Request) {
     )
     const me = meRes.json as MeResp
     if (meRes.status !== 200 || me?.resultType !== 'SUCCESS' || me.success?.userKey == null) {
-      return NextResponse.json({ error: 'toss login-me failed', detail: meRes.json }, { status: 502 })
+      return json({ error: 'toss login-me failed', detail: meRes.json }, 502)
     }
     const userKey = String(me.success.userKey)
 
@@ -116,12 +134,12 @@ export async function POST(request: Request) {
     })
     const { data: link, error } = await admin.auth.admin.generateLink({ type: 'magiclink', email })
     if (error || !link) {
-      return NextResponse.json({ error: 'session mint failed', detail: error?.message }, { status: 500 })
+      return json({ error: 'session mint failed', detail: error?.message }, 500)
     }
 
-    return NextResponse.json({ email, token_hash: link.properties.hashed_token })
+    return json({ email, token_hash: link.properties.hashed_token })
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'unknown'
-    return NextResponse.json({ error: 'toss login error', detail: msg }, { status: 500 })
+    return json({ error: 'toss login error', detail: msg }, 500)
   }
 }
