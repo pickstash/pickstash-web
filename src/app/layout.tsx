@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css'
 import './globals.css'
 import { Providers } from '@/components/providers'
+import { NextNavProvider } from '@/lib/nav/next-provider'
 
 export const metadata: Metadata = {
   // 상대 og:image를 절대 URL로 해석(카카오 등 크롤러가 썸네일 로드하려면 절대 URL 필요)
@@ -49,7 +50,7 @@ export default function RootLayout({
         <Providers>
           {/* 모바일·태블릿은 가로 100%, PC(xl+)에선 모바일 앱을 중앙 폰 프레임(상하 여백 + 내부 스크롤)으로 */}
           <div className="app-frame mx-auto min-h-dvh w-full bg-cream xl:h-[calc(100dvh-5rem)] xl:min-h-0 xl:max-w-[430px] xl:overflow-y-auto xl:rounded-[30px] xl:border xl:border-line xl:shadow-[0_20px_60px_rgba(42,42,39,0.16)]">
-            {children}
+            <NextNavProvider>{children}</NextNavProvider>
           </div>
         </Providers>
       </body>
