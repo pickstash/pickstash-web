@@ -87,8 +87,7 @@ export function FolderViewer({ view, isLoggedIn, code }: FolderViewerProps) {
         </span>
         <h1 className="mt-3 text-[24px] font-extrabold leading-tight tracking-tight text-ink text-balance">{view.name}</h1>
         <p className="mt-1.5 text-[13px] text-ink-soft">
-          {view.owner_nickname ? `${view.owner_nickname}님이 공유했어요 · ` : ''}
-          상자 {view.boxes.length}개
+          {view.member_count > 0 ? `${view.member_count}명 참여 · ` : ''}상자 {view.boxes.length}개
         </p>
       </header>
 

@@ -24,8 +24,7 @@ export interface FolderViewerBox {
 export interface FolderViewerData {
   id: string
   name: string
-  owner_id: string
-  owner_nickname: string | null
+  member_count: number
   boxes: FolderViewerBox[]
 }
 

@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { FolderView, type FolderBoxItem } from './folder-view'
+import { FolderView, type FolderBoxItem, type FolderMember } from './folder-view'
 import type { Box } from '@/lib/api/boxes'
 
 // 폴더 뷰 — 주제별 상자 묶음(§3-7). 개인별: 내가 이 폴더에 넣은 상자만, box_folders.sort 순서.
@@ -11,11 +11,19 @@ export default async function FolderPage({ params }: { params: Promise<{ id: str
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // 폴더는 본인 것만 조회 가능(RLS) — 없거나 남의 폴더면 notFound
+  // 폴더는 멤버만 조회 가능(RLS) — 멤버가 아니거나 없으면 notFound (021)
   const { data: folder } = await supabase.from('folders').select('id, name, invite_code').eq('id', id).single()
   if (!folder) notFound()
 
-  // 이 폴더에 담긴 상자 id를 sort 순으로 (box_folders RLS: 본인 행만)
+  // 폴더 멤버(참여자) — 공유 폴더 상단에 아바타로 노출
+  const { data: memberRows } = await supabase
+    .from('folder_members')
+    .select('user_id, profiles(id, nickname, avatar_url)')
+    .eq('folder_id', id)
+    .order('joined_at', { ascending: true })
+  const members = (memberRows ?? []) as unknown as FolderMember[]
+
+  // 이 폴더의 공유 상자 목록을 sort 순으로 (box_folders는 폴더 스코프, RLS: 멤버)
   const { data: filings } = await supabase
     .from('box_folders')
     .select('box_id, sort')
@@ -60,6 +68,7 @@ export default async function FolderPage({ params }: { params: Promise<{ id: str
       folderName={folder.name}
       inviteCode={folder.invite_code}
       nickname={profile?.nickname ?? ''}
+      members={members}
       initialBoxes={items}
     />
   )

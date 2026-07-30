@@ -40,7 +40,7 @@ export default async function HomePage() {
     supabase.from('box_participants').select('box_id, last_seen_at').eq('user_id', user.id),
     supabase.from('favorites').select('box_id').eq('user_id', user.id),
     supabase.from('boxes').select('*', { count: 'exact', head: true }).not('closed_at', 'is', null),
-    supabase.from('folders').select('*').eq('user_id', user.id).order('sort').order('created_at'),
+    supabase.from('folders').select('*').order('sort').order('created_at'), // RLS: 내가 멤버인 폴더만(021)
   ])
 
   const lastSeenMap = new Map((participations ?? []).map(p => [p.box_id, p.last_seen_at]))

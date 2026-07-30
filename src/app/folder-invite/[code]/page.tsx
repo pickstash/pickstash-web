@@ -41,17 +41,15 @@ export default async function FolderInviteLandingPage({ params }: Props) {
     )
   }
 
-  // 소유자면 원본으로, 이미 참여(복사)했으면 내 복사본으로 (뷰어 대신).
-  // client replace를 쓰는 이유는 RedirectToFolder 주석 참고(뒤로가기 무한루프 방지).
+  // 이미 이 폴더 멤버면 뷰어 대신 폴더로 (client replace — 뒤로가기 루프 방지, RedirectToFolder 주석 참고).
   if (user) {
-    if (view.owner_id === user.id) return <RedirectToFolder folderId={view.id} />
-    const { data: copies } = await supabase
-      .from('folders')
-      .select('id')
+    const { data: mem } = await supabase
+      .from('folder_members')
+      .select('folder_id')
+      .eq('folder_id', view.id)
       .eq('user_id', user.id)
-      .eq('source_folder_id', view.id)
-      .limit(1)
-    if (copies && copies.length > 0) return <RedirectToFolder folderId={copies[0].id} />
+      .maybeSingle()
+    if (mem) return <RedirectToFolder folderId={view.id} />
   }
 
   return <FolderViewer view={view} isLoggedIn={!!user} code={code} />

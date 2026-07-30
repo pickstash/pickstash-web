@@ -222,50 +222,62 @@ export interface Database {
       folders: {
         Row: {
           id: string
-          user_id: string
           name: string
           sort: number
           invite_code: string
-          source_folder_id: string | null
           created_at: string
         }
         Insert: {
           id?: string
-          user_id: string
           name: string
           sort?: number
           invite_code?: string
-          source_folder_id?: string | null
           created_at?: string
         }
         Update: {
           id?: string
-          user_id?: string
           name?: string
           sort?: number
           invite_code?: string
-          source_folder_id?: string | null
           created_at?: string
+        }
+        Relationships: []
+      }
+      folder_members: {
+        Row: {
+          folder_id: string
+          user_id: string
+          sort: number
+          joined_at: string
+        }
+        Insert: {
+          folder_id: string
+          user_id: string
+          sort?: number
+          joined_at?: string
+        }
+        Update: {
+          folder_id?: string
+          user_id?: string
+          sort?: number
+          joined_at?: string
         }
         Relationships: []
       }
       box_folders: {
         Row: {
-          user_id: string
           box_id: string
           folder_id: string
           sort: number
           created_at: string
         }
         Insert: {
-          user_id: string
           box_id: string
           folder_id: string
           sort?: number
           created_at?: string
         }
         Update: {
-          user_id?: string
           box_id?: string
           folder_id?: string
           sort?: number
@@ -487,6 +499,10 @@ export interface Database {
       join_folder_by_invite_code: {
         Args: { p_code: string }
         Returns: string
+      }
+      leave_folder: {
+        Args: { p_folder_id: string; p_leave_boxes?: boolean }
+        Returns: undefined
       }
     }
     Enums: {

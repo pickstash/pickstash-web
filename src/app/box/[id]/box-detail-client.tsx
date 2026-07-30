@@ -456,7 +456,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
               <h3 className="text-base font-extrabold tracking-tight text-ink">폴더 지정</h3>
               <button onClick={() => setFolderModal(false)} className="text-[13px] text-ink-faint">닫기</button>
             </div>
-            <p className="mb-3 text-[12px] text-ink-soft">여러 폴더에 담을 수 있어요. 아무것도 안 고르면 미분류예요.</p>
+            <p className="mb-3 text-[12px] text-ink-soft">여러 폴더에 담을 수 있어요. 함께 쓰는 폴더에 넣으면 그 폴더 멤버 모두 이 상자에 참여해요.</p>
 
             <div className="max-h-[46vh] space-y-1 overflow-y-auto">
               {folders.length === 0 && (

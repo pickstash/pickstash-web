@@ -5,7 +5,7 @@ import {
   getMyFolders,
   createFolder,
   renameFolder,
-  deleteFolder,
+  leaveFolder,
   getMyBoxFolderIds,
   setBoxFolders,
   removeBoxFromFolder,
@@ -32,13 +32,14 @@ export function useRenameFolder() {
   })
 }
 
-export function useDeleteFolder() {
+/** 폴더 나가기(멤버십 제거). 혼자면=삭제(마지막 나감→자동 소멸). leaveBoxes면 그 폴더 상자에서도 나감. */
+export function useLeaveFolder() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (id: string) => deleteFolder(id),
+    mutationFn: (arg: { folderId: string; leaveBoxes?: boolean }) => leaveFolder(arg.folderId, arg.leaveBoxes),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['folders'] })
-      queryClient.invalidateQueries({ queryKey: ['boxFolder'] }) // 삭제된 폴더에 있던 상자들 미분류로
+      queryClient.invalidateQueries({ queryKey: ['boxFolder'] })
     },
   })
 }
