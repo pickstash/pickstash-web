@@ -1,132 +1,19 @@
-import { AppLink } from '@/lib/nav/nav'
-import Image from 'next/image'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { AppDrawer } from '@/components/app-drawer'
-import { DecisionHero } from '@/components/decision-hero'
-import { DecisionRail } from '@/components/decision-rail'
-import { FolderChips } from '@/components/folder-chips'
+import { HomeView } from '@/components/home-view'
 import { PushNotificationBanner } from '@/components/push-notification-banner'
-import { Icon } from '@/components/icon'
-import { sortOpenBoxes, buildHomeCards, HOME_RAIL_LIMIT, type RawOpenBox } from '@/lib/domain/home'
-import type { Folder } from '@/lib/api/folders'
+import { loadHomeView } from '@/lib/api/home'
 
+// 웹 홈 = 서버 전용 껍데기: 인증 가드 + 공유 로더 호출 + 공유 뷰 렌더.
+// 화면·집계·fetching은 전부 공유(HomeView / loadHomeView / domain) → 토스와 동일.
 export default async function HomePage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [
-    { data: profile },
-    { data: rawOpenBoxes },
-    { data: participations },
-    { data: favs },
-    { count: doneCount },
-    { data: folders },
-  ] = await Promise.all([
-    supabase.from('profiles').select('nickname').eq('id', user.id).single(),
-    supabase
-      .from('boxes')
-      .select('*, box_participants(user_id, profiles(avatar_url, nickname))')
-      .is('closed_at', null)
-      .order('updated_at', { ascending: false }),
-    supabase.from('box_participants').select('box_id, last_seen_at').eq('user_id', user.id),
-    supabase.from('favorites').select('box_id').eq('user_id', user.id),
-    supabase.from('boxes').select('*', { count: 'exact', head: true }).not('closed_at', 'is', null),
-    supabase.from('folders').select('*').order('sort').order('created_at'), // RLS: 내가 멤버인 폴더만(021)
-  ])
+  const data = await loadHomeView(supabase, user.id)
 
-  const lastSeenMap = new Map((participations ?? []).map(p => [p.box_id, p.last_seen_at]))
-  const favoriteSet = new Set((favs ?? []).map(f => f.box_id))
-  const openBoxes = (rawOpenBoxes ?? []) as unknown as RawOpenBox[]
-
-  // 정렬(마감 임박 → NEW → 최근)은 공유 도메인 로직. 표시 대상만 좋아요 fetch.
-  const sorted = sortOpenBoxes(openBoxes, lastSeenMap)
-  const displayed = sorted.slice(0, HOME_RAIL_LIMIT + 1)
-
-  const ids = displayed.map(b => b.id)
-  let options: { id: string; box_id: string; name: string }[] = []
-  let votes: { option_id: string; vote_type: string }[] = []
-  if (ids.length > 0) {
-    const { data: opts } = await supabase.from('options').select('id, box_id, name').in('box_id', ids)
-    options = opts ?? []
-    const optIds = options.map(o => o.id)
-    if (optIds.length > 0) {
-      const { data: v } = await supabase.from('votes').select('option_id, vote_type').in('option_id', optIds)
-      votes = v ?? []
-    }
-  }
-
-  const { hero, railCards } = buildHomeCards(displayed, {
-    lastSeen: lastSeenMap,
-    favorites: favoriteSet,
-    options,
-    votes,
-  })
-
-  const openCount = openBoxes.length
-  const favoriteCount = favs?.length ?? 0
-
-  const warehouses = [
-    { href: '/messy', icon: 'box', name: '어질러진', count: openCount },
-    { href: '/done', icon: 'check', name: '정리된', count: doneCount ?? 0 },
-    { href: '/favorites', icon: 'star', name: '즐겨찾는', count: favoriteCount },
-  ] as const
-
-  return (
-    <main className="flex min-h-dvh flex-col">
-      <header className="sticky top-0 z-20 flex items-center justify-between bg-cream/95 px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-3 backdrop-blur-sm">
-        <div className="flex min-w-0 items-center gap-2">
-          <Image src="/icons/character.png" alt="" width={32} height={24} className="h-6 w-auto" priority />
-          <h1 className="truncate text-xl font-extrabold tracking-tight text-ink">
-            {profile?.nickname ?? ''}님의 결정창고
-          </h1>
-        </div>
-        <AppDrawer nickname={profile?.nickname ?? ''} />
-      </header>
-
-      <PushNotificationBanner />
-
-      <div className="flex-1 pb-28">
-        {/* ① 마감 히어로 (가장 급한 상자) */}
-        <DecisionHero box={hero} />
-
-        {/* ② 이어서 정할 상자 (가로 레일) — 결정 콘텐츠를 히어로와 함께 위로 */}
-        <DecisionRail boxes={railCards} totalOpen={openCount} />
-
-        {/* ③ 창고 요약 한 줄 (탐색) */}
-        <section className="px-5 pt-5">
-          <div className="flex items-stretch gap-2 rounded-[18px] border border-[#ECEADC] bg-paper p-1.5 shadow-[0_2px_10px_rgba(42,42,39,0.05)]">
-            {warehouses.map((w, i) => (
-              <AppLink
-                key={w.href}
-                href={w.href}
-                className={`flex flex-1 flex-col items-center gap-1 rounded-[13px] py-2.5 active:bg-butter-tint/40 ${
-                  i > 0 ? 'border-l border-[#F0EEE0]' : ''
-                }`}
-              >
-                <span className="flex items-center gap-1 text-[10.5px] font-semibold text-ink-faint">
-                  <Icon name={w.icon} size={12} />
-                  {w.name}
-                </span>
-                <span className="text-[18px] font-extrabold tabular-nums text-ink">{w.count}</span>
-              </AppLink>
-            ))}
-          </div>
-        </section>
-
-        {/* ④ 폴더(주제) 칩 (탐색) */}
-        <FolderChips initialFolders={(folders ?? []) as Folder[]} />
-      </div>
-
-      {/* 하단 고정 CTA */}
-      <div className="fixed inset-x-0 bottom-0 z-20 bg-cream px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] xl:inset-x-auto xl:bottom-10 xl:left-1/2 xl:w-[430px] xl:-translate-x-1/2 xl:rounded-b-[30px]">
-        <AppLink href="/box/new" className="block">
-          <button className="w-full rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80">
-            새로운 상자 만들기
-          </button>
-        </AppLink>
-      </div>
-    </main>
-  )
+  return <HomeView {...data} banner={<PushNotificationBanner />} />
 }
