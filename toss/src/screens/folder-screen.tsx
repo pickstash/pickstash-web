@@ -21,7 +21,7 @@ export function FolderScreen() {
 
   if (isPending) return <ScreenLoading />;
   if (error || !data) return <ScreenError />;
-  if (data.status !== "ok") return <ScreenError message="열 수 없는 폴더예요" />;
+  if (data.status !== "ok") return <ScreenError message="열 수 없는 서랍이에요" />;
 
   return (
     <FolderView

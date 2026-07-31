@@ -5,7 +5,7 @@ import { Icon, type IconName } from "@/components/icon";
 const TABS: { href: string; icon: IconName; label: string }[] = [
   { href: "/", icon: "home", label: "홈" },
   { href: "/boxes", icon: "box", label: "상자" },
-  { href: "/folders", icon: "folder", label: "선반" },
+  { href: "/folders", icon: "folder", label: "서랍" },
   { href: "/profile", icon: "user", label: "프로필" },
 ];
 

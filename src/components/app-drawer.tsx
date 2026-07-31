@@ -38,7 +38,7 @@ function DrawerFolders({ onNavigate }: { onNavigate: () => void }) {
       className="mt-1 flex items-center gap-2.5 rounded-[14px] px-3 py-2.5 text-sm font-semibold text-ink hover:bg-cream active:bg-butter-tint"
     >
       <Icon name="folder" size={18} className="text-ink-soft" />
-      <span className="flex-1">폴더</span>
+      <span className="flex-1">서랍</span>
       {folders.length > 0 && <span className="text-[12px] font-bold tabular-nums text-ink-faint">{folders.length}</span>}
       <span className="text-ink-faint">›</span>
     </AppLink>

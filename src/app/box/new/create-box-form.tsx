@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { useCreateBox } from '@/hooks/use-boxes'
 import { DeadlineBottomSheet } from '@/components/deadline-bottom-sheet'
+import { Icon } from '@/components/icon'
+import { takePendingBoxFolder } from '@/lib/nav/pending-box-folder'
 import { defaultDeadline, formatKoreanDateTime } from '@/lib/utils'
 import type { DecisionMode } from '@/lib/api/boxes'
 
@@ -17,6 +19,8 @@ export function CreateBoxForm() {
   const [mode, setMode] = useState<DecisionMode>('manual')
   const [deadline, setDeadline] = useState<Date | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
+  // 서랍 상세에서 넘어왔으면 그 서랍에 바로 담아 만든다(1회성 소비).
+  const [pendingFolder] = useState(() => takePendingBoxFolder())
 
   const createBox = useCreateBox()
 
@@ -32,15 +36,24 @@ export function CreateBoxForm() {
     e.preventDefault()
     if (!canSubmit) return
     createBox.mutate({
-      title: title.trim(),
-      memo: memo.trim() || undefined,
-      decision_mode: mode,
-      deadline_at: needsDeadline && deadline ? deadline.toISOString() : null,
+      input: {
+        title: title.trim(),
+        memo: memo.trim() || undefined,
+        decision_mode: mode,
+        deadline_at: needsDeadline && deadline ? deadline.toISOString() : null,
+      },
+      folderId: pendingFolder?.id,
     })
   }
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-5 px-5 py-6">
+      {pendingFolder && (
+        <div className="flex items-center gap-1.5 rounded-field bg-butter-tint px-3.5 py-2.5 text-[12.5px] font-bold text-ink">
+          <Icon name="folder" size={14} className="shrink-0 text-ink-soft" />
+          <span className="truncate">‘{pendingFolder.name}’ 서랍에 담겨요</span>
+        </div>
+      )}
       <div>
         <label className="mb-1.5 block text-[13px] font-semibold text-ink-soft">상자 이름 *</label>
         <input

@@ -16,7 +16,7 @@ export function RedirectToFolder({ folderId }: { folderId: string }) {
 
   return (
     <main className="flex min-h-dvh items-center justify-center px-6">
-      <p className="text-[13px] text-ink-soft">폴더로 이동 중…</p>
+      <p className="text-[13px] text-ink-soft">서랍으로 이동 중…</p>
     </main>
   )
 }

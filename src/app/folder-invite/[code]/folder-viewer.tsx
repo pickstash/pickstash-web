@@ -83,7 +83,7 @@ export function FolderViewer({ view, isLoggedIn, code }: FolderViewerProps) {
       <header className="px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-2">
         <span className="inline-flex items-center gap-1 rounded-full bg-butter-tint px-2.5 py-1 text-[11px] font-bold text-ink">
           <Icon name="folder" size={12} />
-          공유된 폴더
+          공유된 서랍
         </span>
         <h1 className="mt-3 text-[24px] font-extrabold leading-tight tracking-tight text-ink text-balance">{view.name}</h1>
         <p className="mt-1.5 text-[13px] text-ink-soft">
@@ -94,7 +94,7 @@ export function FolderViewer({ view, isLoggedIn, code }: FolderViewerProps) {
       <div className="flex-1 space-y-2.5 px-5 pb-32 pt-3">
         {view.boxes.length === 0 ? (
           <div className="rounded-card border border-dashed border-[#D9D6C2] bg-paper/60 px-6 py-14 text-center">
-            <p className="text-[13.5px] font-bold text-ink">이 폴더엔 아직 상자가 없어요</p>
+            <p className="text-[13.5px] font-bold text-ink">이 서랍엔 아직 상자가 없어요</p>
           </div>
         ) : (
           view.boxes.map(box => <BoxCard key={box.id} box={box} />)
@@ -104,7 +104,7 @@ export function FolderViewer({ view, isLoggedIn, code }: FolderViewerProps) {
       {/* 하단 고정 CTA: 참여(전체 상자 참여 + 폴더 복사) */}
       <div className="fixed inset-x-0 bottom-0 z-20 bg-cream px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] xl:inset-x-auto xl:bottom-10 xl:left-1/2 xl:w-[430px] xl:-translate-x-1/2 xl:rounded-b-[30px]">
         <p className="mb-2 text-center text-[11.5px] text-ink-faint">
-          참여하면 폴더 안 상자에 모두 참여하고, 폴더가 내 창고에 담겨요.
+          참여하면 서랍 안 상자에 모두 참여하고, 서랍이 내 창고에 담겨요.
         </p>
         <JoinFolderClient code={code} isLoggedIn={isLoggedIn} />
       </div>

@@ -39,7 +39,7 @@ export function HomeView({
         {/* ② 이어서 정할 상자 (가로 레일) */}
         <DecisionRail boxes={railCards} totalOpen={openCount} />
 
-        {/* ③ 선반(주제) 칩 (탐색) */}
+        {/* ③ 서랍(주제) 칩 (탐색) */}
         <FolderChips initialFolders={folders} />
       </div>
 

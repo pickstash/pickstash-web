@@ -56,7 +56,7 @@ export async function createComment(
 
   // 다른 참여자에게 push 알림 (실패해도 무시)
   supabase.functions.invoke('send-push', {
-    body: { box_id: option.box_id, triggered_by: user.id },
+    body: { box_id: option.box_id, triggered_by: user.id, message_key: 'comment' },
   }).catch(() => {})
 
   // @멘션된 사람에게 별도 타겟 알림

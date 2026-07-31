@@ -34,15 +34,13 @@ export function ShareFolderLinkButton({ inviteCode }: { inviteCode: string }) {
   return (
     <button
       onClick={handleCopy}
-      aria-label="폴더 공유 링크 복사"
-      className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-bold transition ${
-        copied
-          ? 'border-butter-dark bg-butter-tint text-ink'
-          : 'border-line bg-paper text-ink-soft active:bg-cream'
+      aria-label="서랍 공유 링크 복사"
+      className={`flex w-full items-center justify-center gap-2 rounded-field py-4 text-sm font-bold transition active:opacity-80 ${
+        copied ? 'bg-butter text-ink' : 'bg-ink text-cream'
       }`}
     >
-      <Icon name={copied ? 'check' : 'share'} size={14} />
-      {copied ? '링크 복사됨!' : '폴더 공유'}
+      <Icon name={copied ? 'check' : 'link'} size={17} />
+      {copied ? '링크 복사됨!' : '링크로 초대하기'}
     </button>
   )
 }

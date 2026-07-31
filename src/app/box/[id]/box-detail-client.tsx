@@ -107,6 +107,8 @@ function PencilCircle({ children }: { children: ReactNode }) {
 export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions, initialIsFavorite }: BoxDetailClientProps) {
   const nav = useNav()
   const [box, setBox] = useState(initialBox)
+  const [inviteCopied, setInviteCopied] = useState(false)
+  const [membersOpen, setMembersOpen] = useState(false)
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleInput, setTitleInput] = useState(box.title)
   const [editingMemo, setEditingMemo] = useState(false)
@@ -202,25 +204,47 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
     </span>
   )
 
-  // 혼자 상자: 아바타 숨기고 초대 버튼만 (마감된 혼자 상자는 아무것도 안 보임)
-  const participantsNode = isSolo ? (
-    isDone ? null : (
-      <AppLink href={`/box/${box.id}/invite`} aria-label="친구 초대" className="inline-flex rounded-full active:opacity-70">
-        {inviteButton}
+  // 토스: /box/:id/invite(카카오 초대 페이지)는 웹 전용 → 토스엔 라우트가 없어 '미정의 경로→홈'으로 튕겼다.
+  // 대신 초대 링크(/invite/<code>)를 클립보드로 복사한다(마감 상자는 초대 개념이 없어 비활성).
+  async function copyInvite() {
+    const url = `${window.location.origin}/invite/${box.invite_code}`
+    try {
+      await navigator.clipboard.writeText(url)
+    } catch {
+      const ta = document.createElement('textarea')
+      ta.value = url
+      document.body.appendChild(ta)
+      ta.select()
+      try { document.execCommand('copy') } catch { /* 무시 */ }
+      document.body.removeChild(ta)
+    }
+    setInviteCopied(true)
+    setTimeout(() => setInviteCopied(false), 1800)
+  }
+
+  function inviteEntry(children: ReactNode, label: string) {
+    // 토스: 웹 전용 카카오 페이지로 이동하는 대신, 참여자 목록 + 초대 링크 시트를 연다.
+    if (nav.platform === 'toss') {
+      return (
+        <button onClick={() => setMembersOpen(true)} aria-label={label} className="inline-flex rounded-full active:opacity-70">
+          {children}
+        </button>
+      )
+    }
+    return (
+      <AppLink href={`/box/${box.id}/invite`} aria-label={label} className="inline-flex rounded-full active:opacity-70">
+        {children}
       </AppLink>
     )
-  ) : (
-    <AppLink
-      href={`/box/${box.id}/invite`}
-      aria-label={isDone ? '함께한 사람 보기' : '친구 초대'}
-      className="inline-flex rounded-full active:opacity-70"
-    >
-      <ParticipantAvatars
-        participants={box.box_participants}
-        trailing={isDone ? undefined : inviteButton}
-      />
-    </AppLink>
-  )
+  }
+
+  // 혼자 상자: 아바타 숨기고 초대 버튼만 (마감된 혼자 상자는 아무것도 안 보임)
+  const participantsNode = isSolo
+    ? (isDone ? null : inviteEntry(inviteButton, '친구 초대'))
+    : inviteEntry(
+        <ParticipantAvatars participants={box.box_participants} trailing={isDone ? undefined : inviteButton} />,
+        isDone ? '함께한 사람 보기' : '친구 초대',
+      )
 
   function handleSaveTitle() {
     if (!titleInput.trim() || titleInput === box.title) {
@@ -341,33 +365,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
     <main className="flex min-h-dvh flex-col">
       <PageHeader
         fallbackHref={isDone ? '/done' : '/messy'}
-        right={
-          <div className="flex items-center gap-0.5">
-            {hasLinks && (
-              <AppLink
-                href={`/box/${box.id}/links`}
-                aria-label="링크 모아보기"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink active:bg-butter-tint"
-              >
-                <Icon name="link" size={20} />
-              </AppLink>
-            )}
-            <button
-              onClick={handleToggleFavorite}
-              aria-label="즐겨찾기"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-transform active:scale-90"
-            >
-              <Icon
-                name="star"
-                size={22}
-                strokeWidth={1.6}
-                className={isFavorite ? undefined : 'text-ink-faint'}
-                style={isFavorite ? { fill: 'var(--color-butter)', stroke: 'var(--color-butter-dark)' } : undefined}
-              />
-            </button>
-            <AppDrawer nickname={myNickname} />
-          </div>
-        }
+        right={<AppDrawer nickname={myNickname} />}
       />
 
       {/* 상자 나가기 확인 — 혼자인 상자는 나가면 삭제됨 */}
@@ -452,14 +450,14 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
           <div className="relative mx-auto w-full max-w-[430px] rounded-t-sheet bg-paper px-5 pb-10 pt-3">
             <div className="mx-auto mb-4 h-1 w-9 rounded-full bg-line" />
             <div className="mb-1 flex items-center justify-between">
-              <h3 className="text-base font-extrabold tracking-tight text-ink">폴더 지정</h3>
+              <h3 className="text-base font-extrabold tracking-tight text-ink">서랍에 담기</h3>
               <button onClick={() => setFolderModal(false)} className="text-[13px] text-ink-faint">닫기</button>
             </div>
-            <p className="mb-3 text-[12px] text-ink-soft">여러 폴더에 담을 수 있어요. 함께 쓰는 폴더에 넣으면 그 폴더 멤버 모두 이 상자에 참여해요.</p>
+            <p className="mb-3 text-[12px] text-ink-soft">여러 서랍에 담을 수 있어요. 함께 쓰는 서랍에 넣으면 그 서랍 멤버 모두 이 상자에 참여해요.</p>
 
             <div className="max-h-[46vh] space-y-1 overflow-y-auto">
               {folders.length === 0 && (
-                <p className="px-3 py-6 text-center text-[13px] text-ink-faint">아직 폴더가 없어요. 아래에서 만들어보세요.</p>
+                <p className="px-3 py-6 text-center text-[13px] text-ink-faint">아직 서랍이 없어요. 아래에서 만들어보세요.</p>
               )}
               {folders.map(f => {
                 const checked = myFolderIds.includes(f.id)
@@ -503,7 +501,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
               <input
                 value={folderNameInput}
                 onChange={e => setFolderNameInput(e.target.value)}
-                placeholder="새 폴더 만들기"
+                placeholder="새 서랍 만들기"
                 maxLength={20}
                 className="min-w-0 flex-1 rounded-field border-[1.5px] border-line bg-paper px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none"
               />
@@ -572,9 +570,86 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
       <div className={`flex-1 space-y-4 px-5 pt-1 ${options.length > 0 ? 'pb-28' : 'pb-5'}`}>
         {/* 히어로: 상태 · 질문 · 메모 · 메타 · 참여 */}
         <div className="space-y-3">
-          <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-bold ${STATUS_BADGE_CLASS[status]}`}>
-            {BOX_STATUS_LABEL[status]}
-          </span>
+          <div className="flex items-center justify-between gap-2">
+            <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-bold ${STATUS_BADGE_CLASS[status]}`}>
+              {BOX_STATUS_LABEL[status]}
+            </span>
+            {/* 상자 액션 — 헤더 대신 뱃지 줄로(토스 시스템 버튼 겹침 회피 + 긴 제목 폭 확보): 즐겨찾기·링크·편집. */}
+            {!editingTitle && (
+              <div className="flex shrink-0 items-center gap-0.5">
+                <button
+                  onClick={handleToggleFavorite}
+                  aria-label="즐겨찾기"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-transform active:scale-90"
+                >
+                  <Icon
+                    name="star"
+                    size={22}
+                    strokeWidth={1.6}
+                    className={isFavorite ? undefined : 'text-ink-faint'}
+                    style={isFavorite ? { fill: 'var(--color-butter)', stroke: 'var(--color-butter-dark)' } : undefined}
+                  />
+                </button>
+                {hasLinks && (
+                  <AppLink
+                    href={`/box/${box.id}/links`}
+                    aria-label="링크 모아보기"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink active:bg-butter-tint"
+                  >
+                    <Icon name="link" size={20} />
+                  </AppLink>
+                )}
+                <div className="relative">
+                  <button
+                    onClick={() => setMenuOpen(v => !v)}
+                    aria-label="상자 메뉴"
+                    className="flex h-9 w-9 items-center justify-center rounded-full text-ink-soft active:bg-butter-tint active:text-ink"
+                  >
+                    <Icon name="more" size={20} />
+                  </button>
+                  {menuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+                      <div className="absolute right-0 top-full z-50 mt-1.5 w-36 overflow-hidden rounded-[14px] border border-line bg-paper py-1 shadow-[0_8px_24px_rgba(42,42,39,0.16)]">
+                        <button
+                          onClick={() => { setMenuOpen(false); setEditingTitle(true); setTitleInput(box.title) }}
+                          className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-ink active:bg-cream"
+                        >
+                          제목 수정
+                        </button>
+                        <button
+                          onClick={() => { setMenuOpen(false); setEditingMemo(true); setMemoInput(box.memo ?? '') }}
+                          className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-ink active:bg-cream"
+                        >
+                          {box.memo ? '메모 수정' : '메모 추가'}
+                        </button>
+                        {!isDone && (
+                          <button
+                            onClick={() => { setMenuOpen(false); openModeModal(box.decision_mode as DecisionMode) }}
+                            className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-ink active:bg-cream"
+                          >
+                            결정 방식 변경
+                          </button>
+                        )}
+                        <button
+                          onClick={() => { setMenuOpen(false); setFolderModal(true) }}
+                          className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-ink active:bg-cream"
+                        >
+                          서랍에 담기
+                        </button>
+                        <button
+                          onClick={() => { setMenuOpen(false); setConfirmLeave(true) }}
+                          className="block w-full border-t border-line px-4 py-2.5 text-left text-[13px] font-semibold text-tomato active:bg-tomato-tint"
+                        >
+                          {isSolo ? '상자 삭제' : '나가기'}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
 
           {editingTitle ? (
             <div className="flex items-end gap-2">
@@ -596,58 +671,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
               </button>
             </div>
           ) : (
-            <div className="flex items-start justify-between gap-2">
-              <h1 className="min-w-0 text-[22px] font-extrabold leading-tight tracking-tight text-ink">{box.title}</h1>
-              {/* 편집은 참여자 누구나. 마지막 항목은 나가기(혼자면 삭제). */}
-              <div className="relative shrink-0">
-                <button
-                  onClick={() => setMenuOpen(v => !v)}
-                  className="mt-1 flex items-center gap-1 text-[12.5px] font-semibold text-ink-faint active:text-ink"
-                >
-                  <Icon name="edit" size={13} />
-                  편집
-                </button>
-                {menuOpen && (
-                  <>
-                    <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-                    <div className="absolute right-0 top-full z-50 mt-1.5 w-36 overflow-hidden rounded-[14px] border border-line bg-paper py-1 shadow-[0_8px_24px_rgba(42,42,39,0.16)]">
-                      <button
-                        onClick={() => { setMenuOpen(false); setEditingTitle(true); setTitleInput(box.title) }}
-                        className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-ink active:bg-cream"
-                      >
-                        제목 수정
-                      </button>
-                      <button
-                        onClick={() => { setMenuOpen(false); setEditingMemo(true); setMemoInput(box.memo ?? '') }}
-                        className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-ink active:bg-cream"
-                      >
-                        {box.memo ? '메모 수정' : '메모 추가'}
-                      </button>
-                      {!isDone && (
-                        <button
-                          onClick={() => { setMenuOpen(false); openModeModal(box.decision_mode as DecisionMode) }}
-                          className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-ink active:bg-cream"
-                        >
-                          결정 방식 변경
-                        </button>
-                      )}
-                      <button
-                        onClick={() => { setMenuOpen(false); setFolderModal(true) }}
-                        className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-ink active:bg-cream"
-                      >
-                        폴더 지정
-                      </button>
-                      <button
-                        onClick={() => { setMenuOpen(false); setConfirmLeave(true) }}
-                        className="block w-full border-t border-line px-4 py-2.5 text-left text-[13px] font-semibold text-tomato active:bg-tomato-tint"
-                      >
-                        {isSolo ? '상자 삭제' : '나가기'}
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
+            <h1 className="text-[22px] font-extrabold leading-tight tracking-tight text-ink">{box.title}</h1>
           )}
 
           {editingMemo ? (
@@ -774,6 +798,44 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
         onClose={() => { setDeadlineSheet(false); setSwitchingToAuto(false) }}
         onConfirm={handleDeadlineConfirm}
       />
+
+      {/* 참여자 + 초대 시트 (토스) — 웹 전용 카카오 페이지 대신. 참여 중인 사람 목록 + 초대 링크 복사. */}
+      {membersOpen && (
+        <div className="fixed inset-0 z-[60] flex flex-col justify-end">
+          <div className="absolute inset-0 bg-ink/45" onClick={() => setMembersOpen(false)} />
+          <div className="relative mx-auto w-full max-w-[430px] rounded-t-sheet bg-paper px-5 pb-10 pt-3">
+            <div className="mx-auto mb-4 h-1 w-9 rounded-full bg-line" />
+            <p className="text-[15px] font-extrabold text-ink">
+              {isDone ? `함께한 사람 ${box.box_participants.length}명` : `참여 중 ${box.box_participants.length}명`}
+            </p>
+            {!isDone && <p className="mt-0.5 text-[12px] text-ink-soft">링크로 초대하면 함께 정할 수 있어요.</p>}
+            <div className="mb-4 mt-3 max-h-[40vh] space-y-2.5 overflow-y-auto">
+              {box.box_participants.map(p => (
+                <div key={p.user_id} className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-butter-tint text-[11px] font-bold text-ink">
+                    {p.profiles?.avatar_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.profiles.avatar_url} alt={p.profiles?.nickname ?? ''} className="h-full w-full object-cover" />
+                    ) : (
+                      p.profiles?.nickname?.[0] ?? '?'
+                    )}
+                  </div>
+                  <span className="text-sm font-semibold text-ink">{p.profiles?.nickname ?? '알 수 없음'}</span>
+                </div>
+              ))}
+            </div>
+            {!isDone && (
+              <button
+                onClick={copyInvite}
+                className={`flex w-full items-center justify-center gap-2 rounded-field py-4 text-sm font-bold transition active:opacity-80 ${inviteCopied ? 'bg-butter text-ink' : 'bg-ink text-cream'}`}
+              >
+                <Icon name={inviteCopied ? 'check' : 'link'} size={17} />
+                {inviteCopied ? '초대 링크 복사됨!' : '초대 링크 복사'}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </main>
   )
 }

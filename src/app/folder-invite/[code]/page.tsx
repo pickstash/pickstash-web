@@ -14,7 +14,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { data } = await supabase.rpc('get_folder_by_invite_code', { p_code: code })
   const folder = data?.[0]
 
-  const title = folder?.name ? `${folder.name} — 결정창고` : '결정창고 폴더 초대'
+  const title = folder?.name ? `${folder.name} — 결정창고` : '결정창고 서랍 초대'
   return {
     title,
     description: '함께 정리하러 가기',
@@ -36,7 +36,7 @@ export default async function FolderInviteLandingPage({ params }: Props) {
   if (!view) {
     return (
       <main className="flex min-h-dvh flex-col items-center justify-center px-6 text-center">
-        <p className="text-base text-ink-soft">유효하지 않은 폴더 링크예요.</p>
+        <p className="text-base text-ink-soft">유효하지 않은 서랍 링크예요.</p>
       </main>
     )
   }

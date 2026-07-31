@@ -20,6 +20,7 @@ import {
   type CreateBoxInput,
   type DecisionMode,
 } from '@/lib/api/boxes'
+import { setBoxFolders } from '@/lib/api/folders'
 import type { Option } from '@/lib/api/options'
 
 export function useCreateBox() {
@@ -27,8 +28,13 @@ export function useCreateBox() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (input: CreateBoxInput) => createBox(input),
-    onSuccess: (box) => {
+    // folderId가 있으면(서랍 상세에서 생성) 그 서랍에 바로 담는다. 트리거가 서랍 멤버 전원을 이 상자에 참여시킨다.
+    mutationFn: (vars: { input: CreateBoxInput; folderId?: string }) => createBox(vars.input),
+    onSuccess: async (box, vars) => {
+      if (vars.folderId) {
+        try { await setBoxFolders(box.id, [vars.folderId]) } catch { /* 연결 실패해도 상자 자체는 생성됨 */ }
+        queryClient.invalidateQueries({ queryKey: ['folders'] })
+      }
       queryClient.invalidateQueries({ queryKey: ['boxes'] })
       nav.push(`/box/${box.id}`)
     },

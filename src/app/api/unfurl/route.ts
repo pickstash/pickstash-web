@@ -1,6 +1,32 @@
 import { NextResponse } from 'next/server'
+import { createClient as createTokenClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import { safeFetch as safeFetchWithRedirects } from '@/lib/server/safe-fetch'
+
+// 토스(.ait)는 웹과 다른 오리진에서 Bearer 토큰으로 호출한다 → CORS 허용 + 토큰 인증 폴백.
+const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, content-type' }
+const json = (body: unknown, init?: ResponseInit) =>
+  NextResponse.json(body, { ...init, headers: { ...CORS, ...init?.headers } })
+
+export function OPTIONS() {
+  return new NextResponse('ok', { headers: CORS })
+}
+
+// 쿠키 세션(웹) 없으면 Authorization: Bearer 토큰(토스)으로 인증.
+async function resolveUser(request: Request) {
+  const supabase = await createClient()
+  const cookieUser = (await supabase.auth.getUser()).data.user
+  if (cookieUser) return cookieUser
+  const authz = request.headers.get('authorization')
+  if (authz?.startsWith('Bearer ')) {
+    const sb = createTokenClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
+    )
+    return (await sb.auth.getUser(authz.slice(7))).data.user
+  }
+  return null
+}
 
 // 링크 미리보기(OG 언퍼) — 웹 전용 유틸(외부 URL의 메타 태그를 서버에서 긁어온다).
 // RN은 이 HTTP 엔드포인트를 그대로 호출해 재사용한다.
@@ -76,18 +102,15 @@ async function readCapped(res: Response, maxBytes: number): Promise<string> {
 }
 
 export async function GET(request: Request) {
-  // 인증 게이트 — 로그인 유저만 (미인증 오픈 프록시/포트스캔 악용 차단)
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // 인증 게이트 — 로그인 유저만 (미인증 오픈 프록시/포트스캔 악용 차단). 웹=쿠키, 토스=Bearer.
+  const user = await resolveUser(request)
   if (!user) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+    return json({ error: 'unauthorized' }, { status: 401 })
   }
 
   const target = new URL(request.url).searchParams.get('url')
   if (!target) {
-    return NextResponse.json({ error: 'missing url' }, { status: 400 })
+    return json({ error: 'missing url' }, { status: 400 })
   }
 
   const controller = new AbortController()
@@ -95,11 +118,11 @@ export async function GET(request: Request) {
   try {
     const res = await safeFetch(target, controller.signal)
     if (!res || !res.ok) {
-      return NextResponse.json({ url: target } satisfies UnfurlResult, { status: 200 })
+      return json({ url: target } satisfies UnfurlResult, { status: 200 })
     }
     const contentType = res.headers.get('content-type') ?? ''
     if (!contentType.includes('text/html') && !contentType.includes('xml')) {
-      return NextResponse.json({ url: target } satisfies UnfurlResult, { status: 200 })
+      return json({ url: target } satisfies UnfurlResult, { status: 200 })
     }
 
     const html = await readCapped(res, MAX_BYTES)
@@ -125,12 +148,12 @@ export async function GET(request: Request) {
       image,
       siteName: pickMeta(html, 'og:site_name'),
     }
-    return NextResponse.json(result, {
+    return json(result, {
       status: 200,
       headers: { 'Cache-Control': 'private, max-age=86400' },
     })
   } catch {
-    return NextResponse.json({ url: target } satisfies UnfurlResult, { status: 200 })
+    return json({ url: target } satisfies UnfurlResult, { status: 200 })
   } finally {
     clearTimeout(timer)
   }

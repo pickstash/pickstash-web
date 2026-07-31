@@ -126,7 +126,7 @@ export async function decideBox(id: string, optionIds: string[]): Promise<void> 
   const { data: { user } } = await supabase.auth.getUser()
   if (user) {
     supabase.functions.invoke('send-push', {
-      body: { box_id: id, triggered_by: user.id },
+      body: { box_id: id, triggered_by: user.id, message_key: 'decision' },
     }).catch(() => {})
   }
 }

@@ -35,7 +35,7 @@ export function JoinFolderClient({ code, isLoggedIn }: JoinFolderClientProps) {
       disabled={loading}
       className="w-full rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80 disabled:opacity-50"
     >
-      {loading ? '참여 중...' : isLoggedIn ? '폴더 참여하기' : '카카오로 참여하기'}
+      {loading ? '참여 중...' : isLoggedIn ? '서랍 참여하기' : '카카오로 참여하기'}
     </button>
   )
 }

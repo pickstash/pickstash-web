@@ -88,7 +88,7 @@ export async function createOption(input: CreateOptionInput): Promise<Option> {
 
   // 다른 참여자에게 푸시 (실패 무시)
   supabase.functions.invoke('send-push', {
-    body: { box_id: input.box_id, triggered_by: user.id },
+    body: { box_id: input.box_id, triggered_by: user.id, message_key: 'option' },
   }).catch(() => {})
 
   return data

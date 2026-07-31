@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { loadBoxList, type BoxListKind } from "@/lib/api/box-list";
+import { AppLink } from "@/lib/nav/nav";
 import { BoxCard } from "@/components/box-card";
 import { BOX_LIST_META } from "@/components/box-list-view";
 
@@ -30,7 +31,7 @@ export function BoxesScreen() {
     <main className="flex min-h-dvh flex-col">
       {/* 탭 루트 — 뒤로가기 없음. 제목 + 필터 칩 */}
       <header className="sticky top-0 z-20 bg-cream/95 px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-3 backdrop-blur-sm">
-        <h1 className="text-xl font-extrabold tracking-tight text-ink">상자</h1>
+        <h1 className="text-[17px] font-extrabold tracking-tight text-ink">상자</h1>
         <div className="mt-3 flex gap-1.5">
           {FILTERS.map((f) => (
             <button
@@ -48,7 +49,7 @@ export function BoxesScreen() {
         </div>
       </header>
 
-      <div className="flex-1 space-y-2.5 px-5 pb-10 pt-1">
+      <div className="flex-1 space-y-2.5 px-5 pb-28 pt-1">
         {isPending ? (
           <p className="py-10 text-center text-[13px] text-ink-faint">불러오는 중…</p>
         ) : error || !data ? (
@@ -69,6 +70,15 @@ export function BoxesScreen() {
             <p className="mt-1 text-[12px] text-ink-soft">{BOX_LIST_META[kind].emptyDesc}</p>
           </div>
         )}
+      </div>
+
+      {/* 하단 고정 '새 상자' CTA — 홈과 동일. 탭바 위(--app-nav-h)에 뜬다. */}
+      <div className="fixed inset-x-0 bottom-[var(--app-nav-h,0px)] z-20 bg-cream px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
+        <AppLink href="/box/new" className="block">
+          <button className="w-full rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80">
+            새로운 상자 만들기
+          </button>
+        </AppLink>
       </div>
     </main>
   );

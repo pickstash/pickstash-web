@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import https from 'node:https'
+import { tossRequest } from '@/lib/toss/mtls'
 
 // 토스 미니앱 로그인 백엔드 (웹앱에 두지만 토스 앱이 네트워크로 호출).
 // 흐름: appLogin authCode → (mTLS) generate-token → login-me → userKey
@@ -14,8 +14,6 @@ import https from 'node:https'
 //   SUPABASE_SERVICE_ROLE_KEY Supabase service_role 키(유저 생성·magiclink 발급용)
 
 export const runtime = 'nodejs' // node:https(mTLS)·admin 사용 → Edge 아님
-
-const TOSS_API = 'https://apps-in-toss-api.toss.im'
 
 // 토스 미니앱 웹뷰는 이 엔드포인트를 교차 출처(cross-origin)로 호출한다 → CORS 필수.
 // 쿠키/자격증명 없이 JSON 본문만 주고받으므로 Origin '*' 허용으로 충분하다.
@@ -33,48 +31,6 @@ function json(data: unknown, status = 200) {
 // CORS preflight 응답. 이 핸들러가 없으면 웹뷰의 POST가 'Failed to fetch'로 막힌다.
 export function OPTIONS() {
   return new Response(null, { status: 204, headers: CORS_HEADERS })
-}
-
-function tossAgent(): https.Agent {
-  const pfx = process.env.TOSS_MTLS_PFX_B64
-  if (pfx) {
-    return new https.Agent({
-      pfx: Buffer.from(pfx, 'base64'),
-      passphrase: process.env.TOSS_MTLS_PFX_PASS,
-    })
-  }
-  const cert = process.env.TOSS_MTLS_CERT_B64
-  const key = process.env.TOSS_MTLS_KEY_B64
-  if (!cert || !key) throw new Error('TOSS_MTLS_CERT_B64/KEY_B64 (또는 PFX) 환경변수가 없습니다')
-  return new https.Agent({
-    cert: Buffer.from(cert, 'base64').toString('utf8'),
-    key: Buffer.from(key, 'base64').toString('utf8'),
-  })
-}
-
-// fetch는 커스텀 TLS agent를 못 받으므로 node:https로 mTLS 요청을 보낸다.
-function tossRequest(
-  path: string,
-  method: 'GET' | 'POST',
-  headers: Record<string, string>,
-  body?: string,
-): Promise<{ status: number; json: unknown }> {
-  return new Promise((resolve, reject) => {
-    const req = https.request(TOSS_API + path, { method, agent: tossAgent(), headers }, res => {
-      let data = ''
-      res.on('data', c => (data += c))
-      res.on('end', () => {
-        try {
-          resolve({ status: res.statusCode ?? 0, json: data ? JSON.parse(data) : null })
-        } catch {
-          resolve({ status: res.statusCode ?? 0, json: data })
-        }
-      })
-    })
-    req.on('error', reject)
-    if (body) req.write(body)
-    req.end()
-  })
 }
 
 type TokenResp = { resultType?: string; success?: { accessToken: string } }

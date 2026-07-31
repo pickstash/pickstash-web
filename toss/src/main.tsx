@@ -7,7 +7,17 @@ import { getSchemeUri } from "@apps-in-toss/web-framework";
 import App from "./App.tsx";
 import { TossNavProvider } from "./lib/nav-provider";
 import { ErrorBoundary } from "./components/error-boundary";
+import { configureUnfurl } from "@/lib/api/unfurl";
+import { createClient } from "@/lib/supabase/client";
 import "./index.css";
+
+// 링크 미리보기(OG 언퍼)는 웹 백엔드(/api/unfurl)에 있다. 토스는 다른 오리진이라
+// 절대 URL + Supabase 세션 토큰(Bearer)으로 호출한다. base는 로그인 엔드포인트와 동일 도메인.
+configureUnfurl({
+  base: new URL(import.meta.env.VITE_TOSS_LOGIN_ENDPOINT).origin,
+  getToken: async () =>
+    (await createClient().auth.getSession()).data.session?.access_token ?? null,
+});
 
 // 웹과 동일하게 TanStack Query를 데이터 계층으로 사용 (공유 훅·api 재사용).
 // staleTime은 웹 Providers와 맞춘다.
