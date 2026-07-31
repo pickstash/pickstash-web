@@ -70,11 +70,6 @@ export function DecisionRail({ boxes, totalOpen }: { boxes: OpenBoxCard[]; total
                 <h4 className="line-clamp-2 min-h-[36px] flex-1 text-[14px] font-extrabold leading-snug tracking-tight text-ink">
                   {box.title}
                 </h4>
-                {box.isNew && (
-                  <span className="mt-0.5 shrink-0 rounded-full bg-butter px-1.5 py-0.5 text-[10px] font-extrabold text-ink">
-                    N
-                  </span>
-                )}
               </div>
 
               {box.isSolo ? (

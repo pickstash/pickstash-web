@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { HomeView } from '@/components/home-view'
-import { PushNotificationBanner } from '@/components/push-notification-banner'
 import { loadHomeView } from '@/lib/api/home'
 
 // 웹 홈 = 서버 전용 껍데기: 인증 가드 + 공유 로더 호출 + 공유 뷰 렌더.
@@ -15,5 +14,5 @@ export default async function HomePage() {
 
   const data = await loadHomeView(supabase, user.id)
 
-  return <HomeView {...data} banner={<PushNotificationBanner />} />
+  return <HomeView {...data} />
 }

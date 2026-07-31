@@ -46,7 +46,7 @@ const STATUS_BADGE_CLASS: Record<BoxStatus, string> = {
   OPEN: 'border border-[#D9D6C2] bg-paper text-ink-soft',
 }
 
-export function BoxCard({ box, participants, winnerName, isNew, isFavorite }: BoxCardProps) {
+export function BoxCard({ box, participants, winnerName, isFavorite }: BoxCardProps) {
   const status = getBoxStatus(box)
   const isAuto = box.decision_mode === 'auto_deadline'
 
@@ -58,11 +58,6 @@ export function BoxCard({ box, participants, winnerName, isNew, isFavorite }: Bo
             <h3 className="truncate text-[15.5px] font-extrabold leading-snug tracking-tight text-ink">
               {box.title}
             </h3>
-            {isNew && (
-              <span className="shrink-0 rounded-full bg-butter px-2 py-0.5 text-[11px] font-extrabold text-ink">
-                N
-              </span>
-            )}
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
             {isFavorite && (

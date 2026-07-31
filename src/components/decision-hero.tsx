@@ -100,9 +100,6 @@ export function DecisionHero({ box }: { box: OpenBoxCard | null }) {
                 {box.totalLikes}
               </span>
             )}
-            {box.isNew && (
-              <span className="rounded-full bg-butter px-1.5 py-0.5 text-[10px] font-extrabold text-ink">N</span>
-            )}
             {box.isSolo && (
               <span className="flex items-center gap-1 text-[12px] font-semibold text-ink-soft">
                 <Icon name="box" size={12} />
