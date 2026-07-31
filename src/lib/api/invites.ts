@@ -25,7 +25,16 @@ export async function joinBoxByInviteCode(code: string): Promise<string> {
   const supabase = createClient()
   const { data, error } = await supabase.rpc('join_box_by_invite_code', { p_code: code })
   if (error) throw error
-  return data as string
+  const boxId = data as string
+
+  // 기존 참여자에게 '새 참여자' 푸시 (실패 무시)
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user) {
+    supabase.functions.invoke('send-push', {
+      body: { box_id: boxId, triggered_by: user.id, message_key: 'join' },
+    }).catch(() => {})
+  }
+  return boxId
 }
 
 // ── 로그인 안 한 사용자도 링크로 보는 '읽기 전용 뷰어'(노션식) 데이터 ───────────────

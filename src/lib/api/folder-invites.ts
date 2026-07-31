@@ -50,5 +50,14 @@ export async function joinFolderByInviteCode(code: string): Promise<string> {
   const supabase = createClient()
   const { data, error } = await supabase.rpc('join_folder_by_invite_code', { p_code: code })
   if (error) throw error
-  return data as string
+  const folderId = data as string
+
+  // 기존 서랍 멤버에게 '새 참여자' 푸시 (실패 무시). 공유 폴더면 멤버에게, 복사본이면 대상 0(no-op).
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user) {
+    supabase.functions.invoke('send-push', {
+      body: { folder_id: folderId, triggered_by: user.id, message_key: 'join' },
+    }).catch(() => {})
+  }
+  return folderId
 }

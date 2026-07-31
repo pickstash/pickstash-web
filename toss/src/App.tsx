@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, type CSSProperties } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "./lib/supabase";
@@ -33,12 +33,16 @@ function App() {
   }, []);
 
   const { pathname } = useLocation();
+  const showTabBar = TAB_ROUTES.has(pathname);
 
   if (!ready) return null;
   if (!session) return <LoginScreen />;
 
   return (
-    // 재사용하는 A형 웹 페이지가 use(params)로 순간 suspend할 수 있어 Suspense 경계 필수.
+    // 탭바가 뜨는 라우트에서만 --app-nav-h를 탭바 높이로 올린다(하위 main·CTA가 상속).
+    // 탭바 없는 화면은 0 → CTA가 하단에 딱 붙는다.
+    <div style={{ "--app-nav-h": showTabBar ? "calc(3.5rem + env(safe-area-inset-bottom))" : "0px" } as CSSProperties}>
+    {/* 재사용하는 A형 웹 페이지가 use(params)로 순간 suspend할 수 있어 Suspense 경계 필수. */}
     <Suspense fallback={<ScreenLoading />}>
     <Routes>
       <Route path="/" element={<HomeScreen />} />
@@ -72,8 +76,9 @@ function App() {
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
     {/* 하단 탭바 — 상위(브라우징) 화면에서만. 상세·폼 화면은 자체 하단 액션이 있어 제외. */}
-    {TAB_ROUTES.has(pathname) && <TabBar />}
+    {showTabBar && <TabBar />}
     </Suspense>
+    </div>
   );
 }
 
