@@ -32,7 +32,7 @@ export function useVote(boxId: string, round: number) {
         return { optionId, newVote: voteType, oldVote: currentMyVote }
       }
     },
-    onMutate: async ({ optionId, voteType, currentMyVote }) => {
+    onMutate: async ({ optionId, voteType }) => {
       await qc.cancelQueries({ queryKey: ['votes', boxId, round] })
       const prev = qc.getQueryData<Record<string, VoteCount>>(['votes', boxId, round])
 

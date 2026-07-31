@@ -1,4 +1,15 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/client'
+
+// 프로필 로더 — 웹·토스 공유. 카카오 아바타(user_metadata)는 셸에서 별도로 넘긴다(토스는 없음).
+export async function loadProfile(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+): Promise<{ nickname: string; avatarUrl: string | null }> {
+  const { data } = await supabase.from('profiles').select('nickname, avatar_url').eq('id', userId).single()
+  return { nickname: data?.nickname ?? '', avatarUrl: data?.avatar_url ?? null }
+}
 
 export async function updateNickname(nickname: string): Promise<void> {
   const supabase = createClient()
