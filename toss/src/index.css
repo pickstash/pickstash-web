@@ -1,22 +1,13 @@
 /* 웹과 동일한 디자인 토큰·Tailwind를 단일 소스로 공유한다.
-   globals.css가 `@import "tailwindcss"` + `@theme`(색·라디우스 토큰) + body를 모두 포함하므로
-   여기서 그대로 가져오면 토스앱도 웹과 똑같은 디자인 시스템을 쓴다.
-   (Pretendard 폰트는 웹 layout.tsx에서 로드 — 토스는 추후 연결, 그전엔 시스템 폰트 폴백) */
-/* Pretendard 폰트 로드 — 웹과 동일 서체(@theme --font-sans가 'Pretendard Variable'을 가리킴).
-   미로드 시 시스템 폰트로 자·행간이 미묘하게 틀어져 웹과 불일치한다. */
+   globals.css가 `@import "tailwindcss"` + `@theme`(색·라디우스 토큰) + preflight를 포함하므로
+   여기서 그대로 가져오면 토스앱도 웹과 똑같은 디자인 시스템을 쓴다. */
 @import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
 @import "../../src/app/globals.css";
 
-/* Tailwind v4는 빌드 위치(toss/)만 자동 스캔한다. 공유 컴포넌트(repo/src)는 toss 밖이라
-   명시적으로 스캔 소스에 추가해야 그 화면들의 유틸리티 클래스가 생성된다. */
+/* Tailwind v4는 CSS 파일 위치(toss/src) 기준으로만 자동 스캔한다. 공유 컴포넌트(repo/src)는
+   toss 밖이라 명시적으로 스캔 소스에 추가해야 그 화면들의 유틸리티 클래스가 생성된다. */
 @source "../../src";
 @source "./";
-
-/* 링크 기본색(파랑)이 새는 것 방지 — TDS 전역스타일과 순서가 엇갈려도 항상 텍스트색 상속. */
-a {
-  color: inherit;
-  text-decoration: inherit;
-}
 
 * {
   -webkit-tap-highlight-color: transparent;
