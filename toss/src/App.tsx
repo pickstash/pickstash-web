@@ -39,9 +39,11 @@ function App() {
   if (!session) return <LoginScreen />;
 
   return (
-    // 탭바가 뜨는 라우트에서만 --app-nav-h를 탭바 높이로 올린다(하위 main·CTA가 상속).
+    // 탭바가 뜨는 라우트에서만 --app-nav-h를 탭바 콘텐츠 높이(3.5rem)로 올린다(하위 main·CTA가 상속).
+    // safe-area는 넣지 않는다: 탭바 자신(pb-safe)과 CTA(pb-safe)가 각자 처리하므로,
+    // 여기서 또 더하면 이중 계산으로 CTA가 탭바 위로 과하게 떠 큰 공백이 생긴다.
     // 탭바 없는 화면은 0 → CTA가 하단에 딱 붙는다.
-    <div style={{ "--app-nav-h": showTabBar ? "calc(3.5rem + env(safe-area-inset-bottom))" : "0px" } as CSSProperties}>
+    <div style={{ "--app-nav-h": showTabBar ? "3.5rem" : "0px" } as CSSProperties}>
     {/* 재사용하는 A형 웹 페이지가 use(params)로 순간 suspend할 수 있어 Suspense 경계 필수. */}
     <Suspense fallback={<ScreenLoading />}>
     <Routes>
