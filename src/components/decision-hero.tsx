@@ -43,7 +43,7 @@ function HeroAvatars({ participants, max = 4 }: { participants: HeroParticipant[
 export function DecisionHero({ box }: { box: OpenBoxCard | null }) {
   if (!box) {
     return (
-      <section className="px-5 pt-4">
+      <section className="px-5">
         <div className="flex flex-col items-center gap-3 rounded-card border border-dashed border-[#D9D6C2] bg-paper/60 px-6 py-10 text-center">
           {/*<Image src="/icons/character.png" alt="" width={72} height={54} className="h-[54px] w-auto" />*/}
           <div>
@@ -60,7 +60,7 @@ export function DecisionHero({ box }: { box: OpenBoxCard | null }) {
   const dday = box.isAuto && box.deadlineAt ? formatDday(box.deadlineAt) : null
 
   return (
-    <section className="px-5 pt-4">
+    <section className="px-5">
       <AppLink href={`/box/${box.id}`} className="block">
         <div className="rounded-[24px] border border-butter-deep bg-butter-tint p-[18px] shadow-[0_6px_18px_-6px_rgba(227,185,58,0.35)] active:brightness-[0.98]">
           <div className="flex items-start justify-between gap-2.5">

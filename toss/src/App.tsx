@@ -6,6 +6,7 @@ import { LoginScreen } from "./screens/login-screen";
 import { ScreenLoading } from "./screens/screen-state";
 import { HomeScreen } from "./screens/home-screen";
 import { BoxListScreen } from "./screens/box-list-screen";
+import { BoxesScreen } from "./screens/boxes-screen";
 import { BoxDetailScreen } from "./screens/box-detail-screen";
 import { OptionDetailScreen } from "./screens/option-detail-screen";
 import { FolderScreen } from "./screens/folder-screen";
@@ -42,7 +43,10 @@ function App() {
     <Routes>
       <Route path="/" element={<HomeScreen />} />
 
-      {/* 창고 목록 */}
+      {/* 상자 탭 — 진행중/정리됨/즐겨찾기 필터 통합 */}
+      <Route path="/boxes" element={<BoxesScreen />} />
+
+      {/* 옛 창고 목록 경로 (탭에서 필터로 흡수됨, 딥링크 호환 위해 유지) */}
       <Route path="/messy" element={<BoxListScreen kind="messy" />} />
       <Route path="/done" element={<BoxListScreen kind="done" />} />
       <Route path="/favorites" element={<BoxListScreen kind="favorites" />} />
@@ -73,7 +77,7 @@ function App() {
   );
 }
 
-// 탭바를 노출할 상위 라우트(상세·폼·생성 화면은 제외)
-const TAB_ROUTES = new Set(["/", "/folders", "/profile", "/messy", "/done", "/favorites"]);
+// 탭바를 노출할 상위 라우트 = 4개 탭 목적지 (상세·폼·생성 화면은 제외)
+const TAB_ROUTES = new Set(["/", "/boxes", "/folders", "/profile"]);
 
 export default App;

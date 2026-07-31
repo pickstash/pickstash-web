@@ -4,7 +4,8 @@ import { Icon, type IconName } from "@/components/icon";
 // 토스 하단 탭바 — 상단 드로어(햄버거) 대체. 토스 시스템 버튼(···/X)과 겹치던 문제 해결.
 const TABS: { href: string; icon: IconName; label: string }[] = [
   { href: "/", icon: "home", label: "홈" },
-  { href: "/folders", icon: "folder", label: "폴더" },
+  { href: "/boxes", icon: "box", label: "상자" },
+  { href: "/folders", icon: "folder", label: "선반" },
   { href: "/profile", icon: "user", label: "프로필" },
 ];
 

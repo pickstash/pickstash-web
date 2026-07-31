@@ -65,7 +65,7 @@ export function DecisionRail({ boxes, totalOpen }: { boxes: OpenBoxCard[]; total
       <div className="flex gap-2.5 overflow-x-auto px-5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {boxes.map(box => (
           <AppLink key={box.id} href={`/box/${box.id}`} className="block shrink-0">
-            <div className="flex w-[176px] flex-col gap-2.5 rounded-[18px] border border-[#ECEADC] bg-paper p-3.5 shadow-[0_2px_10px_rgba(42,42,39,0.05)] active:bg-butter-tint/40">
+            <div className="flex h-[128px] w-[176px] flex-col gap-2 overflow-hidden rounded-[18px] border border-[#ECEADC] bg-paper p-3.5 shadow-[0_2px_10px_rgba(42,42,39,0.05)] active:bg-butter-tint/40">
               <div className="flex items-start gap-1.5">
                 <h4 className="line-clamp-2 min-h-[36px] flex-1 text-[14px] font-extrabold leading-snug tracking-tight text-ink">
                   {box.title}
@@ -73,17 +73,22 @@ export function DecisionRail({ boxes, totalOpen }: { boxes: OpenBoxCard[]; total
               </div>
 
               {box.isSolo ? (
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  {box.isAuto && box.deadlineAt && <DeadlineChip deadlineAt={box.deadlineAt} />}
-                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-ink-faint">
+                <>
+                  {/* 마감(메타)은 위, '혼자 쓰는 상자'는 맨 아래 고정해 옆 카드 참여줄과 줄 맞춤 */}
+                  {box.isAuto && box.deadlineAt && (
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <DeadlineChip deadlineAt={box.deadlineAt} />
+                    </div>
+                  )}
+                  <span className="mt-auto inline-flex items-center gap-1 text-[11px] font-semibold text-ink-faint">
                     <Icon name="box" size={11} />
                     혼자 쓰는 상자
                   </span>
-                </div>
+                </>
               ) : (
                 <>
-                  {/* 마감 · 1위 · 좋아요 (있는 것만) */}
-                  {((box.isAuto && box.deadlineAt) || box.leaders.length > 0 || box.totalLikes > 0) && (
+                  {/* 마감 · 1위 (있는 것만) — 좋아요 표시는 생략 */}
+                  {((box.isAuto && box.deadlineAt) || box.leaders.length > 0) && (
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       {box.isAuto && box.deadlineAt && <DeadlineChip deadlineAt={box.deadlineAt} />}
                       {box.leaders.length > 0 && (
@@ -94,18 +99,12 @@ export function DecisionRail({ boxes, totalOpen }: { boxes: OpenBoxCard[]; total
                           <span className="min-w-0 truncate">{leadersLabel(box.leaders)}</span>
                         </span>
                       )}
-                      {box.totalLikes > 0 && (
-                        <span className="inline-flex items-center gap-1 text-[11.5px] font-bold text-ink-faint tabular-nums">
-                          <Icon name="heart" size={11} />
-                          {box.totalLikes}
-                        </span>
-                      )}
                     </div>
                   )}
 
-                  {/* 누가 참여 중인지 — 1위 유무와 무관하게 항상 노출 */}
+                  {/* 누가 참여 중인지 — 카드 맨 아래 고정(mt-auto)해 1위 유무와 무관하게 옆 카드와 줄 맞춤 */}
                   {box.participants.length > 1 && (
-                    <div className="flex items-center gap-1.5">
+                    <div className="mt-auto flex items-center gap-1.5">
                       <RailAvatars participants={box.participants} />
                       <span className="text-[11px] font-semibold text-ink-faint">{box.participants.length}명 참여 중</span>
                     </div>
