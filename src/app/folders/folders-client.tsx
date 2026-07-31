@@ -43,7 +43,7 @@ function MemberAvatars({ members, max = 4 }: { members: FolderCard['members']; m
 type Me = { id: string; nickname: string; avatar_url: string | null }
 
 export function FoldersClient({ initialFolders, nickname, me }: { initialFolders: FolderCard[]; nickname: string; me: Me }) {
-  const [folders, setFolders] = useState(initialFolders ?? [])
+  const [folders, setFolders] = useState(initialFolders)
   const [adding, setAdding] = useState(false)
   const [name, setName] = useState('')
   const [menuFor, setMenuFor] = useState<FolderCard | null>(null)

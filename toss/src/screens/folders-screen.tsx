@@ -7,7 +7,8 @@ import { ScreenLoading, ScreenError } from "./screen-state";
 // 폴더 모아보기(/folders) — 드로어 '폴더' 진입점. 공유 로더+공유 client 재사용.
 export function FoldersScreen() {
   const { data, isPending, error } = useQuery({
-    queryKey: ["folders"],
+    // ['folders']는 useFolders 훅(Folder[] 반환)이 쓰는 키 — 여기선 다른 모양(객체)이라 키를 분리(충돌 방지).
+    queryKey: ["folders-page"],
     queryFn: async () => {
       const supabase = createClient();
       const {
