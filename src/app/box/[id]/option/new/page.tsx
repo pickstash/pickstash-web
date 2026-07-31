@@ -3,10 +3,12 @@
 import { use } from 'react'
 import { OptionForm } from '@/components/option-form'
 import { PageHeader } from '@/components/page-header'
+import { useNav } from '@/lib/nav/nav'
 import { useCreateOption } from '@/hooks/use-options'
 
 export default function NewOptionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: boxId } = use(params)
+  const nav = useNav()
   const createOption = useCreateOption(boxId)
 
   return (
@@ -26,7 +28,7 @@ export default function NewOptionPage({ params }: { params: Promise<{ id: string
               content: data.content,
             })
           }
-          onCancel={() => history.back()}
+          onCancel={() => nav.back()}
         />
       </div>
     </main>

@@ -16,9 +16,14 @@ export function PageHeader({ title, fallbackHref = '/', right }: PageHeaderProps
   const nav = useNav()
 
   function handleBack() {
-    // Next App Router는 history.state에 idx를 두지 않는다(항상 undefined). 이 값을 기준으로 삼던
-    // 이전 로직은 매번 push(fallback)로 빠져 히스토리가 쌓였고, OS 뒤로가기가 같은 화면을
-    // 오가는 루프를 만들었다. → 앱 내부 히스토리가 있으면 pop(뒤로), 없으면(딥링크 새 진입) 상위로.
+    // 토스(MemoryRouter): window.history를 안 쓰므로 length 판정이 무의미(항상 push(홈)로 빠져 홈 점프·스택 증식).
+    // MemoryRouter는 늘 홈("/")에서 시작하고 홈엔 뒤로가기가 없으니, 이 헤더가 뜬 화면은 전부 push로 도달 → 항상 pop이 안전.
+    // (추후 initialEntries 딥링크 도입 시 재검토)
+    if (nav.platform === 'toss') {
+      nav.back()
+      return
+    }
+    // 웹(Next/브라우저): 앱 내부 히스토리가 있으면 pop(뒤로), 없으면(딥링크 새 진입) 상위로.
     if (typeof window !== 'undefined' && window.history.length > 1) {
       nav.back()
     } else {
