@@ -22,6 +22,9 @@ export default defineConfig({
     ],
   },
   server: {
+    // 브라우저 미리보기 포트. granite의 web.port는 vite에 안 먹어서 여기서 지정.
+    port: 8888,
+    strictPort: true, // 8888 점유 시 조용히 5174로 안 넘어가고 에러로 알림
     // 토스 앱 루트(toss/) 밖의 공유 파일(../src)을 dev에서 읽을 수 있게 허용
     fs: { allow: [".."] },
   },
