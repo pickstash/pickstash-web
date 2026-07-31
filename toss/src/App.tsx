@@ -9,6 +9,7 @@ import { BoxListScreen } from "./screens/box-list-screen";
 import { BoxDetailScreen } from "./screens/box-detail-screen";
 import { OptionDetailScreen } from "./screens/option-detail-screen";
 import { FolderScreen } from "./screens/folder-screen";
+import { FoldersScreen } from "./screens/folders-screen";
 import { ProfileScreen } from "./screens/profile-screen";
 import { BoxLinksScreen, OptionNewScreen, OptionEditScreen } from "./screens/reused-pages";
 // 파라미터 없는 A형 페이지는 웹 페이지 컴포넌트를 그대로 라우팅(그대로 재사용).
@@ -52,6 +53,7 @@ function App() {
       <Route path="/box/:id/option/:optionId/edit" element={<OptionEditScreen />} />
 
       {/* 폴더 */}
+      <Route path="/folders" element={<FoldersScreen />} />
       <Route path="/folder/:id" element={<FolderScreen />} />
 
       {/* 마이페이지 */}

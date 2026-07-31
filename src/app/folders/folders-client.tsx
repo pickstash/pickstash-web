@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
-import Link from 'next/link'
+import { AppLink } from '@/lib/nav/nav'
 import { PageHeader } from '@/components/page-header'
 import { AppDrawer } from '@/components/app-drawer'
 import { Icon } from '@/components/icon'
@@ -154,7 +154,7 @@ export function FoldersClient({ initialFolders, nickname, me }: { initialFolders
             const isShared = f.members.length > 1
             return (
               <div key={f.id} className="relative rounded-[18px] border border-[#ECEADC] bg-paper shadow-[0_2px_10px_rgba(42,42,39,0.05)]">
-                <Link href={`/folder/${f.id}`} className="block p-4 active:bg-butter-tint/30 rounded-[18px]">
+                <AppLink href={`/folder/${f.id}`} className="block p-4 active:bg-butter-tint/30 rounded-[18px]">
                   <div className="flex items-center gap-2 pr-8">
                     <Icon name="folder" size={18} className="shrink-0 text-ink-soft" />
                     <h3 className="min-w-0 truncate text-[15px] font-extrabold text-ink">{f.name}</h3>
@@ -166,7 +166,7 @@ export function FoldersClient({ initialFolders, nickname, me }: { initialFolders
                       {isShared ? `${f.members.length}명 공유` : '나만'}
                     </span>
                   </div>
-                </Link>
+                </AppLink>
                 <button
                   onClick={() => setMenuFor(f)}
                   aria-label="폴더 메뉴"
