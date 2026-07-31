@@ -1,5 +1,5 @@
 import { Suspense, useEffect, useState } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "./lib/supabase";
 import { LoginScreen } from "./screens/login-screen";
@@ -12,6 +12,7 @@ import { FolderScreen } from "./screens/folder-screen";
 import { FoldersScreen } from "./screens/folders-screen";
 import { ProfileScreen } from "./screens/profile-screen";
 import { BoxLinksScreen, OptionNewScreen, OptionEditScreen } from "./screens/reused-pages";
+import { TabBar } from "./components/tab-bar";
 // 파라미터 없는 A형 페이지는 웹 페이지 컴포넌트를 그대로 라우팅(그대로 재사용).
 import NewBoxPage from "@/app/box/new/page";
 import WithdrawPage from "@/app/profile/withdraw/page";
@@ -29,6 +30,8 @@ function App() {
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
     return () => sub.subscription.unsubscribe();
   }, []);
+
+  const { pathname } = useLocation();
 
   if (!ready) return null;
   if (!session) return <LoginScreen />;
@@ -64,8 +67,13 @@ function App() {
           미정의 경로는 홈으로. */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    {/* 하단 탭바 — 상위(브라우징) 화면에서만. 상세·폼 화면은 자체 하단 액션이 있어 제외. */}
+    {TAB_ROUTES.has(pathname) && <TabBar />}
     </Suspense>
   );
 }
+
+// 탭바를 노출할 상위 라우트(상세·폼·생성 화면은 제외)
+const TAB_ROUTES = new Set(["/", "/folders", "/profile", "/messy", "/done", "/favorites"]);
 
 export default App;

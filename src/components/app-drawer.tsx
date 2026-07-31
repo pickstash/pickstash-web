@@ -82,6 +82,9 @@ export function AppDrawer({ nickname }: AppDrawerProps) {
     nav.replace('/login') // 로그아웃 후 앱으로 back하면 인증가드 리다이렉트 → 교체
   }
 
+  // 토스는 상단 우측을 토스 시스템 버튼(···/X)이 차지해 햄버거가 겹친다 → 드로어 숨기고 하단 탭바로 이동.
+  if (nav.platform === 'toss') return null
+
   return (
     <>
       <button onClick={() => setOpen(true)} className="p-1 text-ink" aria-label="메뉴">

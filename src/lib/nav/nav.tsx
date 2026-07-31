@@ -14,6 +14,8 @@ import {
 } from 'react'
 
 export interface AppNav {
+  /** 실행 플랫폼 — 웹/토스 분기용(토스는 상단 드로어 숨기고 하단 탭바 사용). */
+  platform: 'web' | 'toss'
   push(href: string): void
   replace(href: string): void
   back(): void
@@ -26,6 +28,7 @@ const NavContext = createContext<AppNav | null>(null)
 // provider 밖(전역 에러 페이지·not-found 등 root layout 밖 렌더)에서도 크래시하지 않도록
 // 브라우저 기본 내비게이션으로 폴백한다. 서버(window 없음)에선 no-op.
 const FALLBACK_NAV: AppNav = {
+  platform: 'web',
   push: href => {
     if (typeof window !== 'undefined') window.location.assign(href)
   },

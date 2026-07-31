@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { AppLink } from '@/lib/nav/nav'
+import { AppLink, useNav } from '@/lib/nav/nav'
 import { BoxCard } from '@/components/box-card'
 import { PageHeader } from '@/components/page-header'
 import { AppDrawer } from '@/components/app-drawer'
@@ -52,6 +52,7 @@ export const BOX_LIST_META: Record<
 }
 
 export function BoxListView({ title, description, nickname, items, emptyTitle, emptyDesc, showCreateCta }: BoxListViewProps) {
+  const nav = useNav()
   return (
     <main className="flex min-h-dvh flex-col">
       <PageHeader title={title} right={<AppDrawer nickname={nickname} />} />
@@ -78,7 +79,7 @@ export function BoxListView({ title, description, nickname, items, emptyTitle, e
         )}
       </div>
 
-      {showCreateCta && (
+      {showCreateCta && nav.platform !== 'toss' && (
         <div className="fixed inset-x-0 bottom-0 z-20 bg-cream px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] xl:inset-x-auto xl:bottom-10 xl:left-1/2 xl:w-[430px] xl:-translate-x-1/2 xl:rounded-b-[30px]">
           <AppLink href="/box/new" className="block">
             <button className="w-full rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80">

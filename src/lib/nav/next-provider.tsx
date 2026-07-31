@@ -9,6 +9,7 @@ export function NextNavProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
   const nav: AppNav = useMemo(
     () => ({
+      platform: 'web',
       push: href => router.push(href),
       replace: href => router.replace(href),
       back: () => router.back(),

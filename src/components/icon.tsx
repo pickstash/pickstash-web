@@ -27,6 +27,7 @@ export type IconName =
   | 'folder'
   | 'home'
   | 'comment'
+  | 'user'
 
 function inner(name: IconName): ReactNode {
   switch (name) {
@@ -159,6 +160,13 @@ function inner(name: IconName): ReactNode {
       )
     case 'folder':
       return <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+    case 'user':
+      return (
+        <>
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
+        </>
+      )
   }
 }
 

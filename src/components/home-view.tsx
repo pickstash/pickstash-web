@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { AppLink } from '@/lib/nav/nav'
+import { AppLink, useNav } from '@/lib/nav/nav'
 import { Icon } from '@/components/icon'
 import { AppDrawer } from '@/components/app-drawer'
 import { DecisionHero } from '@/components/decision-hero'
@@ -21,6 +21,7 @@ export function HomeView({
   favoriteCount,
   banner,
 }: HomeViewData & { banner?: ReactNode }) {
+  const nav = useNav()
   const warehouses = [
     { href: '/messy', icon: 'box', name: '어질러진', count: openCount },
     { href: '/done', icon: 'check', name: '정리된', count: doneCount },
@@ -73,14 +74,16 @@ export function HomeView({
         <FolderChips initialFolders={folders} />
       </div>
 
-      {/* 하단 고정 CTA */}
-      <div className="fixed inset-x-0 bottom-0 z-20 bg-cream px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] xl:inset-x-auto xl:bottom-10 xl:left-1/2 xl:w-[430px] xl:-translate-x-1/2 xl:rounded-b-[30px]">
-        <AppLink href="/box/new" className="block">
-          <button className="w-full rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80">
-            새로운 상자 만들기
-          </button>
-        </AppLink>
-      </div>
+      {/* 하단 고정 CTA — 토스는 하단 탭바의 '새 상자' 버튼이 대신하므로 숨김(탭바와 겹침 방지) */}
+      {nav.platform !== 'toss' && (
+        <div className="fixed inset-x-0 bottom-0 z-20 bg-cream px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] xl:inset-x-auto xl:bottom-10 xl:left-1/2 xl:w-[430px] xl:-translate-x-1/2 xl:rounded-b-[30px]">
+          <AppLink href="/box/new" className="block">
+            <button className="w-full rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80">
+              새로운 상자 만들기
+            </button>
+          </AppLink>
+        </div>
+      )}
     </main>
   )
 }

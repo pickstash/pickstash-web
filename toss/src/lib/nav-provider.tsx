@@ -10,6 +10,7 @@ export function TossNavProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const nav: AppNav = useMemo(
     () => ({
+      platform: "toss",
       push: (href) => navigate(href),
       replace: (href) => navigate(href, { replace: true }),
       back: () => navigate(-1),
