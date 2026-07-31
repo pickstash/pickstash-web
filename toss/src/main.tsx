@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
+import { getSchemeUri } from "@apps-in-toss/web-framework";
 
 import App from "./App.tsx";
 import { TossNavProvider } from "./lib/nav-provider";
@@ -14,12 +15,26 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 60 * 1000 } },
 });
 
+// 딥링크 진입 처리: 푸시 등에서 intoss://pickstash/box/123 로 열리면 그 경로에서 시작한다.
+// getSchemeUri()는 콜드스타트 진입 스킴 URL(전체 문자열). 스킴+호스트(intoss://pickstash)를 떼면 앱 내 경로.
+// 뒤로가기가 홈으로 가도록 홈("/")을 스택 바닥에 깐다. 브라우저·미지원 환경에선 홈에서 시작.
+function initialRouterState(): { entries: string[]; index: number } {
+  try {
+    const path = getSchemeUri()?.replace(/^[a-z][a-z0-9+.-]*:\/\/[^/]*/i, "") || "/";
+    if (path !== "/") return { entries: ["/", path], index: 1 };
+  } catch {
+    /* SDK 미지원/브라우저 → 홈 */
+  }
+  return { entries: ["/"], index: 0 };
+}
+
+const { entries: routerEntries, index: routerIndex } = initialRouterState();
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      {/* 토스 웹뷰는 앱을 루트가 아닌 경로/스킴에서 로드할 수 있어 MemoryRouter 사용
-          (항상 "/"에서 시작, history API 비의존). 딥링크는 추후 initialEntries로 처리. */}
-      <MemoryRouter>
+      {/* 토스 웹뷰는 history API 비의존이라 MemoryRouter 사용. 딥링크로 열리면 해당 경로에서 시작(홈을 바닥에 깔아 뒤로가기=홈). */}
+      <MemoryRouter initialEntries={routerEntries} initialIndex={routerIndex}>
         {/* 공유 화면이 useNav()로 이동 — react-router에 바인딩 */}
         <TossNavProvider>
           <ErrorBoundary>
