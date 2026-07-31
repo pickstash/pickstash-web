@@ -66,6 +66,7 @@ export function FolderView({ folderId, folderName, inviteCode, nickname, members
   const [title, setTitle] = useState(folderName)
   const [items, setItems] = useState(initialBoxes)
   const [editing, setEditing] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const [renaming, setRenaming] = useState(false)
   const [confirmLeave, setConfirmLeave] = useState(false)
   const [alsoLeaveBoxes, setAlsoLeaveBoxes] = useState(false)
@@ -119,6 +120,37 @@ export function FolderView({ folderId, folderName, inviteCode, nickname, members
                 )}
               </button>
             )}
+            {/* 폴더 액션(이름변경·나가기/삭제) — 항상 노출(빈 폴더도 삭제 가능). */}
+            {!editing && (
+              <div className="relative">
+                <button
+                  onClick={() => setMenuOpen(v => !v)}
+                  aria-label="폴더 메뉴"
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-ink-faint active:bg-cream active:text-ink"
+                >
+                  <Icon name="more" size={18} />
+                </button>
+                {menuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+                    <div className="absolute right-0 top-10 z-50 w-40 overflow-hidden rounded-[14px] border border-line bg-paper py-1 shadow-[0_10px_30px_rgba(42,42,39,0.18)]">
+                      <button
+                        onClick={() => { setMenuOpen(false); setNameInput(title); setRenaming(true) }}
+                        className="flex w-full items-center gap-2 px-3.5 py-2.5 text-left text-[13.5px] font-semibold text-ink active:bg-cream"
+                      >
+                        <Icon name="edit" size={15} className="text-ink-soft" /> 이름 변경
+                      </button>
+                      <button
+                        onClick={() => { setMenuOpen(false); setAlsoLeaveBoxes(false); setConfirmLeave(true) }}
+                        className="flex w-full items-center gap-2 px-3.5 py-2.5 text-left text-[13.5px] font-semibold text-tomato active:bg-tomato-tint"
+                      >
+                        <Icon name="trash" size={15} /> {isShared ? '폴더 나가기' : '폴더 삭제'}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
             <AppDrawer nickname={nickname} />
           </div>
         }
@@ -141,7 +173,7 @@ export function FolderView({ folderId, folderName, inviteCode, nickname, members
         </div>
       )}
 
-      <div className={`flex-1 space-y-2.5 px-5 ${editing ? 'pb-28' : 'pb-10'}`}>
+      <div className="flex-1 space-y-2.5 px-5 pb-10">
         {items.length === 0 ? (
           <div className="rounded-card border border-dashed border-[#D9D6C2] bg-paper/60 px-6 py-14 text-center">
             <p className="text-[13.5px] font-bold text-ink">이 폴더는 비어 있어요</p>
@@ -191,24 +223,6 @@ export function FolderView({ folderId, folderName, inviteCode, nickname, members
           ))
         )}
       </div>
-
-      {/* 편집 중 하단 고정: 이름 변경 · 나가기/삭제 */}
-      {editing && (
-        <div className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-2 gap-2.5 bg-cream px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] xl:inset-x-auto xl:bottom-10 xl:left-1/2 xl:w-[430px] xl:-translate-x-1/2 xl:rounded-b-[30px]">
-          <button
-            onClick={() => { setNameInput(title); setRenaming(true) }}
-            className="rounded-field border border-line bg-paper py-3.5 text-[13px] font-bold text-ink-soft active:bg-cream"
-          >
-            이름 변경
-          </button>
-          <button
-            onClick={() => { setAlsoLeaveBoxes(false); setConfirmLeave(true) }}
-            className="rounded-field border border-tomato/40 bg-tomato-tint py-3.5 text-[13px] font-bold text-tomato active:opacity-80"
-          >
-            {isShared ? '폴더 나가기' : '폴더 삭제'}
-          </button>
-        </div>
-      )}
 
       {/* 이름 변경 모달 (공유 — 멤버 전원 반영) */}
       {renaming && createPortal(
