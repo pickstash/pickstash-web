@@ -14,8 +14,9 @@ export function ProfileScreen() {
       } = await supabase.auth.getUser();
       if (!user) throw new Error("세션이 없어요");
       const p = await loadProfile(supabase, user.id);
-      // 카카오 아바타는 웹 전용(토스는 없음 → null)
-      const kakaoAvatarUrl = (user.user_metadata?.avatar_url as string | undefined) ?? null;
+      // 카카오 아바타는 http://로 오므로 https로 올린다(토스 웹뷰 mixed-content 차단 회피).
+      const kakaoAvatarUrl =
+        (user.user_metadata?.avatar_url as string | undefined)?.replace(/^http:\/\//, "https://") ?? null;
       return { userId: user.id, ...p, kakaoAvatarUrl };
     },
   });

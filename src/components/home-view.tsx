@@ -44,7 +44,7 @@ export function HomeView({
       </div>
 
       {/* 하단 고정 CTA — 웹은 bottom:0. 토스는 --app-nav-h(하단 탭바 높이)만큼 띄워 탭바 위에 뜬다. */}
-      <div className="fixed inset-x-0 bottom-[var(--app-nav-h,0px)] z-20 bg-cream px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] xl:inset-x-auto xl:bottom-10 xl:left-1/2 xl:w-[430px] xl:-translate-x-1/2 xl:rounded-b-[30px]">
+      <div className="fixed inset-x-0 bottom-[var(--app-nav-h,0px)] z-20 bg-cream px-5 pt-3 pb-[calc(var(--app-cta-safe,env(safe-area-inset-bottom))+0.75rem)] xl:inset-x-auto xl:bottom-10 xl:left-1/2 xl:w-[430px] xl:-translate-x-1/2 xl:rounded-b-[30px]">
         <AppLink href="/box/new" className="block">
           <button className="w-full rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80">
             새로운 상자 만들기

@@ -9,7 +9,9 @@ export default async function ProfilePage() {
   if (!user) redirect('/login')
 
   const { nickname, avatarUrl } = await loadProfile(supabase, user.id)
-  const kakaoAvatarUrl = (user.user_metadata?.avatar_url as string | undefined) ?? null
+  // 카카오 아바타는 http://로 오므로 https로 올린다(https 페이지 mixed-content 차단 회피).
+  const kakaoAvatarUrl =
+    (user.user_metadata?.avatar_url as string | undefined)?.replace(/^http:\/\//, 'https://') ?? null
 
   return (
     <ProfileClient

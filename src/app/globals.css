@@ -3,6 +3,9 @@
 :root {
   --background: #f7f6ea; /* cream */
   --foreground: #2a2a27; /* ink */
+  /* 하단 고정 CTA가 먹을 safe-area. 기본=기기 safe-area(웹·탭바 없는 화면).
+     토스 탭 화면은 하단 탭바가 safe-area를 전담하므로 App.tsx가 0으로 덮는다(이중 계산 방지). */
+  --app-cta-safe: env(safe-area-inset-bottom);
 }
 
 @theme inline {

@@ -73,7 +73,7 @@ export function BoxesScreen() {
       </div>
 
       {/* 하단 고정 '새 상자' CTA — 홈과 동일. 탭바 위(--app-nav-h)에 뜬다. */}
-      <div className="fixed inset-x-0 bottom-[var(--app-nav-h,0px)] z-20 bg-cream px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
+      <div className="fixed inset-x-0 bottom-[var(--app-nav-h,0px)] z-20 bg-cream px-5 pt-3 pb-[calc(var(--app-cta-safe,env(safe-area-inset-bottom))+0.75rem)]">
         <AppLink href="/box/new" className="block">
           <button className="w-full rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80">
             새로운 상자 만들기

@@ -5,7 +5,7 @@ export default defineConfig({
   brand: {
     displayName: "결정창고",
     primaryColor: "#FFD84A", // 브랜드 포인트(버터) — 버튼 기본 배경색으로 일괄 적용됨
-    icon: "", // 콘솔 업로드 아이콘 URL (추후 설정)
+    icon: "https://static.toss.im/appsintoss/65173/44c6c686-93de-4df8-8f18-b96b8d265e9a.png", // 콘솔 업로드 아이콘과 동일 URL
   },
   web: {
     host: "localhost",
