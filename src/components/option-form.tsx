@@ -161,7 +161,8 @@ export function OptionForm({
       image: preview.image,
     })
     // OG 제목은 '선택지 이름'에만 자동 반영(첫 링크 & 이름 비었을 때). 라벨(메모)은 사용자가 직접 쓴다.
-    if (preview.title) {
+    // 지도 링크는 OG 제목이 'Google Maps'·'네이버 지도' 같은 서비스명이라 선택지명으로 부적절 → 자동입력 제외(장소명은 직접).
+    if (preview.title && linkKindOf({ url }) !== 'map') {
       const firstLinkId = blocksRef.current.find(b => b.type === 'link')?.id
       if (id === firstLinkId && !nameRef.current.trim()) setName(preview.title)
     }
