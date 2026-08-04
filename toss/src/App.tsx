@@ -33,7 +33,7 @@ function App() {
   }, []);
 
   const { pathname } = useLocation();
-  const showTabBar = TAB_ROUTES.has(pathname);
+  const showTabBar = !isFormRoute(pathname);
 
   if (!ready) return null;
   if (!session) return <LoginScreen />;
@@ -77,14 +77,22 @@ function App() {
           미정의 경로는 홈으로. */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
-    {/* 하단 탭바 — 상위(브라우징) 화면에서만. 상세·폼 화면은 자체 하단 액션이 있어 제외. */}
+    {/* 하단 탭바 — 등록·수정 폼을 제외한 모든 화면. 상세의 자체 액션바는 탭바 위로 뜬다. */}
     {showTabBar && <TabBar />}
     </Suspense>
     </div>
   );
 }
 
-// 탭바를 노출할 상위 라우트 = 4개 탭 목적지 (상세·폼·생성 화면은 제외)
-const TAB_ROUTES = new Set(["/", "/boxes", "/folders", "/profile"]);
+// 탭바는 '집중' 화면(등록·수정 폼)만 빼고 모든 화면에 노출한다.
+// 상세·목록·뷰어 등은 탭바 유지(자체 하단 액션바는 --app-nav-h로 탭바 위에 뜬다).
+function isFormRoute(p: string): boolean {
+  return (
+    p === "/box/new" ||
+    p === "/profile/withdraw" ||
+    p.endsWith("/option/new") ||
+    p.endsWith("/edit")
+  );
+}
 
 export default App;

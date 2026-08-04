@@ -102,7 +102,7 @@ export function FolderViewer({ view, isLoggedIn, code }: FolderViewerProps) {
       </div>
 
       {/* 하단 고정 CTA: 참여(전체 상자 참여 + 폴더 복사) */}
-      <div className="fixed inset-x-0 bottom-0 z-20 bg-cream px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] xl:inset-x-auto xl:bottom-10 xl:left-1/2 xl:w-[430px] xl:-translate-x-1/2 xl:rounded-b-[30px]">
+      <div className="fixed inset-x-0 bottom-[var(--app-nav-h,0px)] z-20 bg-cream px-5 pt-3 pb-[calc(var(--app-cta-safe,env(safe-area-inset-bottom))+0.75rem)] xl:inset-x-auto xl:bottom-10 xl:left-1/2 xl:w-[430px] xl:-translate-x-1/2 xl:rounded-b-[30px]">
         <p className="mb-2 text-center text-[11.5px] text-ink-faint">
           참여하면 서랍 안 상자에 모두 참여하고, 서랍이 내 창고에 담겨요.
         </p>

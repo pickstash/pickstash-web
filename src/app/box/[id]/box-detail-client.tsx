@@ -773,7 +773,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
       {/* 하단 고정 2단: ＋선택지 추가하기 · 최종 결정하기. 목록 안 내려도 상시 추가(스크롤 불편 해소).
           결정 없을 때(마감투표·정리완료)는 추가가 풀폭. 0개면 목록 빈상태 CTA가 대체. */}
       {options.length > 0 && (
-        <div className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-2 gap-2.5 bg-cream px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] xl:inset-x-auto xl:bottom-10 xl:left-1/2 xl:w-[430px] xl:-translate-x-1/2 xl:rounded-b-[30px]">
+        <div className="fixed inset-x-0 bottom-[var(--app-nav-h,0px)] z-20 grid grid-cols-2 gap-2.5 bg-cream px-5 pt-3 pb-[calc(var(--app-cta-safe,env(safe-area-inset-bottom))+0.75rem)] xl:inset-x-auto xl:bottom-10 xl:left-1/2 xl:w-[430px] xl:-translate-x-1/2 xl:rounded-b-[30px]">
           {!isDone && !isAuto && (
             <button
               onClick={openDecide}

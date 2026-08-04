@@ -13,6 +13,15 @@ export function TabBar() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
 
+  // 탭 전환은 히스토리에 쌓지 않는다: 홈("/")을 바닥에 깔고 그 위에 탭을 얹어
+  // 어느 탭에서든 뒤로가기 = 홈으로 가게 한다(탭끼리 뒤로가기가 이어지던 문제 해결).
+  // 서브페이지 이동(AppLink)은 일반 push라 뒤로가기=이전 화면 그대로.
+  function goTab(href: string) {
+    if (pathname === href) return;
+    if (href !== "/") navigate("/");
+    navigate(href);
+  }
+
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-line bg-paper">
       {TABS.map((t) => {
@@ -20,7 +29,7 @@ export function TabBar() {
         return (
           <button
             key={t.href}
-            onClick={() => navigate(t.href)}
+            onClick={() => goTab(t.href)}
             className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-semibold ${
               active ? "text-ink" : "text-ink-faint"
             }`}
