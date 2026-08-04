@@ -14,7 +14,7 @@ export function TabBar() {
   const { pathname } = useLocation();
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-line bg-paper pb-[env(safe-area-inset-bottom)]">
+    <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-line bg-paper">
       {TABS.map((t) => {
         const active = pathname === t.href;
         return (

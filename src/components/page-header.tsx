@@ -32,7 +32,7 @@ export function PageHeader({ title, fallbackHref = '/', right }: PageHeaderProps
   }
 
   return (
-    <header className="sticky top-0 z-10 flex items-center gap-2 bg-cream/95 px-4 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-1.5 backdrop-blur-sm">
+    <header className="sticky top-0 z-30 flex items-center gap-2 bg-cream/95 px-4 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-1.5 backdrop-blur-sm">
       <button
         onClick={handleBack}
         aria-label="뒤로가기"

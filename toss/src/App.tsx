@@ -39,19 +39,11 @@ function App() {
   if (!session) return <LoginScreen />;
 
   return (
-    // 탭바가 뜨는 라우트에서만 하단 여백을 잡는다.
-    //  --app-nav-h  = 탭바 실제 높이 = 콘텐츠 3.5rem + safe-area. main 하단 패딩·CTA 위치가 이 값을 쓴다.
-    //  --app-cta-safe = 0: 탭바가 하단 safe-area를 전담하므로, 그 위에 딱 얹히는 CTA는 safe-area를
-    //                 다시 먹지 않는다(예전엔 탭바·CTA가 각자 pb-safe → 이중 계산으로 공백이 생겼다).
-    // 탭바 없는 화면: --app-nav-h=0(CTA가 하단에 붙음), --app-cta-safe는 globals 기본(기기 safe-area)을 그대로.
-    <div
-      style={
-        {
-          "--app-nav-h": showTabBar ? "calc(3.5rem + env(safe-area-inset-bottom))" : "0px",
-          ...(showTabBar ? { "--app-cta-safe": "0px" } : {}),
-        } as CSSProperties
-      }
-    >
+    // 탭바가 뜨는 라우트에서만 --app-nav-h를 탭바 높이(3.5rem)로 올린다(하위 main·CTA가 상속).
+    // 토스 웹뷰는 하단 safe-area를 웹뷰 밖에서 처리하므로 여기 env를 더하지 않는다(index.css에서 --app-cta-safe=0).
+    // 탭바 없는 화면은 0 → CTA가 하단에 딱 붙는다.
+    <div style={{ "--app-nav-h": showTabBar ? "3.5rem" : "0px" } as CSSProperties}>
+
     {/* 재사용하는 A형 웹 페이지가 use(params)로 순간 suspend할 수 있어 Suspense 경계 필수. */}
     <Suspense fallback={<ScreenLoading />}>
     <Routes>
