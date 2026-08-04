@@ -139,10 +139,17 @@ export function FoldersClient({ initialFolders, nickname, me }: { initialFolders
                   <h3 className="mt-2.5 line-clamp-2 min-h-[2.5em] pr-6 text-[15px] font-extrabold leading-tight tracking-tight text-ink">{f.name}</h3>
                   <div className="mt-2 space-y-1 text-[12px] font-semibold text-ink-soft">
                     <div className="tabular-nums">상자 {f.boxCount}개</div>
-                    <div className="flex items-center gap-1.5">
-                      <MemberAvatars members={f.members} max={3} />
-                      <span>{isShared ? `${f.members.length}명` : '나만'}</span>
-                    </div>
+                    {isShared ? (
+                      <div className="flex items-center gap-1.5">
+                        <MemberAvatars members={f.members} max={3} />
+                        <span>{f.members.length}명</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <Icon name="folder" size={12} />
+                        혼자 쓰는 서랍
+                      </div>
+                    )}
                   </div>
                 </AppLink>
                 <button
