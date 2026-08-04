@@ -254,31 +254,23 @@ export function OptionForm({
           <input
             type="text"
             value={name}
-            onChange={e => setName(e.target.value)}
-            onPaste={e => {
-              // "네이버 https://..." 처럼 글씨+링크가 섞여 복사됐으면 이름/링크로 자동 분리.
-              const pasted = e.clipboardData.getData('text')
-              if (pasted) {
-                const split = splitPastedLink(pasted)
-                if (!split) return // 순수 텍스트면 일반 붙여넣기
-                e.preventDefault()
-                if (split.label && !name.trim()) setName(split.label)
-                addLinkWithUrl(split.url)
-                return
+            onChange={e => {
+              const value = e.target.value
+              // "네이버 https://..." 처럼 글씨+링크가 섞여 붙여넣어지면 이름/링크로 자동 분리.
+              // onPaste는 토스 웹뷰에서 안 뜨는 경우가 있어, 값 변화에서 '붙여넣기'만 감지한다
+              // (inputType 또는 한 번에 여러 글자 급증). 타이핑(한 글자씩)엔 오작동 안 함.
+              const isPaste =
+                (e.nativeEvent as InputEvent).inputType === 'insertFromPaste' ||
+                value.length - name.length > 3
+              if (isPaste) {
+                const split = splitPastedLink(value)
+                if (split) {
+                  if (split.label && !name.trim()) setName(split.label)
+                  addLinkWithUrl(split.url)
+                  return
+                }
               }
-              // 토스 웹뷰는 paste 이벤트의 clipboardData가 간헐적으로 비어 온다 → 네이티브로 읽어 처리.
-              e.preventDefault()
-              void readClipboardText()
-                .then(text => {
-                  const split = splitPastedLink(text)
-                  if (split) {
-                    if (split.label && !name.trim()) setName(split.label)
-                    addLinkWithUrl(split.url)
-                  } else if (text.trim() && !name.trim()) {
-                    setName(text.trim())
-                  }
-                })
-                .catch(() => {})
+              setName(value)
             }}
             placeholder="링크 붙여넣기 또는 이름 입력"
             className="w-full rounded-field border-[1.5px] border-line bg-paper px-4 py-3 pr-10 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none focus:ring-[3px] focus:ring-butter-tint"
