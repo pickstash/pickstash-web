@@ -2,8 +2,13 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <!-- viewport-fit=cover 필수: 없으면 iOS 웹뷰에서 env(safe-area-inset-*)가 0 → 헤더가 노치에 걸린다. -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- viewport-fit=cover 필수: 없으면 iOS 웹뷰에서 env(safe-area-inset-*)가 0 → 헤더가 노치에 걸린다.
+         maximum-scale=1·user-scalable=no: iOS 인풋 포커스 확대 + 핀치 확대 차단(토스 규정: 미니앱 확대 금지).
+         토스는 WKWebView라 user-scalable=no가 존중된다(모바일 사파리와 달리). -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
     <title>AIT App</title>
   </head>
   <body>
