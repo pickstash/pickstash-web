@@ -2,9 +2,11 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 // 비로그인 접근 허용 랜딩(§6-1 뷰어). /folder-invite도 폴더 공유 뷰어라 반드시 포함(018·019).
-// /api/toss/login: 토스 미니앱이 웹 세션 쿠키 없이 호출하는 mTLS 로그인 브릿지 → 반드시 공개.
+// 토스 미니앱이 웹 세션 쿠키 없이 호출하는 엔드포인트는 반드시 공개(미들웨어가 /login으로 리다이렉트하면 콜백 실패).
+//   /api/toss/login: mTLS 로그인 브릿지, /api/toss/unlink: 연결끊기 콜백(Basic Auth 자체 검증),
+//   /api/unfurl: 링크 미리보기(라우트가 Bearer/쿠키 자체 검증). 각 라우트가 스스로 인증하므로 공개해도 안전.
 // /terms·/privacy: 이용약관·개인정보처리방침. 토스 콘솔·비로그인 이용자가 열람 → 공개.
-const PUBLIC_ROUTES = ['/login', '/auth/callback', '/invite', '/group-invite', '/folder-invite', '/api/toss/login', '/terms', '/privacy']
+const PUBLIC_ROUTES = ['/login', '/auth/callback', '/invite', '/group-invite', '/folder-invite', '/api/toss/login', '/api/toss/unlink', '/api/unfurl', '/terms', '/privacy']
 
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
