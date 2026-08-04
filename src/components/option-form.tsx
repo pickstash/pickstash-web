@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import { uploadOptionImage } from '@/lib/api/options'
 import { fetchLinkPreview, proxiedImageUrl } from '@/lib/api/unfurl'
+import { readClipboardText } from '@/lib/clipboard/native-clipboard'
 import {
   cleanBlocks,
   linkBlocksOf,
@@ -120,8 +121,7 @@ export function OptionForm({
     setClipboardHint(null)
     let text = ''
     try {
-      if (!navigator.clipboard?.readText) throw new Error('unsupported')
-      text = await navigator.clipboard.readText()
+      text = await readClipboardText() // 웹=navigator, 토스=네이티브 getClipboardText(주입)
     } catch {
       setClipboardHint('클립보드를 읽을 수 없어요. 이름 칸에 링크를 직접 붙여넣어 주세요.')
       return

@@ -2,8 +2,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
-import { getSchemeUri, getTossShareLink, share } from "@apps-in-toss/web-framework";
+import { getSchemeUri, getTossShareLink, share, getClipboardText } from "@apps-in-toss/web-framework";
 import { configureNativeShare } from "@/lib/share/native-share";
+import { configureClipboardReader } from "@/lib/clipboard/native-clipboard";
 
 import App from "./App.tsx";
 import { TossNavProvider } from "./lib/nav-provider";
@@ -26,6 +27,9 @@ configureNativeShare(async ({ path, ogImage }) => {
   const link = await getTossShareLink(`intoss://pickstash${path}`, ogImage);
   await share({ message: link });
 });
+
+// 클립보드 읽기 — 토스 웹뷰는 navigator.clipboard가 막혀 있어 네이티브 getClipboardText 사용.
+configureClipboardReader(() => getClipboardText());
 
 // 웹과 동일하게 TanStack Query를 데이터 계층으로 사용 (공유 훅·api 재사용).
 // staleTime은 웹 Providers와 맞춘다.
