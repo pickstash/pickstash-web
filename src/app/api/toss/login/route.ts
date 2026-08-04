@@ -82,15 +82,22 @@ export async function POST(request: Request) {
       { auth: { autoRefreshToken: false, persistSession: false } },
     )
     const email = `toss_${userKey}@toss.pickstash.app` // 합성 이메일(발송 안 함) — 토스 userKey 결정적 매핑
-    // 없으면 생성(프로필은 on_auth_user_created 트리거로 자동). 이미 있으면 error 무시.
+    // 토스가 준 실제 이름(동의 시). 없으면 기본값. (이름 동의는 토스 콘솔 로그인 설정에서 켜야 값이 옴)
+    const tossName = me.success.name?.trim() || '토스 사용자'
+    // 없으면 생성(프로필은 on_auth_user_created 트리거로 metadata.name→nickname 자동). 이미 있으면 error 무시.
     await admin.auth.admin.createUser({
       email,
       email_confirm: true,
-      user_metadata: { provider: 'toss', toss_user_key: userKey, name: '토스 사용자' },
+      user_metadata: { provider: 'toss', toss_user_key: userKey, name: tossName },
     })
     const { data: link, error } = await admin.auth.admin.generateLink({ type: 'magiclink', email })
     if (error || !link) {
       return json({ error: 'session mint failed', detail: error?.message }, 500)
+    }
+
+    // 기존 유저가 아직 기본 닉네임이면 실제 이름으로 backfill. 사용자가 직접 바꾼 닉네임은 건드리지 않는다.
+    if (tossName !== '토스 사용자' && link.user?.id) {
+      await admin.from('profiles').update({ nickname: tossName }).eq('id', link.user.id).eq('nickname', '토스 사용자')
     }
 
     return json({ email, token_hash: link.properties.hashed_token })

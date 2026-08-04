@@ -6,6 +6,7 @@ import { useOption, useUpdateOption } from '@/hooks/use-options'
 import { OptionForm } from '@/components/option-form'
 import { PageHeader } from '@/components/page-header'
 import { parseBlocks } from '@/lib/domain/option-content'
+import { Spinner } from '@/components/spinner'
 
 export default function EditOptionPage({
   params,
@@ -20,7 +21,7 @@ export default function EditOptionPage({
   if (isLoading) {
     return (
       <main className="flex min-h-dvh items-center justify-center">
-        <p className="text-sm text-ink-faint">불러오는 중...</p>
+        <Spinner />
       </main>
     )
   }

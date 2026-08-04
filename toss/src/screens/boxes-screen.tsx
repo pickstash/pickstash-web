@@ -5,6 +5,7 @@ import { loadBoxList, type BoxListKind } from "@/lib/api/box-list";
 import { AppLink } from "@/lib/nav/nav";
 import { BoxCard } from "@/components/box-card";
 import { BOX_LIST_META } from "@/components/box-list-view";
+import { Spinner } from "@/components/spinner";
 
 // '상자' 탭 — 진행중/정리됨/즐겨찾기를 필터 하나로 통합(옛 창고 3장 카드 대체). loadBoxList·BoxCard 재사용.
 const FILTERS: { kind: BoxListKind; label: string }[] = [
@@ -51,7 +52,7 @@ export function BoxesScreen() {
 
       <div className="flex-1 space-y-2.5 px-5 pb-28 pt-1">
         {isPending ? (
-          <p className="py-10 text-center text-[13px] text-ink-faint">불러오는 중…</p>
+          <Spinner className="py-10" />
         ) : error || !data ? (
           <p className="py-10 text-center text-[13px] text-tomato">목록을 불러오지 못했어요</p>
         ) : data.items.length > 0 ? (

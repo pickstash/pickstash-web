@@ -15,6 +15,7 @@ import {
   type LinkKind,
 } from '@/lib/domain/option-content'
 import { proxiedImageUrl } from '@/lib/api/unfurl'
+import { Spinner } from '@/components/spinner'
 
 export default function BoxLinksPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: boxId } = use(params)
@@ -65,7 +66,7 @@ export default function BoxLinksPage({ params }: { params: Promise<{ id: string 
         )}
 
         {isLoading ? (
-          <p className="py-10 text-center text-[13px] text-ink-faint">불러오는 중…</p>
+          <Spinner className="py-10" />
         ) : shown.length === 0 ? (
           <div className="rounded-card border border-dashed border-[#D9D6C2] bg-paper/60 px-6 py-12 text-center">
             <p className="text-[13px] font-bold text-ink">아직 담긴 링크가 없어요</p>
