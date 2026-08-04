@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client"; // vite alias → 토스 shim
 import { loadHomeView } from "@/lib/api/home";
 import { HomeView } from "@/components/home-view";
+import { ScreenLoading } from "./screen-state";
 
 // 토스 홈 = 공유 로더로 데이터 fetch → 공유 HomeView 렌더. 웹과 동일 화면·로직.
 export function HomeScreen() {
@@ -18,9 +19,7 @@ export function HomeScreen() {
   });
 
   if (isPending) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center text-ink-faint">불러오는 중…</div>
-    );
+    return <ScreenLoading />;
   }
   if (error || !data) {
     return (
