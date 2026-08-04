@@ -29,7 +29,17 @@ configureNativeShare(async ({ path, ogImage }) => {
 });
 
 // 클립보드 읽기 — 토스 웹뷰는 navigator.clipboard가 막혀 있어 네이티브 getClipboardText 사용.
-configureClipboardReader(() => getClipboardText());
+// getClipboardText를 바로 부르면 권한 다이얼로그가 매번(때론 이중으로) 떠서 루프가 생긴다.
+// 권한 상태를 먼저 확인 → notDetermined일 때만 다이얼로그 1회 → allowed면 읽기, 로 흐름을 명시한다.
+configureClipboardReader(async () => {
+  const perm = await getClipboardText.getPermission();
+  if (perm === "denied") throw new Error("clipboard denied");
+  if (perm === "notDetermined") {
+    const result = await getClipboardText.openPermissionDialog();
+    if (result !== "allowed") throw new Error("clipboard denied");
+  }
+  return getClipboardText();
+});
 
 // 웹과 동일하게 TanStack Query를 데이터 계층으로 사용 (공유 훅·api 재사용).
 // staleTime은 웹 Providers와 맞춘다.
