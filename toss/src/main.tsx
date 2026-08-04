@@ -2,7 +2,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
-import { getSchemeUri } from "@apps-in-toss/web-framework";
+import { getSchemeUri, getTossShareLink, share } from "@apps-in-toss/web-framework";
+import { configureNativeShare } from "@/lib/share/native-share";
 
 import App from "./App.tsx";
 import { TossNavProvider } from "./lib/nav-provider";
@@ -17,6 +18,13 @@ configureUnfurl({
   base: new URL(import.meta.env.VITE_TOSS_LOGIN_ENDPOINT).origin,
   getToken: async () =>
     (await createClient().auth.getSession()).data.session?.access_token ?? null,
+});
+
+// 공유는 토스 네이티브(intoss:// 딥링크)로 — 외부 링크 유도 금지 정책 준수. 받는 토스 유저는 앱에서 열림.
+// path는 앱 내 경로(getSchemeUri가 intoss://pickstash를 떼고 이 경로로 진입).
+configureNativeShare(async ({ path, ogImage }) => {
+  const link = await getTossShareLink(`intoss://pickstash${path}`, ogImage);
+  await share({ message: link });
 });
 
 // 웹과 동일하게 TanStack Query를 데이터 계층으로 사용 (공유 훅·api 재사용).

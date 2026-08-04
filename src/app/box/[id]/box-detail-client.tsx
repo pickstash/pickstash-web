@@ -20,7 +20,7 @@ import { OptionsSection } from '@/components/options-section'
 import { Icon } from '@/components/icon'
 import { AppDrawer } from '@/components/app-drawer'
 import { PageHeader } from '@/components/page-header'
-import { ShareViewLinkButton } from './share-view-link-button'
+import { shareInviteLink } from '@/lib/share/native-share'
 import { getBoxStatus, isDoneStatus, BOX_STATUS_LABEL, type BoxStatus } from '@/lib/domain/box-status'
 import { parseBlocks, linkBlocksOf } from '@/lib/domain/option-content'
 import { formatDeadlineCompact, defaultDeadline } from '@/lib/utils'
@@ -204,22 +204,14 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
     </span>
   )
 
-  // 토스: /box/:id/invite(카카오 초대 페이지)는 웹 전용 → 토스엔 라우트가 없어 '미정의 경로→홈'으로 튕겼다.
-  // 대신 초대 링크(/invite/<code>)를 클립보드로 복사한다(마감 상자는 초대 개념이 없어 비활성).
+  // 초대 링크(/invite/<code>) 공유 — 웹: 클립보드 복사, 토스: intoss:// 네이티브 공유 시트.
+  // (뷰어+참여가 한 링크. 마감 상자는 초대 개념이 없어 비활성.)
   async function copyInvite() {
-    const url = `${window.location.origin}/invite/${box.invite_code}`
-    try {
-      await navigator.clipboard.writeText(url)
-    } catch {
-      const ta = document.createElement('textarea')
-      ta.value = url
-      document.body.appendChild(ta)
-      ta.select()
-      try { document.execCommand('copy') } catch { /* 무시 */ }
-      document.body.removeChild(ta)
+    const result = await shareInviteLink({ path: `/invite/${box.invite_code}` })
+    if (result === 'copied') {
+      setInviteCopied(true)
+      setTimeout(() => setInviteCopied(false), 1800)
     }
-    setInviteCopied(true)
-    setTimeout(() => setInviteCopied(false), 1800)
   }
 
   function inviteEntry(children: ReactNode, label: string) {
@@ -700,11 +692,10 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
             </p>
           ) : null}
 
-          {/* 마감(마감 투표만) + 참여자 + 뷰어 링크 공유(로그인 없이 구경 가능) */}
+          {/* 마감(마감 투표만) + 참여자. 공유는 참여자 탭 → 초대 시트로 일원화(뷰어=초대 같은 링크). */}
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
             {deadlineNode}
             {participantsNode}
-            <ShareViewLinkButton inviteCode={box.invite_code} />
           </div>
         </div>
 
@@ -830,7 +821,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
                 className={`flex w-full items-center justify-center gap-2 rounded-field py-4 text-sm font-bold transition active:opacity-80 ${inviteCopied ? 'bg-butter text-ink' : 'bg-ink text-cream'}`}
               >
                 <Icon name={inviteCopied ? 'check' : 'link'} size={17} />
-                {inviteCopied ? '초대 링크 복사됨!' : '초대 링크 복사'}
+                {inviteCopied ? '링크 복사됨!' : '링크로 초대하기'}
               </button>
             )}
           </div>

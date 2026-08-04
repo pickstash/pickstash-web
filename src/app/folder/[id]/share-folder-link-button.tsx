@@ -2,39 +2,28 @@
 
 import { useState } from 'react'
 import { Icon } from '@/components/icon'
+import { shareInviteLink } from '@/lib/share/native-share'
 
 /**
- * 폴더 공유 링크 버튼 (018) — 폴더 뷰어/참여 링크(`/folder-invite/<code>`)를 클립보드에 복사한다.
- * 링크를 받은 사람은 로그인 없이 폴더 안 상자를 구경(뷰어)하고, 로그인 후 참여하면
- * 폴더 안 모든 상자에 참여자로 등록되고 폴더가 자기 계정으로 복사된다.
+ * 서랍 공유 버튼 — 서랍 뷰어/참여 링크(`/folder-invite/<code>`)를 공유한다.
+ * 웹: 링크를 클립보드에 복사(받는 사람이 브라우저에서 로그인 없이 열람→참여).
+ * 토스: intoss:// 딥링크를 네이티브 공유 시트로(받는 토스 유저는 앱에서 열림).
  */
 export function ShareFolderLinkButton({ inviteCode }: { inviteCode: string }) {
   const [copied, setCopied] = useState(false)
 
-  async function handleCopy() {
-    const url = `${window.location.origin}/folder-invite/${inviteCode}`
-    try {
-      await navigator.clipboard.writeText(url)
-    } catch {
-      const ta = document.createElement('textarea')
-      ta.value = url
-      document.body.appendChild(ta)
-      ta.select()
-      try {
-        document.execCommand('copy')
-      } catch {
-        /* 폴백 실패 시 조용히 무시 */
-      }
-      document.body.removeChild(ta)
+  async function handleShare() {
+    const result = await shareInviteLink({ path: `/folder-invite/${inviteCode}` })
+    if (result === 'copied') {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1800)
     }
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1800)
   }
 
   return (
     <button
-      onClick={handleCopy}
-      aria-label="서랍 공유 링크 복사"
+      onClick={handleShare}
+      aria-label="서랍 공유 링크"
       className={`flex w-full items-center justify-center gap-2 rounded-field py-4 text-sm font-bold transition active:opacity-80 ${
         copied ? 'bg-butter text-ink' : 'bg-ink text-cream'
       }`}

@@ -11,6 +11,8 @@ import { BoxDetailScreen } from "./screens/box-detail-screen";
 import { OptionDetailScreen } from "./screens/option-detail-screen";
 import { FolderScreen } from "./screens/folder-screen";
 import { FoldersScreen } from "./screens/folders-screen";
+import { BoxInviteScreen } from "./screens/box-invite-screen";
+import { FolderInviteScreen } from "./screens/folder-invite-screen";
 import { ProfileScreen } from "./screens/profile-screen";
 import { BoxLinksScreen, OptionNewScreen, OptionEditScreen } from "./screens/reused-pages";
 import { TabBar } from "./components/tab-bar";
@@ -68,6 +70,10 @@ function App() {
       {/* 폴더 */}
       <Route path="/folders" element={<FoldersScreen />} />
       <Route path="/folder/:id" element={<FolderScreen />} />
+
+      {/* 공유 링크 뷰어(딥링크 intoss://pickstash/invite|folder-invite/<code>) — 비멤버 열람+참여 */}
+      <Route path="/invite/:code" element={<BoxInviteScreen />} />
+      <Route path="/folder-invite/:code" element={<FolderInviteScreen />} />
 
       {/* 마이페이지 */}
       <Route path="/profile" element={<ProfileScreen />} />

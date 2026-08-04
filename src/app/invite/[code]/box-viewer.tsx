@@ -181,11 +181,11 @@ export function BoxViewer({
         </section>
       </div>
 
-      {/* 하단 고정 참여 CTA */}
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-paper/95 px-5 py-3 backdrop-blur">
+      {/* 하단 고정 참여 CTA — 토스는 --app-nav-h(탭바 높이)만큼 띄운다. 웹은 var 미정의→0(bottom:0). */}
+      <div className="fixed inset-x-0 bottom-[var(--app-nav-h,0px)] z-20 border-t border-line bg-paper/95 px-5 py-3 backdrop-blur">
         <div className="mx-auto max-w-[430px] space-y-1.5">
           <p className="text-center text-[11.5px] text-ink-faint">
-            로그인하면 좋아요·댓글로 함께 정할 수 있어요
+            {isLoggedIn ? '참여하면 좋아요·댓글로 함께 정할 수 있어요' : '로그인하면 좋아요·댓글로 함께 정할 수 있어요'}
           </p>
           <JoinClient code={code} isLoggedIn={isLoggedIn} />
         </div>

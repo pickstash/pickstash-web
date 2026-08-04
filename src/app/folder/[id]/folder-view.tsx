@@ -137,6 +137,12 @@ export function FolderView({ folderId, folderName, inviteCode, members, initialB
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
                   <div className="absolute right-0 top-10 z-50 w-44 overflow-hidden rounded-[14px] border border-line bg-paper py-1 shadow-[0_10px_30px_rgba(42,42,39,0.18)]">
+                    <button
+                      onClick={() => { setMenuOpen(false); setMembersOpen(true) }}
+                      className="flex w-full items-center gap-2 px-3.5 py-2.5 text-left text-[13.5px] font-semibold text-ink active:bg-cream"
+                    >
+                      <Icon name="link" size={15} className="text-ink-soft" /> 링크로 초대
+                    </button>
                     {items.length > 0 && (
                       <button
                         onClick={() => { setMenuOpen(false); setEditing(true) }}

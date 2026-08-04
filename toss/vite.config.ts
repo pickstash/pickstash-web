@@ -17,6 +17,11 @@ export default defineConfig({
         find: "@/lib/supabase/client",
         replacement: fileURLToPath(new URL("./src/lib/supabase-client.ts", import.meta.url)),
       },
+      // 공유 뷰어(BoxViewer)가 쓰는 next/image → 토스는 <img> shim으로.
+      {
+        find: "next/image",
+        replacement: fileURLToPath(new URL("./src/shims/next-image.tsx", import.meta.url)),
+      },
       // 웹(Next)과 공유하는 코어(domain·api·hooks) 재사용: 웹 src를 '@'로 참조.
       { find: "@", replacement: fileURLToPath(new URL("../src", import.meta.url)) },
     ],
