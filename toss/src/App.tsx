@@ -1,5 +1,6 @@
 import { Suspense, useEffect, useState, type CSSProperties } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "./lib/supabase";
 import { LoginScreen } from "./screens/login-screen";
@@ -24,15 +25,21 @@ import WithdrawPage from "@/app/profile/withdraw/page";
 function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(false);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setReady(true);
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
+      setSession(s);
+      // 로그인 직후엔 서버가 닉네임(실제 이름) 백필을 막 끝낸 상태 → 이전 세션의 캐시(예: '토스 사용자')를
+      // 버리고 새로 불러온다. 로그아웃 시에도 남의 데이터가 남지 않게 정리.
+      if (event === "SIGNED_IN" || event === "SIGNED_OUT") queryClient.clear();
+    });
     return () => sub.subscription.unsubscribe();
-  }, []);
+  }, [queryClient]);
 
   const { pathname } = useLocation();
   // 초대 뷰어(공유 링크)는 비로그인도 열람 가능 — 로그인 게이트 예외. 참여 시 인라인 로그인(nav.login).
