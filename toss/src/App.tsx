@@ -59,7 +59,7 @@ function App() {
     // 탭바가 뜨는 라우트에서만 --app-nav-h를 탭바 높이(3.5rem)로 올린다(하위 main·CTA가 상속).
     // 토스 웹뷰는 하단 safe-area를 웹뷰 밖에서 처리하므로 여기 env를 더하지 않는다(index.css에서 --app-cta-safe=0).
     // 탭바 없는 화면은 0 → CTA가 하단에 딱 붙는다.
-    <div style={{ "--app-nav-h": showTabBar ? "3.5rem" : "0px" } as CSSProperties}>
+    <div style={{ "--app-nav-h": showTabBar ? "calc(3.5rem + var(--app-safe-bottom, 0px))" : "0px" } as CSSProperties}>
 
     {/* 재사용하는 A형 웹 페이지가 use(params)로 순간 suspend할 수 있어 Suspense 경계 필수. */}
     <Suspense fallback={<ScreenLoading />}>

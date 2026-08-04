@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
-import { getSchemeUri, getTossShareLink, share, getClipboardText } from "@apps-in-toss/web-framework";
+import { getSchemeUri, getTossShareLink, share, getClipboardText, getPlatformOS } from "@apps-in-toss/web-framework";
 import { configureNativeShare } from "@/lib/share/native-share";
 import { configureClipboardReader } from "@/lib/clipboard/native-clipboard";
 
@@ -41,6 +41,16 @@ configureClipboardReader(async () => {
   }
   return getClipboardText();
 });
+
+// 하단 홈 인디케이터(iOS 긴 막대) 대응 — iOS에서만 --app-safe-bottom을 실제 safe-area 인셋으로 올린다.
+// 안드로이드는 토스 웹뷰가 inset-bottom을 과다 보고하므로 index.css 기본값 0을 유지(흰 여백 방지).
+try {
+  if (getPlatformOS() === "ios") {
+    document.documentElement.style.setProperty("--app-safe-bottom", "env(safe-area-inset-bottom)");
+  }
+} catch {
+  /* SDK 미지원/브라우저 → 기본 0 유지 */
+}
 
 // 웹과 동일하게 TanStack Query를 데이터 계층으로 사용 (공유 훅·api 재사용).
 // staleTime은 웹 Providers와 맞춘다.

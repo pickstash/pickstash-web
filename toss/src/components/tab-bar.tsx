@@ -23,7 +23,7 @@ export function TabBar() {
   }
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-line bg-paper">
+    <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-line bg-paper pb-[var(--app-safe-bottom,0px)]">
       {TABS.map((t) => {
         const active = pathname === t.href;
         return (
