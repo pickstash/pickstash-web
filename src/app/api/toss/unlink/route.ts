@@ -12,6 +12,19 @@ import { createClient } from '@supabase/supabase-js'
 
 export const runtime = 'nodejs'
 
+// 콘솔의 콜백 테스트가 브라우저(교차 출처)에서 올 수 있어 CORS 필요(없으면 'Failed to fetch').
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, content-type',
+}
+const ok = () => NextResponse.json({ ok: true }, { headers: CORS })
+const unauthorized = () => new NextResponse('unauthorized', { status: 401, headers: CORS })
+
+export function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: CORS })
+}
+
 // referrer: UNLINK(연동해제) | WITHDRAWAL_TERMS(약관철회) | WITHDRAWAL_TOSS(토스탈퇴). 셋 다 로그아웃 처리.
 function authorized(request: Request): boolean {
   const expected = process.env.TOSS_UNLINK_BASIC
@@ -33,14 +46,14 @@ async function disconnect(userKey: string | number | undefined) {
 }
 
 export async function GET(request: Request) {
-  if (!authorized(request)) return new NextResponse('unauthorized', { status: 401 })
+  if (!authorized(request)) return unauthorized()
   const q = new URL(request.url).searchParams
   await disconnect(q.get('userKey') ?? undefined)
-  return NextResponse.json({ ok: true })
+  return ok()
 }
 
 export async function POST(request: Request) {
-  if (!authorized(request)) return new NextResponse('unauthorized', { status: 401 })
+  if (!authorized(request)) return unauthorized()
   let userKey: string | number | undefined
   try {
     userKey = (await request.json())?.userKey
@@ -48,5 +61,5 @@ export async function POST(request: Request) {
     /* 본문 없거나 비JSON → userKey 없음으로 처리(200 반환) */
   }
   await disconnect(userKey)
-  return NextResponse.json({ ok: true })
+  return ok()
 }
