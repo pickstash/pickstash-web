@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { tossRequest } from '@/lib/toss/mtls'
+import { decryptTossUserInfo } from '@/lib/toss/decrypt-userinfo'
 
 // 토스 미니앱 로그인 백엔드 (웹앱에 두지만 토스 앱이 네트워크로 호출).
 // 흐름: appLogin authCode → (mTLS) generate-token → login-me → userKey
@@ -82,8 +83,9 @@ export async function POST(request: Request) {
       { auth: { autoRefreshToken: false, persistSession: false } },
     )
     const email = `toss_${userKey}@toss.pickstash.app` // 합성 이메일(발송 안 함) — 토스 userKey 결정적 매핑
-    // 토스가 준 실제 이름(동의 시). 없으면 기본값. (이름 동의는 토스 콘솔 로그인 설정에서 켜야 값이 옴)
-    const tossName = me.success.name?.trim() || '토스 사용자'
+    // 토스가 준 실제 이름 — login-me의 name은 AES-256-GCM 암호문이라 복호화한다.
+    // 복호화 키(TOSS_USERINFO_KEY_B64) 없거나 실패하면 null → 기본값(암호문은 절대 저장 안 함).
+    const tossName = decryptTossUserInfo(me.success.name) || '토스 사용자'
     // 없으면 생성(프로필은 on_auth_user_created 트리거로 metadata.name→nickname 자동). 이미 있으면 error 무시.
     await admin.auth.admin.createUser({
       email,
