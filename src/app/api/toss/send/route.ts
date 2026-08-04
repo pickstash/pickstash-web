@@ -36,18 +36,9 @@ interface RequestBody {
   message_key?: MessageKey
 }
 
-// 콘솔 소재 본문은 단일 변수 {pushBody}로 등록 — 서버가 이벤트별 문구를 채운다.
-function pushBodyFor(key: MessageKey | undefined, title: string, actorNickname: string, isFolder: boolean): string {
-  const prefix = `[${title}] `
-  switch (key) {
-    case 'comment': return `${actorNickname}님이 '${title}'에 댓글을 달았어요`
-    case 'option': return `${prefix}새 선택지가 추가됐어요`
-    case 'decision': return `${prefix}정리가 끝났어요`
-    case 'mention': return `${actorNickname}님이 회원님을 언급했어요`
-    case 'join': return `${actorNickname}님이 '${title}'${isFolder ? ' 서랍' : ''}에 참여했어요`
-    default: return `${prefix}새로운 소식이 있어요`
-  }
-}
+// 문구는 콘솔 소재에 고정으로 쓴다(예: 댓글 소재 본문 = "{{userName}}님이 댓글을 달았어요").
+// 토스 스마트발송 기본 변수는 {{userName}} 하나뿐이라, 서버는 발신자 닉네임만 userName으로 보내고
+// 문장/딥링크 골격은 소재가 갖는다. 이벤트별 문구 차이는 소재(templateSetCode)를 나눠서 표현.
 
 // 토스 userKey: 로그인 시 메타데이터(toss_user_key) 또는 합성 이메일(toss_{userKey}@...)에 결정적으로 담긴다.
 function tossUserKeyOf(user: { email?: string; user_metadata?: Record<string, unknown> } | null): number | null {
@@ -79,16 +70,14 @@ export async function POST(request: Request) {
 
   // 대상 엔티티(상자/폴더) 해석: 제목 · 수신자(본인 제외) · 딥링크
   const isFolder = !box_id && !!folder_id
-  let title: string
   let userIds: string[]
   // 콘솔 소재의 이동 URL을 intoss://pickstash/{{deepLinkPath}} 로 등록 → 여기서 경로만 채운다.
   // (풀 URL을 통째로 변수화하면 콘솔 URL 검증에 걸릴 수 있어 스킴/호스트는 콘솔에 고정)
   let deepLinkPath: string
 
   if (isFolder) {
-    const { data: folder } = await admin.from('folders').select('name').eq('id', folder_id!).single()
+    const { data: folder } = await admin.from('folders').select('id').eq('id', folder_id!).single()
     if (!folder) return NextResponse.json({ error: 'folder not found' }, { status: 404 })
-    title = folder.name
     const { data: members } = await admin
       .from('folder_members')
       .select('user_id')
@@ -97,9 +86,8 @@ export async function POST(request: Request) {
     userIds = (members ?? []).map(m => m.user_id)
     deepLinkPath = `folder/${folder_id}`
   } else {
-    const { data: box } = await admin.from('boxes').select('title').eq('id', box_id!).single()
+    const { data: box } = await admin.from('boxes').select('id').eq('id', box_id!).single()
     if (!box) return NextResponse.json({ error: 'box not found' }, { status: 404 })
-    title = box.title
     if (target_user_ids?.length) {
       userIds = target_user_ids.filter(id => id !== triggered_by)
     } else {
@@ -114,20 +102,17 @@ export async function POST(request: Request) {
   }
   if (!userIds.length) return NextResponse.json({ ok: true, sent: 0 })
 
-  // 발신자 닉네임(댓글·멘션·참여 문구에 필요)
-  let actorNickname = '누군가'
-  if (message_key === 'comment' || message_key === 'mention' || message_key === 'join') {
-    const { data: actor } = await admin.from('profiles').select('nickname').eq('id', triggered_by).single()
-    if (actor?.nickname) actorNickname = actor.nickname
-  }
+  // 발신자 닉네임 — 소재 본문의 {{userName}}에 채운다("{{userName}}님이 댓글을 달았어요").
+  let userName = '누군가'
+  const { data: actor } = await admin.from('profiles').select('nickname').eq('id', triggered_by).single()
+  if (actor?.nickname) userName = actor.nickname
 
   // 각 대상의 토스 userKey 해석 — 토스 유저(userKey 보유)만 발송 대상
   const users = await Promise.all(userIds.map(id => admin.auth.admin.getUserById(id)))
-  const pushBody = pushBodyFor(message_key, title, actorNickname, isFolder)
   const contextList = users
     .map(u => tossUserKeyOf(u.data.user))
     .filter((k): k is number => k != null)
-    .map(userKey => ({ userKey, context: { pushBody, deepLinkPath } }))
+    .map(userKey => ({ userKey, context: { userName, deepLinkPath } }))
 
   if (!contextList.length) return NextResponse.json({ ok: true, sent: 0 })
 
