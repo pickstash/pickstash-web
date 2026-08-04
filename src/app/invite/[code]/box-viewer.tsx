@@ -39,8 +39,8 @@ export function BoxViewer({
 
   return (
     <main className="flex min-h-dvh flex-col bg-cream">
-      {/* 읽기 전용 안내 바 */}
-      <div className="sticky top-0 z-20 border-b border-line bg-paper/95 px-5 py-2.5 backdrop-blur">
+      {/* 읽기 전용 안내 바 — sticky top이라 노치 아래로 내리려면 safe-area-inset-top 필요(토스 iOS). */}
+      <div className="sticky top-0 z-20 border-b border-line bg-paper/95 px-5 pb-2.5 pt-[calc(env(safe-area-inset-top)+0.625rem)] backdrop-blur">
         <div className="mx-auto flex max-w-[430px] items-center gap-2">
           <Image src="/icons/icon-192.png" alt="" width={22} height={22} className="rounded-[7px]" />
           <p className="text-[12px] font-bold text-ink-soft">
@@ -181,8 +181,9 @@ export function BoxViewer({
         </section>
       </div>
 
-      {/* 하단 고정 참여 CTA — 토스는 --app-nav-h(탭바 높이)만큼 띄운다. 웹은 var 미정의→0(bottom:0). */}
-      <div className="fixed inset-x-0 bottom-[var(--app-nav-h,0px)] z-20 border-t border-line bg-paper/95 px-5 py-3 backdrop-blur">
+      {/* 하단 고정 참여 CTA — 토스는 --app-nav-h(탭바 높이)만큼 띄운다. 웹은 var 미정의→0(bottom:0).
+          pb에 --app-cta-safe(iOS 홈 인디케이터 인셋)를 더해 하단 잘림 방지. */}
+      <div className="fixed inset-x-0 bottom-[var(--app-nav-h,0px)] z-20 border-t border-line bg-paper/95 px-5 pt-3 pb-[calc(var(--app-cta-safe,env(safe-area-inset-bottom))+0.75rem)] backdrop-blur">
         <div className="mx-auto max-w-[430px] space-y-1.5">
           <p className="text-center text-[11.5px] text-ink-faint">
             {isLoggedIn ? '참여하면 좋아요·댓글로 함께 정할 수 있어요' : '로그인하면 좋아요·댓글로 함께 정할 수 있어요'}

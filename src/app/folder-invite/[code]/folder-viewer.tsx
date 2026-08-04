@@ -79,7 +79,7 @@ interface FolderViewerProps {
 
 export function FolderViewer({ view, isLoggedIn, code }: FolderViewerProps) {
   return (
-    <main className="flex min-h-dvh flex-col">
+    <main className="flex min-h-dvh flex-col bg-cream">
       <header className="px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-2">
         <span className="inline-flex items-center gap-1 rounded-full bg-butter-tint px-2.5 py-1 text-[11px] font-bold text-ink">
           <Icon name="folder" size={12} />
