@@ -9,13 +9,12 @@ import {
   linkKindEmoji,
   parseYouTubeId,
 } from '@/lib/domain/option-content'
-import { groupComments } from '@/lib/domain/comments'
-import { parseMentionBody } from '@/lib/domain/mentions'
 import { getBoxStatus, BOX_STATUS_LABEL } from '@/lib/domain/box-status'
 import { proxiedImageUrl } from '@/lib/api/unfurl'
-import { formatKoreanDate, formatRelativeTime, formatDeadline } from '@/lib/utils'
-import type { BoxViewerData, BoxViewerComment } from '@/lib/api/invites'
+import { formatKoreanDate, formatDeadline } from '@/lib/utils'
+import type { BoxViewerData } from '@/lib/api/invites'
 import { JoinClient } from './join-client'
+import { OptionComments } from './option-comments'
 
 /**
  * 로그인 안 한 사용자도 초대 링크로 상자 전체를 '읽기 전용'으로 보는 뷰어(노션식).
@@ -168,13 +167,8 @@ export function BoxViewer({
                 {/* 본문 블록 */}
                 {blocks.length > 0 && <div className="space-y-3">{blocks.map(renderBlock)}</div>}
 
-                {/* 댓글 */}
-                {option.comments.length > 0 && (
-                  <div className="space-y-3 border-t border-dashed border-line pt-3">
-                    <p className="text-[12px] font-bold text-ink-faint">댓글 {option.comments.length}</p>
-                    {renderComments(option.comments)}
-                  </div>
-                )}
+                {/* 댓글 — 기본 접힘, '댓글 N개 보기' 토글(선택지별) */}
+                <OptionComments comments={option.comments} />
               </article>
             )
           })}
@@ -258,74 +252,6 @@ function renderBlock(block: ReturnType<typeof parseBlocks>[number]) {
       {block.label && (
         <p className="mt-2 border-t border-dashed border-line pt-2 text-[13px] text-ink-soft">📝 {block.label}</p>
       )}
-    </div>
-  )
-}
-
-/** 멘션 토큰을 강조 렌더 */
-function renderCommentBody(body: string) {
-  return parseMentionBody(body).map((seg, i) =>
-    seg.type === 'mention' ? (
-      <span key={i} className="font-bold text-butter-dark">
-        @{seg.nickname}
-      </span>
-    ) : (
-      <span key={i}>{seg.value}</span>
-    ),
-  )
-}
-
-/** 댓글(플랫 2단계)을 읽기 전용으로 렌더 — 답글 들여쓰기·좋아요 수·수정됨 표시. */
-function renderComments(comments: BoxViewerComment[]) {
-  const { top, repliesByParent } = groupComments(comments)
-  return (
-    <div className="space-y-3">
-      {top.map(comment => {
-        const replies = repliesByParent[comment.id] ?? []
-        return (
-          <div key={comment.id} className="space-y-2">
-            {renderOneComment(comment)}
-            {replies.length > 0 && (
-              <div className="ml-8 space-y-2 border-l-2 border-cream pl-3">
-                {replies.map(reply => renderOneComment(reply, true))}
-              </div>
-            )}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-function renderOneComment(comment: BoxViewerComment, small?: boolean) {
-  return (
-    <div key={comment.id} className="flex gap-2.5">
-      <div className={`shrink-0 overflow-hidden rounded-full bg-butter-tint ${small ? 'h-6 w-6' : 'h-7 w-7'}`}>
-        {comment.avatar_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={comment.avatar_url} alt={comment.nickname} className="h-full w-full object-cover" />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-[11px] font-bold text-ink">
-            {comment.nickname?.[0] ?? '?'}
-          </div>
-        )}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs font-bold text-ink">{comment.nickname}</span>
-          <span className="text-[11px] text-ink-faint">
-            {formatRelativeTime(comment.created_at)}
-            {comment.edited_at && ' · 수정됨'}
-          </span>
-        </div>
-        <p className="mt-0.5 break-words text-[13.5px] text-ink">{renderCommentBody(comment.body)}</p>
-        {comment.like_count > 0 && (
-          <span className="mt-1 flex items-center gap-1 text-[11px] font-bold text-ink-faint">
-            <Icon name="heart" size={12} />
-            <span className="tabular-nums">{comment.like_count}</span>
-          </span>
-        )}
-      </div>
     </div>
   )
 }
