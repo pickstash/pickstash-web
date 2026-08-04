@@ -105,7 +105,7 @@ export function ProfileClient({ userId, nickname, avatarUrl, kakaoAvatarUrl }: P
             ) : (
               <span className="text-2xl font-extrabold text-ink">{displayInitial}</span>
             )}
-            <div className="absolute inset-0 flex items-center justify-center bg-ink/30 opacity-0 transition-opacity group-hover:opacity-100 group-active:opacity-100">
+            <div className={`absolute inset-0 flex items-center justify-center bg-ink/30 transition-opacity ${isAvatarPending ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-active:opacity-100'}`}>
               {isAvatarPending ? (
                 <svg className="w-5 h-5 text-white animate-spin" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
