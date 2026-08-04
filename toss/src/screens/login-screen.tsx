@@ -21,7 +21,7 @@ export function LoginScreen() {
   }
 
   return (
-    <main className="flex min-h-dvh flex-col justify-between bg-cream px-6 pb-10 pt-[calc(env(safe-area-inset-top)+3rem)]">
+    <main className="flex min-h-dvh flex-col justify-between bg-cream px-6 pb-16 pt-[calc(env(safe-area-inset-top)+3rem)]">
       <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
         <img src="/icons/character.png" alt="" className="h-16 w-auto" />
         <h1 className="text-[26px] font-extrabold tracking-tight text-ink">결정창고</h1>

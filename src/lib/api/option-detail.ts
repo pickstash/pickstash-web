@@ -46,12 +46,14 @@ export async function loadOptionDetail(
     .filter(p => p.profiles)
     .map(p => ({ id: p.profiles!.id, nickname: p.profiles!.nickname, avatar_url: p.profiles!.avatar_url }))
 
-  // 선택지 생성자 프로필 (상단 히어로 메타)
-  const { data: creator } = await supabase
-    .from('profiles')
-    .select('nickname, avatar_url')
-    .eq('id', option.created_by)
-    .single()
+  // 선택지 생성자 프로필 (상단 히어로 메타). 탈퇴한 유저의 선택지는 created_by=null(025) → 생성자 없음.
+  const { data: creator } = option.created_by
+    ? await supabase
+        .from('profiles')
+        .select('nickname, avatar_url')
+        .eq('id', option.created_by)
+        .single()
+    : { data: null }
 
   return {
     status: 'ok',
