@@ -14,12 +14,14 @@ export function JoinFolderClient({ code, isLoggedIn }: JoinFolderClientProps) {
   const [loading, setLoading] = useState(false)
 
   async function handleJoin() {
-    if (!isLoggedIn) {
+    // 웹: 리다이렉트형 로그인 페이지로. 토스: nav.login으로 인라인 로그인 후 곧바로 참여.
+    if (!isLoggedIn && !nav.login) {
       nav.push(`/login?next=/folder-invite/${code}`)
       return
     }
     setLoading(true)
     try {
+      if (!isLoggedIn) await nav.login!()
       // 폴더 안 모든 상자에 참여 + 폴더를 내 계정으로 복사. 반환된 내 폴더로 이동.
       const folderId = await joinFolderByInviteCode(code)
       // replace: 참여 후 /folder-invite로 back하면 (이제 복사본 보유라) 다시 /folder로 리다이렉트돼 루프 → 교체
@@ -29,13 +31,15 @@ export function JoinFolderClient({ code, isLoggedIn }: JoinFolderClientProps) {
     }
   }
 
+  const joinLabel = isLoggedIn ? '서랍 참여하기' : nav.platform === 'toss' ? '토스로 참여하기' : '카카오로 참여하기'
+
   return (
     <button
       onClick={handleJoin}
       disabled={loading}
       className="w-full rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80 disabled:opacity-50"
     >
-      {loading ? '참여 중...' : isLoggedIn ? '서랍 참여하기' : '카카오로 참여하기'}
+      {loading ? '참여 중...' : joinLabel}
     </button>
   )
 }

@@ -35,10 +35,13 @@ function App() {
   }, []);
 
   const { pathname } = useLocation();
-  const showTabBar = !isFormRoute(pathname);
+  // 초대 뷰어(공유 링크)는 비로그인도 열람 가능 — 로그인 게이트 예외. 참여 시 인라인 로그인(nav.login).
+  const isInviteRoute = pathname.startsWith("/invite/") || pathname.startsWith("/folder-invite/");
+  // 탭바는 폼(집중)·초대 뷰어를 제외한 모든 화면. 초대 뷰어는 자체 '참여하기' CTA만 둔다.
+  const showTabBar = !isFormRoute(pathname) && !isInviteRoute;
 
   if (!ready) return null;
-  if (!session) return <LoginScreen />;
+  if (!session && !isInviteRoute) return <LoginScreen />;
 
   return (
     // 탭바가 뜨는 라우트에서만 --app-nav-h를 탭바 높이(3.5rem)로 올린다(하위 main·CTA가 상속).
