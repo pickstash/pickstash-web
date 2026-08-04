@@ -22,17 +22,17 @@ export function LoginScreen() {
 
   return (
     <main className="flex min-h-dvh flex-col justify-between bg-cream px-6 pb-24 pt-[calc(env(safe-area-inset-top)+3rem)]">
-      <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
-        <img src="/icons/character.png" alt="" className="h-16 w-auto" />
-        <h1 className="text-[26px] font-extrabold tracking-tight text-ink">결정창고</h1>
-        <p className="text-[15px] leading-relaxed text-ink-soft">
-          흩어진 링크와 의견을 모아
-          <br />
-          투표로 결정하고 기록해요
-        </p>
+      <div className="flex flex-1 flex-col items-center justify-center gap-5 text-center">
+        <img src="/icons/character.png" alt="" className="h-14 w-auto" />
+        <div>
+          <h1 className="text-[34px] font-extrabold tracking-tight text-ink">결정창고</h1>
+          <p className="text-[15px] leading-relaxed text-ink-soft">
+            대화는 흘러가도 결정은 남도록
+          </p>
+        </div>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-3 pb-12">
         <button
           onClick={() => void handleLogin()}
           disabled={loading}
@@ -41,9 +41,6 @@ export function LoginScreen() {
           {loading ? "연결 중…" : "토스로 시작하기"}
         </button>
         {error && <p className="break-all text-center text-[13px] text-tomato">{error}</p>}
-        <p className="text-center text-[11px] leading-relaxed text-ink-faint">
-          시작하면 서비스 이용약관 및 개인정보처리방침에 동의하게 돼요
-        </p>
       </div>
 
       {/* 브라우저(npm run dev)에서 화면 미리보기용 — 토스 SDK가 없어 appLogin이 안 되니 테스트 계정으로 직접 로그인.
