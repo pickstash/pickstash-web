@@ -1,6 +1,6 @@
 'use client'
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import {
   getMyFolders,
   createFolder,
@@ -12,6 +12,14 @@ import {
   reorderBoxFolders,
 } from '@/lib/api/folders'
 
+// 서랍을 보여주는 모든 화면 캐시 무효화 — 생성·삭제·이름변경이 뒤로가기 시 즉시 반영되게.
+// FolderChips(홈, ['folders']) + 토스 서랍 목록(['folders-page']) + 서랍 상세(['folder-view',*]).
+function invalidateFolderViews(qc: QueryClient) {
+  qc.invalidateQueries({ queryKey: ['folders'] })
+  qc.invalidateQueries({ queryKey: ['folders-page'] })
+  qc.invalidateQueries({ queryKey: ['folder-view'] })
+}
+
 export function useFolders() {
   return useQuery({ queryKey: ['folders'], queryFn: getMyFolders })
 }
@@ -20,7 +28,7 @@ export function useCreateFolder() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (name: string) => createFolder(name),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['folders'] }),
+    onSuccess: () => invalidateFolderViews(queryClient),
   })
 }
 
@@ -28,7 +36,7 @@ export function useRenameFolder() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (arg: { id: string; name: string }) => renameFolder(arg.id, arg.name),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['folders'] }),
+    onSuccess: () => invalidateFolderViews(queryClient),
   })
 }
 
@@ -38,7 +46,7 @@ export function useLeaveFolder() {
   return useMutation({
     mutationFn: (arg: { folderId: string; leaveBoxes?: boolean }) => leaveFolder(arg.folderId, arg.leaveBoxes),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['folders'] })
+      invalidateFolderViews(queryClient)
       queryClient.invalidateQueries({ queryKey: ['boxFolder'] })
     },
   })
@@ -60,7 +68,7 @@ export function useSetBoxFolders(boxId: string) {
     mutationFn: (folderIds: string[]) => setBoxFolders(boxId, folderIds),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['boxFolder', boxId] })
-      queryClient.invalidateQueries({ queryKey: ['folders'] })
+      invalidateFolderViews(queryClient)
     },
   })
 }
@@ -72,7 +80,7 @@ export function useRemoveBoxFromFolder() {
     mutationFn: (arg: { boxId: string; folderId: string }) => removeBoxFromFolder(arg.boxId, arg.folderId),
     onSuccess: (_d, arg) => {
       queryClient.invalidateQueries({ queryKey: ['boxFolder', arg.boxId] })
-      queryClient.invalidateQueries({ queryKey: ['folders'] })
+      invalidateFolderViews(queryClient)
     },
   })
 }
@@ -82,6 +90,6 @@ export function useReorderFolderBoxes(folderId: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (orderedBoxIds: string[]) => reorderBoxFolders(folderId, orderedBoxIds),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['folders'] }),
+    onSuccess: () => invalidateFolderViews(queryClient),
   })
 }

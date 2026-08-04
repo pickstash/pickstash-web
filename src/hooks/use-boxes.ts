@@ -1,6 +1,6 @@
 'use client'
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { useNav } from '@/lib/nav/nav'
 import {
   createBox,
@@ -23,6 +23,18 @@ import {
 import { setBoxFolders } from '@/lib/api/folders'
 import type { Option } from '@/lib/api/options'
 
+// 상자를 보여주는 모든 화면의 캐시를 무효화 — 제목·상태 변경이 뒤로가기 시 즉시 반영되게.
+// 웹 목록(['boxes']) + 토스 홈(['home'])·상자탭(['box-list',*])·서랍(['folder-view',*],['folders']).
+// (해당 키가 없는 플랫폼에선 no-op이라 웹·토스 모두 안전.)
+function invalidateBoxViews(qc: QueryClient, boxId?: string) {
+  qc.invalidateQueries({ queryKey: ['boxes'] })
+  qc.invalidateQueries({ queryKey: ['home'] })
+  qc.invalidateQueries({ queryKey: ['box-list'] })
+  qc.invalidateQueries({ queryKey: ['folder-view'] })
+  qc.invalidateQueries({ queryKey: ['folders'] })
+  if (boxId) qc.invalidateQueries({ queryKey: ['box', boxId] })
+}
+
 export function useCreateBox() {
   const nav = useNav()
   const queryClient = useQueryClient()
@@ -35,7 +47,7 @@ export function useCreateBox() {
         try { await setBoxFolders(box.id, [vars.folderId]) } catch { /* 연결 실패해도 상자 자체는 생성됨 */ }
         queryClient.invalidateQueries({ queryKey: ['folders'] })
       }
-      queryClient.invalidateQueries({ queryKey: ['boxes'] })
+      invalidateBoxViews(queryClient)
       nav.push(`/box/${box.id}`)
     },
   })
@@ -61,8 +73,7 @@ export function useUpdateBoxTitle(boxId: string) {
   return useMutation({
     mutationFn: (title: string) => updateBoxTitle(boxId, title),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['box', boxId] })
-      queryClient.invalidateQueries({ queryKey: ['boxes'] })
+      invalidateBoxViews(queryClient, boxId)
     },
   })
 }
@@ -72,8 +83,7 @@ export function useUpdateBoxMemo(boxId: string) {
   return useMutation({
     mutationFn: (memo: string | null) => updateBoxMemo(boxId, memo),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['box', boxId] })
-      queryClient.invalidateQueries({ queryKey: ['boxes'] })
+      invalidateBoxViews(queryClient, boxId)
     },
   })
 }
@@ -83,8 +93,7 @@ export function useUpdateBoxDeadline(boxId: string) {
   return useMutation({
     mutationFn: (deadline_at: string | null) => updateBoxDeadline(boxId, deadline_at),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['box', boxId] })
-      queryClient.invalidateQueries({ queryKey: ['boxes'] })
+      invalidateBoxViews(queryClient, boxId)
     },
   })
 }
@@ -95,8 +104,7 @@ export function useUpdateBoxDecisionMode(boxId: string) {
     mutationFn: (arg: { mode: DecisionMode; deadline_at: string | null }) =>
       updateBoxDecisionMode(boxId, arg.mode, arg.deadline_at),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['box', boxId] })
-      queryClient.invalidateQueries({ queryKey: ['boxes'] })
+      invalidateBoxViews(queryClient, boxId)
     },
   })
 }
@@ -122,8 +130,7 @@ export function useDecideBox(boxId: string) {
       if (ctx?.prev) queryClient.setQueryData(['options', boxId], ctx.prev)
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['box', boxId] })
-      queryClient.invalidateQueries({ queryKey: ['boxes'] })
+      invalidateBoxViews(queryClient, boxId)
       queryClient.invalidateQueries({ queryKey: ['options', boxId] })
       // 홈·목록(서버 컴포넌트) Router Cache 무효화 — 결정 후 뒤로가기 stale 방지.
       nav.refresh()
@@ -138,7 +145,7 @@ export function useAutoDecideBox(boxId: string) {
   return useMutation({
     mutationFn: () => autoDecideBox(boxId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['box', boxId] })
+      invalidateBoxViews(queryClient, boxId)
       queryClient.invalidateQueries({ queryKey: ['options', boxId] })
       nav.refresh()
     },
@@ -151,7 +158,7 @@ export function useDeleteBox() {
   return useMutation({
     mutationFn: (boxId: string) => deleteBox(boxId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['boxes'] })
+      invalidateBoxViews(queryClient)
       nav.replace('/') // 삭제된 상자로 back하면 리다이렉트 루프 → 교체
     },
   })
@@ -163,7 +170,7 @@ export function useLeaveBox() {
   return useMutation({
     mutationFn: (boxId: string) => leaveBox(boxId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['boxes'] })
+      invalidateBoxViews(queryClient)
       nav.replace('/') // 나간 상자로 back하면 '참여자 아님→/' 리다이렉트 루프 → 교체
     },
   })
@@ -175,8 +182,7 @@ export function useReopenBox(boxId: string) {
   return useMutation({
     mutationFn: () => reopenBox(boxId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['box', boxId] })
-      queryClient.invalidateQueries({ queryKey: ['boxes'] })
+      invalidateBoxViews(queryClient, boxId)
       queryClient.invalidateQueries({ queryKey: ['options', boxId] })  // 번복 시 decided_at 해제 반영
       // 홈·목록은 서버 컴포넌트라 TanStack 무효화로는 안 갱신됨. Router Cache를 비워 뒤로가기 stale 방지.
       nav.refresh()
