@@ -32,9 +32,10 @@ configureNativeShare(async ({ path, ogImage }) => {
 // getClipboardText를 바로 부르면 권한 다이얼로그가 매번(때론 이중으로) 떠서 루프가 생긴다.
 // 권한 상태를 먼저 확인 → notDetermined일 때만 다이얼로그 1회 → allowed면 읽기, 로 흐름을 명시한다.
 configureClipboardReader(async () => {
-  const perm = await getClipboardText.getPermission();
-  if (perm === "denied") throw new Error("clipboard denied");
-  if (perm === "notDetermined") {
+  // 권한 상태 먼저 확인 → allowed 아니면 다이얼로그 1회만 → allowed일 때 읽기.
+  // (granite.config의 clipboard read 권한 선언과 함께여야 권한이 굳어 반복 안 뜬다.)
+  const status = await getClipboardText.getPermission();
+  if (status !== "allowed") {
     const result = await getClipboardText.openPermissionDialog();
     if (result !== "allowed") throw new Error("clipboard denied");
   }

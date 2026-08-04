@@ -25,6 +25,7 @@ export default defineConfig({
     transparentBackground: true,
     theme: "dark",
   },
-  permissions: [],
+  // 클립보드 읽기 권한 — 이 선언이 없으면 getClipboardText가 매 호출마다 권한 다이얼로그를 띄운다.
+  permissions: [{ name: "clipboard", access: "read" }],
   outdir: "dist",
 });
