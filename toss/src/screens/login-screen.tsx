@@ -41,6 +41,10 @@ export function LoginScreen() {
           {loading ? "연결 중…" : "토스로 시작하기"}
         </button>
         {error && <p className="break-all text-center text-[13px] text-tomato">{error}</p>}
+        {/* 토스 로그인 출시 요건: 약관 고지 노출 */}
+        <p className="text-center text-[11px] leading-relaxed text-ink-faint">
+          시작하면 서비스 이용약관 및 개인정보처리방침에 동의하게 돼요
+        </p>
       </div>
 
       {/* 브라우저(npm run dev)에서 화면 미리보기용 — 토스 SDK가 없어 appLogin이 안 되니 테스트 계정으로 직접 로그인.
