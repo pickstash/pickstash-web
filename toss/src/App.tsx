@@ -56,10 +56,16 @@ function App() {
   if (!session && !isInviteRoute) return <LoginScreen />;
 
   return (
-    // 탭바가 뜨는 라우트에서만 --app-nav-h를 탭바 높이(3.5rem)로 올린다(하위 main·CTA가 상속).
-    // 토스 웹뷰는 하단 safe-area를 웹뷰 밖에서 처리하므로 여기 env를 더하지 않는다(index.css에서 --app-cta-safe=0).
-    // 탭바 없는 화면은 0 → CTA가 하단에 딱 붙는다.
-    <div style={{ "--app-nav-h": showTabBar ? "calc(3.5rem + var(--app-safe-bottom, 0px))" : "0px" } as CSSProperties}>
+    // --app-nav-h: 탭바 있는 라우트에서만 탭바 실제 높이(3.5rem + iOS 홈 인디케이터 인셋)로 올린다(하위 main·CTA가 상속).
+    // --app-cta-safe: 하단 CTA가 먹을 인셋. 탭바 화면은 CTA가 이미 --app-nav-h만큼 탭바 위로 떠서
+    //   탭바가 홈 인디케이터를 전담 → 0(여기서 또 더하면 이중 계산으로 버튼이 붕 뜬다).
+    //   폼 화면(탭바 없음)은 CTA가 bottom-0라 직접 인셋(safe-bottom)이 필요하다.
+    <div
+      style={{
+        "--app-nav-h": showTabBar ? "calc(3.5rem + var(--app-safe-bottom, 0px))" : "0px",
+        "--app-cta-safe": showTabBar ? "0px" : "var(--app-safe-bottom, 0px)",
+      } as CSSProperties}
+    >
 
     {/* 재사용하는 A형 웹 페이지가 use(params)로 순간 suspend할 수 있어 Suspense 경계 필수. */}
     <Suspense fallback={<ScreenLoading />}>
