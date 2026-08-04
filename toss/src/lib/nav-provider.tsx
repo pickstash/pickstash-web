@@ -4,6 +4,7 @@ import { useMemo, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { NavProvider, type AppNav } from "@/lib/nav/nav";
+import { loginWithToss } from "./auth";
 
 export function TossNavProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
@@ -17,6 +18,10 @@ export function TossNavProvider({ children }: { children: ReactNode }) {
       // 웹의 router.refresh(RSC 재요청) 대응 → CSR에선 쿼리 전체 무효화로 최신화
       refresh: () => {
         void queryClient.invalidateQueries();
+      },
+      // 초대 뷰어에서 '참여하기' 시 인라인 로그인(appLogin→verifyOtp→세션). 성공 후 호출부가 참여를 이어간다.
+      login: async () => {
+        await loginWithToss();
       },
     }),
     [navigate, queryClient],

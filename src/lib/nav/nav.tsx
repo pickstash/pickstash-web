@@ -21,6 +21,11 @@ export interface AppNav {
   back(): void
   /** 웹: RSC refresh. 토스: 쿼리 무효화 등 플랫폼별 매핑(없으면 no-op). */
   refresh(): void
+  /**
+   * 인라인 로그인 후 resolve. 토스: appLogin→Supabase 세션.
+   * 웹은 리다이렉트형 로그인이라 미구현(undefined) — 호출부가 로그인 페이지로 push하도록 폴백.
+   */
+  login?(): Promise<void>
 }
 
 const NavContext = createContext<AppNav | null>(null)

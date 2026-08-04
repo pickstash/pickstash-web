@@ -603,6 +603,14 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
                     <>
                       <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
                       <div className="absolute right-0 top-full z-50 mt-1.5 w-36 overflow-hidden rounded-[14px] border border-line bg-paper py-1 shadow-[0_8px_24px_rgba(42,42,39,0.16)]">
+                        {!isDone && (
+                          <button
+                            onClick={() => { setMenuOpen(false); setMembersOpen(true) }}
+                            className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-ink active:bg-cream"
+                          >
+                            링크로 초대
+                          </button>
+                        )}
                         <button
                           onClick={() => { setMenuOpen(false); setEditingTitle(true); setTitleInput(box.title) }}
                           className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-ink active:bg-cream"
