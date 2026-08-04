@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useNav, AppLink } from '@/lib/nav/nav'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { updateNickname, updateAvatarUrl, uploadAvatar } from '@/lib/api/profile'
@@ -236,11 +237,11 @@ export function ProfileClient({ userId, nickname, avatarUrl, kakaoAvatarUrl }: P
         </div>
       </div>
 
-      {/* 로그아웃 확인 모달 */}
-      {confirmLogout && (
-        <div className="fixed inset-0 z-50 flex items-end">
+      {/* 로그아웃 확인 모달 — createPortal(body): 탭바·조상 스택 영향 없이 최상위에 뜬다. */}
+      {confirmLogout && createPortal(
+        <div className="fixed inset-0 z-[60] flex items-end">
           <div className="absolute inset-0 bg-ink/40" onClick={() => setConfirmLogout(false)} />
-          <div className="relative mx-auto w-full max-w-[430px] space-y-4 rounded-t-sheet bg-paper px-5 pb-10 pt-6">
+          <div className="relative mx-auto w-full max-w-[430px] space-y-4 rounded-t-sheet bg-paper px-5 pb-[calc(env(safe-area-inset-bottom)+2.5rem)] pt-6">
             <p className="text-center text-base font-extrabold text-ink">로그아웃 하시겠어요?</p>
             <div className="flex gap-2">
               <button
@@ -257,7 +258,8 @@ export function ProfileClient({ userId, nickname, avatarUrl, kakaoAvatarUrl }: P
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </main>
   )

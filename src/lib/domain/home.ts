@@ -21,6 +21,7 @@ export interface OpenBoxCard {
   deadlineAt: string | null
   participants: HeroParticipant[]
   totalLikes: number
+  totalComments: number
   leaders: string[] // 좋아요 1위 이름들 (0=없음, 1=단독, 2+=공동)
 }
 
@@ -53,6 +54,7 @@ export function buildHomeCards(
     favorites: Set<string>
     options: { id: string; box_id: string; name: string }[]
     votes: { option_id: string; vote_type: string }[]
+    comments: { option_id: string }[]
   },
 ): { hero: OpenBoxCard | null; railCards: OpenBoxCard[] } {
   const likePerOption = new Map<string, number>()
@@ -72,6 +74,14 @@ export function buildHomeCards(
     likeByBox.set(boxId, { total, leaders: r.winner ? [r.winner] : r.coLeaders })
   }
 
+  // 박스별 댓글 수 — 댓글은 option_id 기준이라 박스의 선택지들에 달린 댓글을 합산.
+  const optionToBox = new Map(ctx.options.map(o => [o.id, o.box_id]))
+  const commentsByBox = new Map<string, number>()
+  for (const c of ctx.comments) {
+    const boxId = optionToBox.get(c.option_id)
+    if (boxId) commentsByBox.set(boxId, (commentsByBox.get(boxId) ?? 0) + 1)
+  }
+
   const toCard = (box: RawOpenBox): OpenBoxCard => {
     const like = likeByBox.get(box.id)
     return {
@@ -84,6 +94,7 @@ export function buildHomeCards(
       deadlineAt: box.deadline_at,
       participants: box.box_participants,
       totalLikes: like?.total ?? 0,
+      totalComments: commentsByBox.get(box.id) ?? 0,
       leaders: like?.leaders ?? [],
     }
   }

@@ -50,17 +50,22 @@ export async function loadHomeView(
   const ids = displayed.map(b => b.id)
   let options: { id: string; box_id: string; name: string }[] = []
   let votes: { option_id: string; vote_type: string }[] = []
+  let comments: { option_id: string }[] = []
   if (ids.length > 0) {
     const { data: opts } = await supabase.from('options').select('id, box_id, name').in('box_id', ids)
     options = opts ?? []
     const optIds = options.map(o => o.id)
     if (optIds.length > 0) {
-      const { data: v } = await supabase.from('votes').select('option_id, vote_type').in('option_id', optIds)
+      const [{ data: v }, { data: c }] = await Promise.all([
+        supabase.from('votes').select('option_id, vote_type').in('option_id', optIds),
+        supabase.from('comments').select('option_id').in('option_id', optIds),
+      ])
       votes = v ?? []
+      comments = c ?? []
     }
   }
 
-  const { hero, railCards } = buildHomeCards(displayed, { lastSeen, favorites, options, votes })
+  const { hero, railCards } = buildHomeCards(displayed, { lastSeen, favorites, options, votes, comments })
 
   return {
     nickname: profile?.nickname ?? '',

@@ -87,7 +87,7 @@ export function DecisionHero({ box }: { box: OpenBoxCard | null }) {
 
           <div className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
             {!box.isSolo && box.leaders.length > 0 && (
-              <span className="flex min-w-0 max-w-full items-center gap-1.5 text-[12.5px] font-extrabold text-ink">
+              <span className="flex min-w-0 max-w-full items-start gap-1.5 text-[12.5px] font-extrabold text-ink">
                 <span className="shrink-0 whitespace-nowrap rounded-full bg-butter px-[7px] py-0.5 text-[10.5px] font-extrabold">
                   {box.leaders.length > 1 ? '공동 1위' : '지금 1위'}
                 </span>
@@ -98,6 +98,12 @@ export function DecisionHero({ box }: { box: OpenBoxCard | null }) {
               <span className="flex items-center gap-1 text-[12.5px] font-extrabold text-ink-soft tabular-nums">
                 <Icon name="heart" size={13} />
                 {box.totalLikes}
+              </span>
+            )}
+            {!box.isSolo && box.totalComments > 0 && (
+              <span className="flex items-center gap-1 text-[12.5px] font-extrabold text-ink-soft tabular-nums">
+                <Icon name="comment" size={13} />
+                {box.totalComments}
               </span>
             )}
             {box.isSolo && (
