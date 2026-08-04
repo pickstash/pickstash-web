@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "./lib/supabase";
+import { requestPushAgreementOnce } from "./lib/push-agreement";
 import { LoginScreen } from "./screens/login-screen";
 import { ScreenLoading } from "./screens/screen-state";
 import { HomeScreen } from "./screens/home-screen";
@@ -31,12 +32,16 @@ function App() {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setReady(true);
+      // 이미 로그인된 채 재실행 → 아직 동의 안 받았으면 이때 요청(내부에서 1회 가드).
+      if (data.session) requestPushAgreementOnce();
     });
     const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
       // 로그인 직후엔 서버가 닉네임(실제 이름) 백필을 막 끝낸 상태 → 이전 세션의 캐시(예: '토스 사용자')를
       // 버리고 새로 불러온다. 로그아웃 시에도 남의 데이터가 남지 않게 정리.
       if (event === "SIGNED_IN" || event === "SIGNED_OUT") queryClient.clear();
+      // 로그인 시 푸시 알림 동의 요청(미동의 유저는 스마트발송에서 제외됨). 내부에서 1회만.
+      if (event === "SIGNED_IN") requestPushAgreementOnce();
     });
     return () => sub.subscription.unsubscribe();
   }, [queryClient]);

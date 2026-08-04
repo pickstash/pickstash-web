@@ -40,7 +40,7 @@ interface RequestBody {
 function pushBodyFor(key: MessageKey | undefined, title: string, actorNickname: string, isFolder: boolean): string {
   const prefix = `[${title}] `
   switch (key) {
-    case 'comment': return `${prefix}새 댓글이 달렸어요`
+    case 'comment': return `${actorNickname}님이 '${title}'에 댓글을 달았어요`
     case 'option': return `${prefix}새 선택지가 추가됐어요`
     case 'decision': return `${prefix}정리가 끝났어요`
     case 'mention': return `${actorNickname}님이 회원님을 언급했어요`
@@ -81,7 +81,9 @@ export async function POST(request: Request) {
   const isFolder = !box_id && !!folder_id
   let title: string
   let userIds: string[]
-  let deepLinkUrl: string
+  // 콘솔 소재의 이동 URL을 intoss://pickstash/{{deepLinkPath}} 로 등록 → 여기서 경로만 채운다.
+  // (풀 URL을 통째로 변수화하면 콘솔 URL 검증에 걸릴 수 있어 스킴/호스트는 콘솔에 고정)
+  let deepLinkPath: string
 
   if (isFolder) {
     const { data: folder } = await admin.from('folders').select('name').eq('id', folder_id!).single()
@@ -93,7 +95,7 @@ export async function POST(request: Request) {
       .eq('folder_id', folder_id!)
       .neq('user_id', triggered_by)
     userIds = (members ?? []).map(m => m.user_id)
-    deepLinkUrl = `intoss://pickstash/folder/${folder_id}`
+    deepLinkPath = `folder/${folder_id}`
   } else {
     const { data: box } = await admin.from('boxes').select('title').eq('id', box_id!).single()
     if (!box) return NextResponse.json({ error: 'box not found' }, { status: 404 })
@@ -108,13 +110,13 @@ export async function POST(request: Request) {
         .neq('user_id', triggered_by)
       userIds = (participants ?? []).map(p => p.user_id)
     }
-    deepLinkUrl = `intoss://pickstash/box/${box_id}`
+    deepLinkPath = `box/${box_id}`
   }
   if (!userIds.length) return NextResponse.json({ ok: true, sent: 0 })
 
-  // 발신자 닉네임(멘션·참여 문구에 필요)
+  // 발신자 닉네임(댓글·멘션·참여 문구에 필요)
   let actorNickname = '누군가'
-  if (message_key === 'mention' || message_key === 'join') {
+  if (message_key === 'comment' || message_key === 'mention' || message_key === 'join') {
     const { data: actor } = await admin.from('profiles').select('nickname').eq('id', triggered_by).single()
     if (actor?.nickname) actorNickname = actor.nickname
   }
@@ -125,7 +127,7 @@ export async function POST(request: Request) {
   const contextList = users
     .map(u => tossUserKeyOf(u.data.user))
     .filter((k): k is number => k != null)
-    .map(userKey => ({ userKey, context: { pushBody, deepLinkUrl } }))
+    .map(userKey => ({ userKey, context: { pushBody, deepLinkPath } }))
 
   if (!contextList.length) return NextResponse.json({ ok: true, sent: 0 })
 
