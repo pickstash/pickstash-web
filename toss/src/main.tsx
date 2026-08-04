@@ -42,6 +42,12 @@ configureClipboardReader(async () => {
   return getClipboardText();
 });
 
+// iOS(WKWebView)는 viewport의 user-scalable=no를 무시해 핀치 확대가 살아있다(토스 규정 위반).
+// WebKit 전용 제스처 이벤트(gesture*)를 직접 막아 핀치 줌을 차단한다. 안드로이드엔 이 이벤트가 없어 무해.
+for (const type of ["gesturestart", "gesturechange", "gestureend"]) {
+  document.addEventListener(type, (e) => e.preventDefault(), { passive: false });
+}
+
 // 하단 홈 인디케이터(iOS 긴 막대) 대응 — iOS에서만 --app-safe-bottom을 실제 safe-area 인셋으로 올린다.
 // 안드로이드는 토스 웹뷰가 inset-bottom을 과다 보고하므로 index.css 기본값 0을 유지(흰 여백 방지).
 try {

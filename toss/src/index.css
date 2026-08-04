@@ -34,4 +34,6 @@ main {
 body {
   margin: 0;
   min-width: 320px;
+  /* 더블탭 확대 차단(핀치는 main.tsx의 gesture* 이벤트에서 차단) — 토스 규정: 미니앱 확대 금지. */
+  touch-action: manipulation;
 }
