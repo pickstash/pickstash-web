@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/client'
 import type { Database } from '@/lib/supabase/types'
 import type { OptionBlock } from '@/lib/domain/option-content'
+import { sendPush } from '@/lib/api/push'
 
 export type Option = Database['public']['Tables']['options']['Row']
 /** 선택지 + 파생 카운트(댓글 수). comment_count는 목록 조회에서만 채워진다(optional). */
@@ -86,10 +87,8 @@ export async function createOption(input: CreateOptionInput): Promise<Option> {
     .eq('box_id', input.box_id)
     .eq('user_id', user.id)
 
-  // 다른 참여자에게 푸시 (실패 무시)
-  supabase.functions.invoke('send-push', {
-    body: { box_id: input.box_id, triggered_by: user.id, message_key: 'option' },
-  }).catch(() => {})
+  // 다른 참여자에게 푸시
+  sendPush({ box_id: input.box_id, triggered_by: user.id, message_key: 'option' })
 
   return data
 }

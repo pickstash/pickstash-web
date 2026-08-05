@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
+import { sendPush } from '@/lib/api/push'
 
 // 폴더 공유(018): 링크(/folder-invite/[code])로 폴더 통째 뷰어 + 로그인 후 참여.
 // get_folder_view_by_invite_code / join_folder_by_invite_code RPC(security definer)를 감싼다.
@@ -52,12 +53,10 @@ export async function joinFolderByInviteCode(code: string): Promise<string> {
   if (error) throw error
   const folderId = data as string
 
-  // 기존 서랍 멤버에게 '새 참여자' 푸시 (실패 무시). 공유 폴더면 멤버에게, 복사본이면 대상 0(no-op).
+  // 기존 서랍 멤버에게 '새 참여자' 푸시. 공유 폴더면 멤버에게, 복사본이면 대상 0(no-op).
   const { data: { user } } = await supabase.auth.getUser()
   if (user) {
-    supabase.functions.invoke('send-push', {
-      body: { folder_id: folderId, triggered_by: user.id, message_key: 'join' },
-    }).catch(() => {})
+    sendPush({ folder_id: folderId, triggered_by: user.id, message_key: 'join' })
   }
   return folderId
 }

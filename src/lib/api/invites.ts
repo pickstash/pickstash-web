@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
+import { sendPush } from '@/lib/api/push'
 
 export async function getBoxByInviteCode(code: string): Promise<{ id: string; title: string } | null> {
   const supabase = createClient()
@@ -27,12 +28,10 @@ export async function joinBoxByInviteCode(code: string): Promise<string> {
   if (error) throw error
   const boxId = data as string
 
-  // 기존 참여자에게 '새 참여자' 푸시 (실패 무시)
+  // 기존 참여자에게 '새 참여자' 푸시
   const { data: { user } } = await supabase.auth.getUser()
   if (user) {
-    supabase.functions.invoke('send-push', {
-      body: { box_id: boxId, triggered_by: user.id, message_key: 'join' },
-    }).catch(() => {})
+    sendPush({ box_id: boxId, triggered_by: user.id, message_key: 'join' })
   }
   return boxId
 }

@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client'
 import type { Database } from '@/lib/supabase/types'
+import { sendPush } from '@/lib/api/push'
 
 export type Box = Database['public']['Tables']['boxes']['Row']
 
@@ -122,12 +123,10 @@ export async function decideBox(id: string, optionIds: string[]): Promise<void> 
   const { error } = await supabase.rpc('decide_box', { p_box_id: id, p_option_ids: optionIds })
   if (error) throw error
 
-  // 결정 확정은 참여자에게 푸시 (실패 무시)
+  // 결정 확정은 참여자에게 푸시
   const { data: { user } } = await supabase.auth.getUser()
   if (user) {
-    supabase.functions.invoke('send-push', {
-      body: { box_id: id, triggered_by: user.id, message_key: 'decision' },
-    }).catch(() => {})
+    sendPush({ box_id: id, triggered_by: user.id, message_key: 'decision' })
   }
 }
 
