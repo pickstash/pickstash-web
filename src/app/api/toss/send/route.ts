@@ -18,8 +18,8 @@ export const runtime = 'nodejs' // node:https(mTLS)·admin 사용 → Edge 아�
 
 type MessageKey = 'comment' | 'option' | 'decision' | 'mention' | 'join'
 
-// 콘솔 스마트 발송은 소재마다 내용이 고정이라 이벤트별로 발송 코드를 나눈다.
-// 멘션은 댓글 계열이라 댓글 소재를 공용(별도 소재를 원하면 mention 키 추가).
+// 이벤트별 소재(발송 코드)를 나눈다 — 잠금화면에서 무슨 일인지 제목으로 미리 알려주려고.
+// (이동 URL은 4개 다 알림함 /alerts 고정. 문구/제목만 소재별로 다르다.) 멘션은 댓글 소재 공용.
 const TEMPLATE_CODE: Record<MessageKey, string> = {
   comment: process.env.TOSS_TPL_COMMENT ?? 'pickstash-comment',
   option: process.env.TOSS_TPL_OPTION ?? 'pickstash-option',
