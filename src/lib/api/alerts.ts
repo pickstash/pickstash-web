@@ -59,3 +59,15 @@ export async function getAlerts(limit = 100): Promise<AlertItem[]> {
     }
   })
 }
+
+/** 한 상자의 알림을 읽음 처리 — 그 상자 last_seen_at을 now로. (seen은 상자 단위) */
+export async function markBoxSeen(boxId: string): Promise<void> {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+  await supabase
+    .from('box_participants')
+    .update({ last_seen_at: new Date().toISOString() })
+    .eq('box_id', boxId)
+    .eq('user_id', user.id)
+}

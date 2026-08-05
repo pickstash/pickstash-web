@@ -1,15 +1,35 @@
 'use client'
 
+import { useQueryClient } from '@tanstack/react-query'
 import { useNav } from '@/lib/nav/nav'
 import { Icon } from '@/components/icon'
 import { formatActivity, type BoxActivityType } from '@/lib/domain/activity-label'
 import { formatRelativeTime } from '@/lib/utils'
-import type { AlertItem } from '@/lib/api/alerts'
+import { markBoxSeen, type AlertItem } from '@/lib/api/alerts'
+import { markAllSeen } from '@/lib/api/boxes'
+import { useRealtimeAlerts } from '@/hooks/use-realtime-alerts'
 
 // 알림함 프리젠테이션 — 웹·토스 공유. 데이터는 getAlerts가 넘긴다.
 // 항목 탭 → 그 상자로 앱 내부 이동(딥링크 제약 없음). 푸시는 /alerts 고정 진입만 담당.
 export function AlertsView({ items }: { items: AlertItem[] }) {
   const nav = useNav()
+  const qc = useQueryClient()
+  useRealtimeAlerts() // 열려 있는 동안 새 활동을 실시간으로 받아 목록에 반영
+  const hasUnseen = items.some(a => a.unseen)
+
+  // 탭 즉시 그 상자 알림을 읽음으로(낙관적 반영 → 돌아와도 읽음 유지) + 서버 last_seen 갱신 후 이동.
+  function openAlert(a: AlertItem) {
+    qc.setQueryData<AlertItem[]>(['alerts'], old => old?.map(x => (x.boxId === a.boxId ? { ...x, unseen: false } : x)))
+    markBoxSeen(a.boxId).catch(() => {})
+    nav.push(a.optionId ? `/box/${a.boxId}/option/${a.optionId}` : `/box/${a.boxId}`)
+  }
+
+  // 모두 읽음 — 내 모든 상자 last_seen 갱신. 홈 들썩임 배지도 함께 정리.
+  function markAll() {
+    qc.setQueryData<AlertItem[]>(['alerts'], old => old?.map(x => ({ ...x, unseen: false })))
+    markAllSeen().catch(() => {})
+    qc.invalidateQueries({ queryKey: ['boxes', 'shaking'] })
+  }
 
   return (
     <main className="flex min-h-dvh flex-col">
@@ -31,9 +51,7 @@ export function AlertsView({ items }: { items: AlertItem[] }) {
             {items.map(a => (
               <li key={a.id}>
                 <button
-                  onClick={() =>
-                    nav.push(a.optionId ? `/box/${a.boxId}/option/${a.optionId}` : `/box/${a.boxId}`)
-                  }
+                  onClick={() => openAlert(a)}
                   className={`flex w-full items-start gap-3 rounded-card border px-4 py-3 text-left active:bg-cream ${
                     a.unseen ? 'border-butter-dark/40 bg-butter-tint/50' : 'border-[#ECEADC] bg-paper'
                   }`}
@@ -59,6 +77,20 @@ export function AlertsView({ items }: { items: AlertItem[] }) {
           </ul>
         )}
       </div>
+
+      {/* 하단 고정 '모두 읽음' — 안읽음이 있을 때만. 탭바 화면이라 --app-nav-h로 탭바 위에 뜬다. */}
+      {hasUnseen && (
+        <div className="fixed inset-x-0 bottom-[var(--app-nav-h,0px)] z-20 bg-cream/95 px-5 pb-3 pt-2 backdrop-blur">
+          <div className="mx-auto max-w-[430px]">
+            <button
+              onClick={markAll}
+              className="w-full rounded-field border border-line bg-paper py-3 text-sm font-bold text-ink-soft active:bg-cream"
+            >
+              모두 읽음
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   )
 }
