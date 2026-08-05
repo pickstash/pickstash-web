@@ -22,10 +22,10 @@ type MessageKey = 'comment' | 'option' | 'decision' | 'mention' | 'join'
 // (이동 URL은 4개 다 알림함 /alerts 고정. 문구/제목만 소재별로 다르다.) 멘션은 댓글 소재 공용.
 const TEMPLATE_CODE: Record<MessageKey, string> = {
   comment: process.env.TOSS_TPL_COMMENT ?? 'pickstash-comment-v2',
-  option: process.env.TOSS_TPL_OPTION ?? 'pickstash-option',
+  option: process.env.TOSS_TPL_OPTION ?? 'pickstash-option-v2',
   decision: process.env.TOSS_TPL_DECISION ?? 'pickstash-decision',
   mention: process.env.TOSS_TPL_COMMENT ?? 'pickstash-comment-v2',
-  join: process.env.TOSS_TPL_JOIN ?? 'pickstash-join',
+  join: process.env.TOSS_TPL_JOIN ?? 'pickstash-join-v2',
 }
 
 interface RequestBody {
