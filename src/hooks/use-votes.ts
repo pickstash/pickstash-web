@@ -61,6 +61,8 @@ export function useVote(boxId: string, round: number) {
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ['votes', boxId, round] })
+      // 홈 히어로 '지금 1위'는 loadHomeView가 좋아요로 계산 → 투표 시 홈은 비활성이라 refetchType:'all'로 즉시 최신화.
+      qc.invalidateQueries({ queryKey: ['home'], refetchType: 'all' })
     },
   })
 }
