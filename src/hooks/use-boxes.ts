@@ -26,13 +26,15 @@ import type { Option } from '@/lib/api/options'
 // 상자를 보여주는 모든 화면의 캐시를 무효화 — 제목·상태 변경이 뒤로가기 시 즉시 반영되게.
 // 웹 목록(['boxes']) + 토스 홈(['home'])·상자탭(['box-list',*])·서랍(['folder-view',*],['folders']).
 // (해당 키가 없는 플랫폼에선 no-op이라 웹·토스 모두 안전.)
+// refetchType:'all' — 변경 당시 대상 화면은 비활성(안 마운트)이라, 기본값이면 stale 표시만 되고
+// staleTime(60s) 캐시가 남아 뒤로가기/재진입 시 옛 데이터가 보인다. 비활성 쿼리도 즉시 refetch.
 function invalidateBoxViews(qc: QueryClient, boxId?: string) {
-  qc.invalidateQueries({ queryKey: ['boxes'] })
-  qc.invalidateQueries({ queryKey: ['home'] })
-  qc.invalidateQueries({ queryKey: ['box-list'] })
-  qc.invalidateQueries({ queryKey: ['folder-view'] })
-  qc.invalidateQueries({ queryKey: ['folders'] })
-  if (boxId) qc.invalidateQueries({ queryKey: ['box', boxId] })
+  qc.invalidateQueries({ queryKey: ['boxes'], refetchType: 'all' })
+  qc.invalidateQueries({ queryKey: ['home'], refetchType: 'all' })
+  qc.invalidateQueries({ queryKey: ['box-list'], refetchType: 'all' })
+  qc.invalidateQueries({ queryKey: ['folder-view'], refetchType: 'all' })
+  qc.invalidateQueries({ queryKey: ['folders'], refetchType: 'all' })
+  if (boxId) qc.invalidateQueries({ queryKey: ['box', boxId], refetchType: 'all' })
 }
 
 export function useCreateBox() {
