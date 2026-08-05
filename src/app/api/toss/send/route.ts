@@ -13,6 +13,8 @@ import { tossRequest } from '@/lib/toss/mtls'
 //   TOSS_TPL_{COMMENT,OPTION,DECISION,JOIN}  이벤트별 콘솔 소재 발송 코드(=templateSetCode). 미설정 시 아래 기본값
 //   TOSS_MTLS_*               mTLS 인증서(로그인 라우트와 공유)
 //   SUPABASE_SERVICE_ROLE_KEY / NEXT_PUBLIC_SUPABASE_URL
+//   TOSS_SEND_MODE            'bulk'(기본, send-bulk-message) | 'single'(send-message 개별 호출).
+//                              출시 후 발송 실패 원인 파악용 A/B 비교 — bulk가 원인인지 확인되면 제거할 것.
 
 export const runtime = 'nodejs' // node:https(mTLS)·admin 사용 → Edge 아님
 
@@ -118,18 +120,38 @@ export async function POST(request: Request) {
 
   if (!contextList.length) return NextResponse.json({ ok: true, sent: 0 })
 
+  const templateSetCode = TEMPLATE_CODE[message_key ?? 'comment']
+
+  if (process.env.TOSS_SEND_MODE === 'single') {
+    // 단건(send-message) — 유저별 개별 호출. bulk가 발송 실패 원인인지 비교하기 위한 경로.
+    let sent = 0
+    for (const { userKey, context } of contextList) {
+      const res = await tossRequest(
+        '/api-partner/v1/apps-in-toss/messenger/send-message',
+        'POST',
+        { 'Content-Type': 'application/json', 'x-toss-user-key': String(userKey) },
+        JSON.stringify({ templateSetCode, context }),
+      )
+      if (res.status !== 200) {
+        console.error('[toss/send] send-message failed', userKey, res.status, JSON.stringify(res.json), templateSetCode)
+      } else {
+        console.log('[toss/send] send-message ok', userKey, templateSetCode)
+        sent++
+      }
+    }
+    return NextResponse.json({ ok: true, sent, mode: 'single', attempted: contextList.length })
+  }
+
   const res = await tossRequest(
     '/api-partner/v1/apps-in-toss/messenger/send-bulk-message',
     'POST',
     { 'Content-Type': 'application/json' },
-    JSON.stringify({
-      templateSetCode: TEMPLATE_CODE[message_key ?? 'comment'],
-      contextList,
-    }),
+    JSON.stringify({ templateSetCode, contextList }),
   )
   if (res.status !== 200) {
-    console.error('[toss/send] send-bulk-message failed', res.status, JSON.stringify(res.json), TEMPLATE_CODE[message_key ?? 'comment'])
+    console.error('[toss/send] send-bulk-message failed', res.status, JSON.stringify(res.json), templateSetCode)
     return NextResponse.json({ error: 'toss send failed', detail: res.json }, { status: 502 })
   }
-  return NextResponse.json({ ok: true, sent: contextList.length })
+  console.log('[toss/send] send-bulk-message ok', contextList.length, templateSetCode)
+  return NextResponse.json({ ok: true, sent: contextList.length, mode: 'bulk' })
 }
