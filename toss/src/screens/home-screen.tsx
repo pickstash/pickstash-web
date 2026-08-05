@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client"; // vite alias → 토스 shim
 import { loadHomeView } from "@/lib/api/home";
 import { HomeView } from "@/components/home-view";
+import { AdBanner } from "../components/ad-banner";
 import { ScreenLoading } from "./screen-state";
 
 // 토스 홈 = 공유 로더로 데이터 fetch → 공유 HomeView 렌더. 웹과 동일 화면·로직.
@@ -29,5 +30,5 @@ export function HomeScreen() {
     );
   }
   // banner(웹 푸시 배너)는 토스에서 생략 — 토스 알림은 추후 별도 연동
-  return <HomeView {...data} />;
+  return <HomeView {...data} bottomBanner={<AdBanner />} />;
 }

@@ -9,7 +9,8 @@ import { FolderChips } from '@/components/folder-chips'
 import type { HomeViewData } from '@/lib/api/home'
 
 // 홈 화면 프리젠테이션 — 웹·토스 공유. 데이터는 loadHomeView가 계산해 props로 넘긴다.
-// banner: 웹 전용 푸시 배너 슬롯(토스는 생략). 캐릭터 로고는 next/image 대신 <img>로 프레임워크 비의존.
+// banner: 웹 전용 푸시 배너 슬롯(토스는 생략). bottomBanner: 토스 전용 인앱 광고 슬롯(웹은 생략).
+// 캐릭터 로고는 next/image 대신 <img>로 프레임워크 비의존.
 export function HomeView({
   nickname,
   hero,
@@ -17,7 +18,8 @@ export function HomeView({
   folders,
   openCount,
   banner,
-}: HomeViewData & { banner?: ReactNode }) {
+  bottomBanner,
+}: HomeViewData & { banner?: ReactNode; bottomBanner?: ReactNode }) {
   return (
     <main className="flex min-h-dvh flex-col">
       <header className="sticky top-0 z-20 flex items-center justify-between bg-cream/95 px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-3 backdrop-blur-sm">
@@ -41,6 +43,9 @@ export function HomeView({
 
         {/* ③ 서랍(주제) 칩 (탐색) */}
         <FolderChips initialFolders={folders} />
+
+        {/* ④ 배너 광고(토스 전용) — 콘텐츠 맨 아래, 하단 고정 CTA·탭바와 안 겹치게 스크롤 영역 안에 둔다 */}
+        {bottomBanner && <div className="px-5 pt-2">{bottomBanner}</div>}
       </div>
 
       {/* 하단 고정 CTA — 웹은 bottom:0. 토스는 --app-nav-h(하단 탭바 높이)만큼 띄워 탭바 위에 뜬다. */}
