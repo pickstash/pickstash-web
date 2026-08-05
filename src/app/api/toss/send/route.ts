@@ -31,6 +31,7 @@ const TEMPLATE_CODE: Record<MessageKey, string> = {
 interface RequestBody {
   box_id?: string
   folder_id?: string // 폴더 참여 알림용 (box_id 없을 때)
+  option_id?: string // 댓글·멘션: 그 댓글(선택지 상세) 화면까지 딥링크
   triggered_by: string
   target_user_ids?: string[]
   message_key?: MessageKey
@@ -59,7 +60,7 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: 'invalid body' }, { status: 400 })
   }
-  const { box_id, folder_id, triggered_by, target_user_ids, message_key } = body
+  const { box_id, folder_id, option_id, triggered_by, target_user_ids, message_key } = body
   if (!triggered_by || (!box_id && !folder_id)) {
     return NextResponse.json({ error: 'missing triggered_by/box_id|folder_id' }, { status: 400 })
   }
@@ -98,7 +99,8 @@ export async function POST(request: Request) {
         .neq('user_id', triggered_by)
       userIds = (participants ?? []).map(p => p.user_id)
     }
-    deepLinkPath = `box/${box_id}`
+    // 댓글·멘션은 그 선택지 상세(댓글 보이는 화면)까지, 그 외는 상자까지.
+    deepLinkPath = option_id ? `box/${box_id}/option/${option_id}` : `box/${box_id}`
   }
   if (!userIds.length) return NextResponse.json({ ok: true, sent: 0 })
 

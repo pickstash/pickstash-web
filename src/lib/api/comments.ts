@@ -54,16 +54,16 @@ export async function createComment(
   ])
   if (error) throw error
 
-  // 다른 참여자에게 push 알림 (실패해도 무시)
+  // 다른 참여자에게 push 알림 (실패해도 무시). option_id로 그 댓글(선택지 상세) 화면까지 딥링크.
   supabase.functions.invoke('send-push', {
-    body: { box_id: option.box_id, triggered_by: user.id, message_key: 'comment' },
+    body: { box_id: option.box_id, option_id: optionId, triggered_by: user.id, message_key: 'comment' },
   }).catch(() => {})
 
   // @멘션된 사람에게 별도 타겟 알림
   const mentionedUserIds = extractMentionedUserIds(body)
   if (mentionedUserIds.length > 0) {
     supabase.functions.invoke('send-push', {
-      body: { box_id: option.box_id, triggered_by: user.id, target_user_ids: mentionedUserIds, message_key: 'mention' },
+      body: { box_id: option.box_id, option_id: optionId, triggered_by: user.id, target_user_ids: mentionedUserIds, message_key: 'mention' },
     }).catch(() => {})
   }
 }

@@ -16,6 +16,7 @@ import { FoldersScreen } from "./screens/folders-screen";
 import { BoxInviteScreen } from "./screens/box-invite-screen";
 import { FolderInviteScreen } from "./screens/folder-invite-screen";
 import { ProfileScreen } from "./screens/profile-screen";
+import { AlertsScreen } from "./screens/alerts-screen";
 import { BoxLinksScreen, OptionNewScreen, OptionEditScreen } from "./screens/reused-pages";
 import { TabBar } from "./components/tab-bar";
 // 파라미터 없는 A형 페이지는 웹 페이지 컴포넌트를 그대로 라우팅(그대로 재사용).
@@ -95,6 +96,9 @@ function App() {
       {/* 공유 링크 뷰어(딥링크 intoss://pickstash/invite|folder-invite/<code>) — 비멤버 열람+참여 */}
       <Route path="/invite/:code" element={<BoxInviteScreen />} />
       <Route path="/folder-invite/:code" element={<FolderInviteScreen />} />
+
+      {/* 알림함 — 푸시(intoss://pickstash/alerts 고정) 목적지 */}
+      <Route path="/alerts" element={<AlertsScreen />} />
 
       {/* 마이페이지 */}
       <Route path="/profile" element={<ProfileScreen />} />
