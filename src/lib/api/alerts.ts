@@ -4,6 +4,7 @@ export interface AlertItem {
   id: string
   boxId: string
   boxTitle: string
+  optionId: string | null // 있으면 그 선택지 상세까지 이동(026 이후 활동)
   type: string
   actorNickname: string
   meta: { option_name?: string; vote_type?: string }
@@ -44,13 +45,15 @@ export async function getAlerts(limit = 100): Promise<AlertItem[]> {
   return (activities ?? []).map(a => {
     const profile = a.profiles as unknown as { nickname: string } | null
     const lastSeen = lastSeenMap.get(a.box_id)
+    const meta = (a.meta ?? {}) as { option_name?: string; vote_type?: string; option_id?: string }
     return {
       id: a.id,
       boxId: a.box_id,
       boxTitle: titleMap.get(a.box_id) ?? '상자',
+      optionId: meta.option_id ?? null,
       type: a.type,
       actorNickname: profile?.nickname ?? '누군가',
-      meta: (a.meta ?? {}) as { option_name?: string; vote_type?: string },
+      meta,
       createdAt: a.created_at,
       unseen: !lastSeen || new Date(a.created_at) > lastSeen,
     }

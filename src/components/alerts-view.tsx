@@ -31,7 +31,9 @@ export function AlertsView({ items }: { items: AlertItem[] }) {
             {items.map(a => (
               <li key={a.id}>
                 <button
-                  onClick={() => nav.push(`/box/${a.boxId}`)}
+                  onClick={() =>
+                    nav.push(a.optionId ? `/box/${a.boxId}/option/${a.optionId}` : `/box/${a.boxId}`)
+                  }
                   className={`flex w-full items-start gap-3 rounded-card border px-4 py-3 text-left active:bg-cream ${
                     a.unseen ? 'border-butter-dark/40 bg-butter-tint/50' : 'border-[#ECEADC] bg-paper'
                   }`}
