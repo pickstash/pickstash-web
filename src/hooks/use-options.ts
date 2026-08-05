@@ -44,11 +44,14 @@ export function useCreateOption(boxId: string) {
 
 export function useUpdateOption(optionId: string, boxId: string) {
   const qc = useQueryClient()
+  const nav = useNav()
   return useMutation({
     mutationFn: (input: UpdateOptionInput) => updateOption(optionId, input),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['option', optionId] })
       qc.invalidateQueries({ queryKey: ['options', boxId] })
+      // 상자 상세(서버 컴포넌트)에도 이름이 노출되므로 Router Cache도 비워 즉시 반영.
+      nav.refresh()
     },
   })
 }

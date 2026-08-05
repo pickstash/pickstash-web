@@ -69,42 +69,51 @@ export function useMessyBoxes() {
 }
 
 export function useUpdateBoxTitle(boxId: string) {
+  const nav = useNav()
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (title: string) => updateBoxTitle(boxId, title),
     onSuccess: () => {
       invalidateBoxViews(queryClient, boxId)
+      // 홈·목록은 서버 컴포넌트라 TanStack 무효화로는 안 갱신됨. Router Cache를 비워 즉시 반영.
+      nav.refresh()
     },
   })
 }
 
 export function useUpdateBoxMemo(boxId: string) {
+  const nav = useNav()
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (memo: string | null) => updateBoxMemo(boxId, memo),
     onSuccess: () => {
       invalidateBoxViews(queryClient, boxId)
+      nav.refresh()
     },
   })
 }
 
 export function useUpdateBoxDeadline(boxId: string) {
+  const nav = useNav()
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (deadline_at: string | null) => updateBoxDeadline(boxId, deadline_at),
     onSuccess: () => {
       invalidateBoxViews(queryClient, boxId)
+      nav.refresh()
     },
   })
 }
 
 export function useUpdateBoxDecisionMode(boxId: string) {
+  const nav = useNav()
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (arg: { mode: DecisionMode; deadline_at: string | null }) =>
       updateBoxDecisionMode(boxId, arg.mode, arg.deadline_at),
     onSuccess: () => {
       invalidateBoxViews(queryClient, boxId)
+      nav.refresh()
     },
   })
 }

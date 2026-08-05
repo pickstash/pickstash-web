@@ -9,7 +9,7 @@ import { Icon } from '@/components/icon'
 import { CommentComposer } from '@/components/comment-composer'
 import { useBoxVotes } from '@/hooks/use-votes'
 import { useRealtimeVotes } from '@/hooks/use-realtime-votes'
-import { useDeleteOption } from '@/hooks/use-options'
+import { useOption, useDeleteOption } from '@/hooks/use-options'
 import { useComments, useCreateComment, useUpdateComment, useDeleteComment } from '@/hooks/use-comments'
 import { useRealtimeComments } from '@/hooks/use-realtime-comments'
 import { useCommentLikes, useToggleCommentLike } from '@/hooks/use-comment-likes'
@@ -45,7 +45,7 @@ interface OptionDetailClientProps {
 }
 
 export function OptionDetailClient({
-  option,
+  option: initialOption,
   creator,
   boxId,
   round,
@@ -54,6 +54,9 @@ export function OptionDetailClient({
   myNickname,
   participants,
 }: OptionDetailClientProps) {
+  // 서버에서 받은 초기값으로 시작하되, 수정 직후 이동해와도 최신 이름·본문이 보이도록 라이브 쿼리로 덮어쓴다.
+  const { data: fetchedOption } = useOption(initialOption.id)
+  const option = fetchedOption ?? initialOption
   const { data: votes = {} } = useBoxVotes(boxId, round)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
