@@ -21,10 +21,10 @@ type MessageKey = 'comment' | 'option' | 'decision' | 'mention' | 'join'
 // 이벤트별 소재(발송 코드)를 나눈다 — 잠금화면에서 무슨 일인지 제목으로 미리 알려주려고.
 // (이동 URL은 4개 다 알림함 /alerts 고정. 문구/제목만 소재별로 다르다.) 멘션은 댓글 소재 공용.
 const TEMPLATE_CODE: Record<MessageKey, string> = {
-  comment: process.env.TOSS_TPL_COMMENT ?? 'pickstash-comment',
+  comment: process.env.TOSS_TPL_COMMENT ?? 'pickstash-comment-v2',
   option: process.env.TOSS_TPL_OPTION ?? 'pickstash-option',
   decision: process.env.TOSS_TPL_DECISION ?? 'pickstash-decision',
-  mention: process.env.TOSS_TPL_COMMENT ?? 'pickstash-comment',
+  mention: process.env.TOSS_TPL_COMMENT ?? 'pickstash-comment-v2',
   join: process.env.TOSS_TPL_JOIN ?? 'pickstash-join',
 }
 
