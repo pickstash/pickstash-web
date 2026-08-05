@@ -7,14 +7,14 @@ import { formatActivity, type BoxActivityType } from '@/lib/domain/activity-labe
 import { formatRelativeTime } from '@/lib/utils'
 import { markBoxSeen, type AlertItem } from '@/lib/api/alerts'
 import { markAllSeen } from '@/lib/api/boxes'
-import { useRealtimeAlerts } from '@/hooks/use-realtime-alerts'
 
 // 알림함 프리젠테이션 — 웹·토스 공유. 데이터는 getAlerts가 넘긴다.
 // 항목 탭 → 그 상자로 앱 내부 이동(딥링크 제약 없음). 푸시는 /alerts 고정 진입만 담당.
+// 실시간 구독(useRealtimeAlerts)은 여기서 하지 않는다 — 이 화면이 열려있을 때만 켜지면
+// 탭바 배지가 다른 탭에 있는 동안 갱신 안 됨. 앱 셸(toss/src/App.tsx)에서 항상 켠다.
 export function AlertsView({ items }: { items: AlertItem[] }) {
   const nav = useNav()
   const qc = useQueryClient()
-  useRealtimeAlerts() // 열려 있는 동안 새 활동을 실시간으로 받아 목록에 반영
   const hasUnseen = items.some(a => a.unseen)
 
   // 탭 즉시 그 상자 알림을 읽음으로(낙관적 반영 → 돌아와도 읽음 유지) + 서버 last_seen 갱신 후 이동.

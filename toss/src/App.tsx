@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "./lib/supabase";
 import { requestPushAgreementOnce } from "./lib/push-agreement";
+import { useRealtimeAlerts } from "@/hooks/use-realtime-alerts";
 import { LoginScreen } from "./screens/login-screen";
 import { ScreenLoading } from "./screens/screen-state";
 import { HomeScreen } from "./screens/home-screen";
@@ -28,6 +29,10 @@ function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(false);
   const queryClient = useQueryClient();
+
+  // 알림 실시간 구독을 앱 셸에서 항상 켜둔다 — /alerts 화면에서만 켜면 다른 탭에
+  // 있는 동안 탭바 배지가 안 갱신된다(왔다갔다 해야 뜨는 것처럼 보이던 원인).
+  useRealtimeAlerts();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {

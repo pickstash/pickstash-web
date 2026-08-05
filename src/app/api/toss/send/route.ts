@@ -127,6 +127,9 @@ export async function POST(request: Request) {
       contextList,
     }),
   )
-  if (res.status !== 200) return NextResponse.json({ error: 'toss send failed', detail: res.json }, { status: 502 })
+  if (res.status !== 200) {
+    console.error('[toss/send] send-bulk-message failed', res.status, JSON.stringify(res.json), TEMPLATE_CODE[message_key ?? 'comment'])
+    return NextResponse.json({ error: 'toss send failed', detail: res.json }, { status: 502 })
+  }
   return NextResponse.json({ ok: true, sent: contextList.length })
 }

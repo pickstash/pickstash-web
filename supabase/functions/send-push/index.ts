@@ -18,6 +18,7 @@ Deno.serve(async (req) => {
 
   const body = await req.text()
   // 발송은 fire-and-forget — 실패해도 원 mutation은 성공 취급(호출부가 .catch로 무시).
+  // 단, 실패 자체는 로그로 남긴다 — 안 그러면 발송이 조용히 죽어도 알 방법이 없다.
   await fetch(Deno.env.get('TOSS_NOTIFY_URL')!, {
     method: 'POST',
     headers: {
@@ -25,7 +26,11 @@ Deno.serve(async (req) => {
       'x-internal-secret': Deno.env.get('TOSS_NOTIFY_SECRET')!,
     },
     body,
-  }).catch(() => {})
+  })
+    .then(async res => {
+      if (!res.ok) console.error('[send-push] upstream error', res.status, await res.text().catch(() => ''))
+    })
+    .catch(e => console.error('[send-push] fetch failed', e))
 
   return new Response('OK', { headers: corsHeaders })
 })
