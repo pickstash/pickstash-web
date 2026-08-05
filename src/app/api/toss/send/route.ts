@@ -6,15 +6,15 @@ import { tossRequest } from '@/lib/toss/mtls'
 // (엣지 Deno는 mTLS 클라이언트 인증서가 불안정 → 검증된 node:https 배관을 재사용)
 // 흐름: {box_id|folder_id, triggered_by, target_user_ids?, message_key}
 //   → service_role로 대상(상자 참여자 / 폴더 멤버) 조회 → 각자 토스 userKey 해석
-//   → 토스 userKey가 있는 사람에게만 send-bulk-message(templateSetCode + context 개인화)
+//   → 토스 userKey가 있는 사람에게 유저별로 send-message(단건) 개별 호출
+//
+// send-bulk-message(대량)는 출시 후 발송 실패율이 높게 관측돼(콘솔 캠페인 로그 기준) 단건으로 전환함.
 //
 // 필요한 환경변수(비밀 — 커밋 금지):
 //   TOSS_NOTIFY_SECRET        엣지 프록시와 공유하는 내부 시크릿(무단 발송 방지)
 //   TOSS_TPL_{COMMENT,OPTION,DECISION,JOIN}  이벤트별 콘솔 소재 발송 코드(=templateSetCode). 미설정 시 아래 기본값
 //   TOSS_MTLS_*               mTLS 인증서(로그인 라우트와 공유)
 //   SUPABASE_SERVICE_ROLE_KEY / NEXT_PUBLIC_SUPABASE_URL
-//   TOSS_SEND_MODE            'bulk'(기본, send-bulk-message) | 'single'(send-message 개별 호출).
-//                              출시 후 발송 실패 원인 파악용 A/B 비교 — bulk가 원인인지 확인되면 제거할 것.
 
 export const runtime = 'nodejs' // node:https(mTLS)·admin 사용 → Edge 아님
 
@@ -122,36 +122,19 @@ export async function POST(request: Request) {
 
   const templateSetCode = TEMPLATE_CODE[message_key ?? 'comment']
 
-  if (process.env.TOSS_SEND_MODE === 'single') {
-    // 단건(send-message) — 유저별 개별 호출. bulk가 발송 실패 원인인지 비교하기 위한 경로.
-    let sent = 0
-    for (const { userKey, context } of contextList) {
-      const res = await tossRequest(
-        '/api-partner/v1/apps-in-toss/messenger/send-message',
-        'POST',
-        { 'Content-Type': 'application/json', 'x-toss-user-key': String(userKey) },
-        JSON.stringify({ templateSetCode, context }),
-      )
-      if (res.status !== 200) {
-        console.error('[toss/send] send-message failed', userKey, res.status, JSON.stringify(res.json), templateSetCode)
-      } else {
-        console.log('[toss/send] send-message ok', userKey, templateSetCode)
-        sent++
-      }
+  let sent = 0
+  for (const { userKey, context } of contextList) {
+    const res = await tossRequest(
+      '/api-partner/v1/apps-in-toss/messenger/send-message',
+      'POST',
+      { 'Content-Type': 'application/json', 'x-toss-user-key': String(userKey) },
+      JSON.stringify({ templateSetCode, context }),
+    )
+    if (res.status !== 200) {
+      console.error('[toss/send] send-message failed', userKey, res.status, JSON.stringify(res.json), templateSetCode)
+    } else {
+      sent++
     }
-    return NextResponse.json({ ok: true, sent, mode: 'single', attempted: contextList.length })
   }
-
-  const res = await tossRequest(
-    '/api-partner/v1/apps-in-toss/messenger/send-bulk-message',
-    'POST',
-    { 'Content-Type': 'application/json' },
-    JSON.stringify({ templateSetCode, contextList }),
-  )
-  if (res.status !== 200) {
-    console.error('[toss/send] send-bulk-message failed', res.status, JSON.stringify(res.json), templateSetCode)
-    return NextResponse.json({ error: 'toss send failed', detail: res.json }, { status: 502 })
-  }
-  console.log('[toss/send] send-bulk-message ok', contextList.length, templateSetCode)
-  return NextResponse.json({ ok: true, sent: contextList.length, mode: 'bulk' })
+  return NextResponse.json({ ok: true, sent, attempted: contextList.length })
 }
