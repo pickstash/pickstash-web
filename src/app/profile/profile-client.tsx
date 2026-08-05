@@ -171,7 +171,7 @@ export function ProfileClient({ userId, nickname, avatarUrl, kakaoAvatarUrl }: P
                 onChange={e => setNicknameValue(e.target.value)}
                 maxLength={20}
                 autoFocus
-                className="flex-1 rounded-field border-[1.5px] border-line bg-paper px-3.5 py-2.5 text-sm text-ink focus:border-butter-dark focus:outline-none"
+                className="min-w-0 flex-1 rounded-field border-[1.5px] border-line bg-paper px-3.5 py-2.5 text-sm text-ink focus:border-butter-dark focus:outline-none"
                 onKeyDown={e => {
                   if (e.key === 'Enter') handleSaveNickname()
                   if (e.key === 'Escape') {

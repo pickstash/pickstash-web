@@ -505,6 +505,14 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
                 만들기
               </button>
             </form>
+
+            {/* 체크 즉시 자동 저장이라 별도 확인이 없다 → '완료'로 끝맺음을 명확히 준다. */}
+            <button
+              onClick={() => setFolderModal(false)}
+              className="mt-4 w-full rounded-field bg-butter py-3.5 text-sm font-extrabold text-ink active:opacity-80"
+            >
+              완료
+            </button>
           </div>
         </div>
       )}
