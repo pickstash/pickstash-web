@@ -34,32 +34,3 @@ export function requestPushAgreementOnce(): void {
     console.warn("[push] agreement threw", e);
   }
 }
-
-export type PushAgreeResult = "newAgreement" | "alreadyAgreed" | "agreementRejected" | "unsupported";
-
-// 설정 화면 '알림 켜기' 버튼용 — 게이트 없이 매번 동의를 요청하고 결과를 Promise로 준다.
-export function requestPushAgreement(): Promise<PushAgreeResult> {
-  return new Promise((resolve) => {
-    if (!TEMPLATE) return resolve("unsupported");
-    try {
-      const cleanup = requestNotificationAgreement({
-        options: { templateCode: TEMPLATE },
-        onEvent: (result) => {
-          if (result.type !== "agreementRejected") {
-            try { localStorage.setItem(FLAG, "1"); } catch { /* noop */ }
-          }
-          cleanup();
-          resolve(result.type as PushAgreeResult);
-        },
-        onError: (e) => {
-          console.warn("[push] agreement error", e);
-          cleanup();
-          resolve("unsupported");
-        },
-      });
-    } catch (e) {
-      console.warn("[push] agreement threw", e);
-      resolve("unsupported");
-    }
-  });
-}

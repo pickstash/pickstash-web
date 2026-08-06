@@ -117,10 +117,8 @@ export async function POST(request: Request) {
   if (!userIds.length) return NextResponse.json({ ok: true, sent: 0 })
 
   // 유형별 알림 pref(028) — 이 유형을 끈 대상은 제외. 행 없으면 전부 켜진 것으로 간주.
-  // decision_auto는 '정리 완료' 토글(decision)을 공유한다.
-  // decision_auto→decision, invite→join 으로 pref 컬럼 공유(신규 컬럼 없이 게이팅).
-  const prefKey =
-    message_key === 'decision_auto' ? 'decision' : message_key === 'invite' ? 'join' : (message_key ?? 'comment')
+  // decision_auto는 '정리 완료' 토글(decision)을 공유. invite는 030에서 전용 컬럼(invite_enabled)을 가진다.
+  const prefKey = message_key === 'decision_auto' ? 'decision' : (message_key ?? 'comment')
   const prefCol = `${prefKey}_enabled`
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: prefRows } = await (admin.from as any)('notification_prefs')
