@@ -534,10 +534,10 @@ export function FolderView({ folderId, folderName, inviteCode, members, initialB
                   onChange={e => setAlsoLeaveBoxes(e.target.checked)}
                   className="mt-0.5 h-[17px] w-[17px] rounded accent-ink"
                 />
-                <span className="text-[12.5px] leading-relaxed text-ink-soft">
-                  이 서랍의 상자 <b className="text-ink">{items.length}개</b>에서도 나가기
+                <span className="break-keep text-[12.5px] leading-relaxed text-ink-soft">
+                  담긴 상자 <b className="text-ink">{items.length}개</b>에서도 나가기
                   <br />
-                  <span className="text-[11px] text-ink-faint">(다른 서랍에도 든 상자는 유지돼요)</span>
+                  <span className="text-[11px] text-ink-faint">체크하지 않으면 상자에는 계속 참여해요.</span>
                 </span>
               </label>
             )}
