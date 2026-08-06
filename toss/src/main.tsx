@@ -57,8 +57,17 @@ configureClipboardPeeker(async () => {
 // 이용후기(리뷰) — 프로필의 '이용후기 남기기'가 호출. 토스 네이티브 리뷰 UI(피로도 정책상 항상 뜨진 않음).
 // 미지원 버전(5.253.0 미만)은 reject → 조용히 무시.
 configureReviewRequester(() => {
+  // 진단 로그: 미지원(구버전)인지 / 호출은 됐는지 구분. 단, 피로도 정책으로 화면이 안 떠도
+  // requestReview는 에러 없이 resolve될 수 있어(정책 차단은 여기서 감지 불가).
   try {
-    requestReview().catch((e) => console.warn("[review]", e));
+    const supported = (requestReview as unknown as { isSupported?: () => boolean }).isSupported?.();
+    console.log("[review] requestReview 호출, isSupported =", supported);
+    if (supported === false) {
+      console.warn("[review] 이 토스앱 버전은 리뷰를 지원하지 않아요(5.253.0+ 필요).");
+    }
+    requestReview()
+      .then(() => console.log("[review] resolved (화면 노출 여부는 피로도 정책 소관)"))
+      .catch((e) => console.warn("[review] rejected", e?.code ?? e));
   } catch (e) {
     console.warn("[review] threw", e);
   }
