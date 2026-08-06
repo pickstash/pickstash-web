@@ -1,6 +1,7 @@
 import { AppLink } from '@/lib/nav/nav'
 import { Icon } from '@/components/icon'
 import { formatDday } from '@/lib/utils'
+import { FriendInviteButton } from '@/components/friend-invite-button'
 import type { HeroParticipant, OpenBoxCard } from '@/lib/domain/home'
 
 // 타입은 공유 도메인(home.ts)에 단일 정의 — 기존 임포터 호환 위해 여기서 re-export.
@@ -42,22 +43,35 @@ function HeroAvatars({ participants, max = 4 }: { participants: HeroParticipant[
  */
 export function DecisionHero({ box }: { box: OpenBoxCard | null }) {
   if (!box) {
+    // 데이터가 없는 첫 화면 — 휑하지 않게 환영 + 1·2·3 온보딩 + 친구 초대.
+    // 주 행동('새 상자 만들기')은 홈 하단 고정 CTA가 담당하므로 여기선 안내와 친구 초대만.
     return (
-      <section className="px-5">
-        <div className="flex flex-col items-center gap-3 rounded-card border border-dashed border-[#D9D6C2] bg-paper/60 px-6 py-10 text-center">
-          {/*<Image src="/icons/character.png" alt="" width={72} height={54} className="h-[54px] w-auto" />*/}
+      <section className="px-5 pt-1">
+        <div className="flex flex-col items-center gap-4 px-2 py-6 text-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icons/character.png" alt="" className="h-[56px] w-auto" />
           <div>
-            <p className="text-[14px] font-extrabold text-ink">지금 정리할 상자가 없어요</p>
-            <p className="mt-1 text-[12px] leading-relaxed text-ink-soft">
-              새 상자를 만들거나 친구 상자에 참여하면<br />여기에 모여요.
+            <p className="text-[18px] font-extrabold tracking-tight text-ink">첫 상자를 만들어볼까요?</p>
+            <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-soft">
+              정하기 어려운 걸 상자에 담아<br />친구랑 투표로 정해요.
             </p>
           </div>
+          <div className="w-full space-y-2">
+            {([['1', '고민을 상자로 만들고'], ['2', '후보·링크를 담고'], ['3', '함께 투표해서 정해요']] as const).map(([n, t]) => (
+              <div key={n} className="flex items-center gap-3 rounded-[14px] border border-line bg-paper px-3.5 py-3 text-left">
+                <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full bg-butter text-[12px] font-extrabold text-ink">{n}</span>
+                <span className="text-[12.5px] font-semibold text-ink">{t}</span>
+              </div>
+            ))}
+          </div>
+          <FriendInviteButton />
         </div>
       </section>
     )
   }
 
   const dday = box.isAuto && box.deadlineAt ? formatDday(box.deadlineAt) : null
+  const ddayUrgent = dday === 'D-day' || dday === 'D-1' || dday === '마감 지남'
 
   return (
     <section className="px-5">
@@ -77,10 +91,14 @@ export function DecisionHero({ box }: { box: OpenBoxCard | null }) {
                 />
               )}
               {dday && (
-                <div className="shrink-0 rounded-[14px] bg-paper px-[11px] py-[7px] text-center shadow-[0_2px_6px_rgba(42,42,39,0.08)]">
-                  <div className="text-[18px] font-extrabold leading-none text-tomato tabular-nums">{dday}</div>
-                  <div className="mt-0.5 text-[9.5px] font-bold text-ink-faint">마감</div>
-                </div>
+                <span
+                  className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-extrabold tabular-nums ${
+                    ddayUrgent ? 'bg-tomato-tint text-tomato' : 'bg-cream text-ink-soft'
+                  }`}
+                >
+                  <span className={`h-1.5 w-1.5 rounded-full ${ddayUrgent ? 'bg-tomato' : 'bg-ink-faint'}`} />
+                  마감 {dday}
+                </span>
               )}
             </div>
           </div>

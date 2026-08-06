@@ -28,25 +28,26 @@ function RailAvatars({ participants, max = 3 }: { participants: HeroParticipant[
   )
 }
 
-function DeadlineChip({ deadlineAt }: { deadlineAt: string }) {
+/** 마감 코너 배지 — 카드 우상단(텍스트 흐름 밖). 급하면 토마토, 여유면 차분. */
+function CornerDeadline({ deadlineAt }: { deadlineAt: string }) {
   const label = formatDday(deadlineAt)
   const urgent = label === 'D-day' || label === 'D-1' || label === '마감 지남'
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${
+      className={`absolute right-2.5 top-2.5 rounded-lg px-1.5 py-1 text-[9.5px] font-extrabold leading-none ${
         urgent ? 'bg-tomato-tint text-tomato' : 'bg-cream text-ink-soft'
       }`}
     >
-      <Icon name="calendar" size={11} />
-      마감 {label}
+      {label}
     </span>
   )
 }
 
 /**
- * "이어서 정리할 상자" — 히어로 다음으로 정리할 상자들을 가로 스크롤 미니 카드로.
- * 세로 리스트(창고 화면)와 리듬을 다르게 해 홈과 목록을 구분한다.
- * boxes가 비면(예: 어질러진 상자가 히어로 1개뿐) 섹션 자체를 렌더하지 않는다.
+ * "정리 중" 레일 — 히어로 다음 상자들을 가로 스크롤 미니 카드로.
+ * 카드 = 제목(2줄) → 하단 그룹[1위 → 참여자]. 마감은 우상단 코너 배지로 빼 제목/1위 흐름을 안 건드린다.
+ * 높이 120px 고정 + 하단 그룹으로, 마감/1위 유무·공동1위·긴 이름·혼자 어떤 케이스든 참여자 줄이 같은 자리에 온다.
+ * boxes가 비면(어질러진 상자가 히어로 1개뿐) 섹션 자체를 렌더하지 않는다.
  */
 export function DecisionRail({ boxes, totalOpen }: { boxes: OpenBoxCard[]; totalOpen: number }) {
   if (boxes.length === 0) return null
@@ -54,66 +55,57 @@ export function DecisionRail({ boxes, totalOpen }: { boxes: OpenBoxCard[]; total
   return (
     <section className="pt-5">
       <div className="mb-2.5 flex items-center justify-between px-5">
-        <h2 className="text-[14px] font-extrabold text-ink">이어서 정리할 상자</h2>
+        {/* 상자가 주인공 — 라벨은 얇게(“정리 중 · N”). */}
+        <h2 className="text-[12px] font-bold text-ink-soft">정리 중 · {totalOpen}</h2>
         {totalOpen > boxes.length + 1 && (
           <AppLink href="/messy" className="text-[12px] font-semibold text-ink-faint active:opacity-70">
-            전체 {totalOpen} ›
+            전체 ›
           </AppLink>
         )}
       </div>
 
       <div className="flex gap-2.5 overflow-x-auto px-5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {boxes.map(box => (
-          <AppLink key={box.id} href={`/box/${box.id}`} className="block shrink-0">
-            <div className="flex h-[150px] w-[176px] flex-col gap-2 overflow-hidden rounded-[18px] border border-[#ECEADC] bg-paper p-3.5 shadow-[0_2px_10px_rgba(42,42,39,0.05)] active:bg-butter-tint/40">
-              <div className="flex items-start gap-1.5">
-                <h4 className="line-clamp-2 min-h-[36px] flex-1 text-[14px] font-extrabold leading-snug tracking-tight text-ink">
+        {boxes.map(box => {
+          const hasDeadline = box.isAuto && !!box.deadlineAt
+          return (
+            <AppLink key={box.id} href={`/box/${box.id}`} className="block shrink-0">
+              <div className="relative flex h-[120px] w-[168px] flex-col overflow-hidden rounded-[18px] border border-[#ECEADC] bg-paper p-3.5 shadow-[0_2px_10px_rgba(42,42,39,0.05)] active:bg-butter-tint/40">
+                {hasDeadline && <CornerDeadline deadlineAt={box.deadlineAt!} />}
+                <h4 className={`line-clamp-2 text-[13px] font-extrabold leading-snug tracking-tight text-ink ${hasDeadline ? 'pr-10' : ''}`}>
                   {box.title}
                 </h4>
-              </div>
 
-              {box.isSolo ? (
-                <>
-                  {/* 마감(메타)은 위, '혼자 쓰는 상자'는 맨 아래 고정해 옆 카드 참여줄과 줄 맞춤 */}
-                  {box.isAuto && box.deadlineAt && (
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <DeadlineChip deadlineAt={box.deadlineAt} />
-                    </div>
-                  )}
+                {box.isSolo ? (
                   <span className="mt-auto inline-flex items-center gap-1 text-[11px] font-semibold text-ink-faint">
                     <Icon name="box" size={11} />
                     혼자 쓰는 상자
                   </span>
-                </>
-              ) : (
-                <>
-                  {/* 마감 · 1위 (있는 것만) — 좋아요 표시는 생략. 한 줄에 같이 두면 길어질 때
-                      줄바꿈되며 옆 카드와 높이가 안 맞아서, 마감을 위 줄에 따로 둔다.
-                      마감 줄은 높이를 항상 예약해둬서(min-h) 마감 유무와 무관하게 1위 위치가 카드마다 똑같게 한다. */}
-                  <div className="flex min-h-[20px] items-center">
-                    {box.isAuto && box.deadlineAt && <DeadlineChip deadlineAt={box.deadlineAt} />}
-                  </div>
-                  {box.leaders.length > 0 && (
-                    <span className="inline-flex min-w-0 max-w-full items-center gap-1 text-[11.5px] font-bold text-ink">
-                      <span className="shrink-0 whitespace-nowrap rounded-full bg-butter px-1.5 py-0.5 text-[10px] font-extrabold">
-                        {box.leaders.length > 1 ? '공동 1위' : '1위'}
+                ) : (
+                  /* 하단 그룹 — 1위 바로 위에 참여자(간격 3px). 1위 없으면 '후보 담는 중'으로 자리 유지. */
+                  <div className="mt-auto flex flex-col gap-[3px]">
+                    {box.leaders.length > 0 ? (
+                      <span className="flex min-w-0 items-center gap-1 text-[11.5px] font-bold text-ink">
+                        <span className="shrink-0 whitespace-nowrap rounded-full bg-butter px-1.5 py-0.5 text-[10px] font-extrabold">
+                          {box.leaders.length > 1 ? '공동 1위' : '1위'}
+                        </span>
+                        {/* 긴 항목 이름은 1줄 말줄임 */}
+                        <span className="min-w-0 truncate">{leadersLabel(box.leaders)}</span>
                       </span>
-                      <span className="min-w-0 truncate">{leadersLabel(box.leaders)}</span>
-                    </span>
-                  )}
-
-                  {/* 누가 참여 중인지 — 카드 맨 아래 고정(mt-auto)해 1위 유무와 무관하게 옆 카드와 줄 맞춤 */}
-                  {box.participants.length > 1 && (
-                    <div className="mt-auto flex items-center gap-1.5">
-                      <RailAvatars participants={box.participants} />
-                      <span className="text-[11px] font-semibold text-ink-faint">{box.participants.length}명 참여 중</span>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          </AppLink>
-        ))}
+                    ) : (
+                      <span className="text-[11px] font-semibold text-ink-faint">후보 담는 중</span>
+                    )}
+                    {box.participants.length > 1 && (
+                      <div className="flex items-center gap-1.5">
+                        <RailAvatars participants={box.participants} />
+                        <span className="text-[11px] font-semibold text-ink-faint">{box.participants.length}명</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </AppLink>
+          )
+        })}
       </div>
     </section>
   )
