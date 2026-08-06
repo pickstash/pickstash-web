@@ -28,7 +28,7 @@ export function FriendInviteButton() {
       className="flex w-full items-center justify-center gap-2 rounded-field border-[1.5px] border-line bg-paper py-3 text-[13px] font-extrabold text-ink active:bg-cream"
     >
       <Icon name={copied ? 'check' : 'user'} size={15} />
-      {copied ? '링크 복사됨!' : '친구 초대하기'}
+      {copied ? '링크 복사됨!' : '친구와 함께하기'}
     </button>
   )
 }

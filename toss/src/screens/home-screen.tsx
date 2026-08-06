@@ -30,5 +30,11 @@ export function HomeScreen() {
     );
   }
   // banner(웹 푸시 배너)는 토스에서 생략 — 토스 알림은 추후 별도 연동
-  return <HomeView {...data} bottomBanner={<AdBanner />} />;
+  // 배너는 탭바 위 고정(AdBanner 자체가 fixed) — 피드 슬롯 대신 형제로 렌더.
+  return (
+    <>
+      <HomeView {...data} />
+      <AdBanner />
+    </>
+  );
 }

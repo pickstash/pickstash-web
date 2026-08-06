@@ -18,8 +18,8 @@ export function OnboardingScreen({ nickname }: { nickname: string }) {
 
         {/* 인사(작게·옅게) → 헤드라인(주인공) → 한 줄 설명 : 한 호흡으로 읽히게 */}
         <div className="mt-6">
-          <p className="text-[13.5px] font-semibold text-ink-soft">{nickname}님의 결정창고에서</p>
-          <h1 className="mt-1.5 text-[25px] font-extrabold leading-[1.25] tracking-tight text-ink text-balance">
+          <p className="text-[18px]">{nickname}님의 결정창고에서</p>
+          <h1 className="mt-1 text-[25px] font-extrabold leading-[1.25] tracking-tight text-ink text-balance">
             첫 상자를 만들어볼까요?
           </h1>
           <p className="mt-3 text-[13px] leading-relaxed text-ink-soft">
@@ -42,13 +42,13 @@ export function OnboardingScreen({ nickname }: { nickname: string }) {
         </div>
 
         {/* 액션 — 주(새 상자) + 부(친구 초대) */}
-        <div className="mt-8 w-full space-y-2.5">
+        <div className="mt-10 w-full space-y-2.5">
           <AppLink href="/box/new" className="block">
             <button className="flex w-full items-center justify-center gap-1.5 rounded-field bg-ink py-4 text-sm font-extrabold text-cream active:opacity-80">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
                 <path d="M12 5v14M5 12h14" />
               </svg>
-              새 상자 만들기
+              상자 만들기
             </button>
           </AppLink>
           <FriendInviteButton />
