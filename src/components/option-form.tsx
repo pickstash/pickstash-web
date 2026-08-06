@@ -104,6 +104,10 @@ export function OptionForm({
     urlLinks.length > 0 &&
     urlLinks.every(b => !b.title)
 
+  // 링크 넣은 직후 OG 제목을 가져오는 동안(이름이 아직 빔) 이름 칸에 로딩 표시 —
+  // 비어있다 툭 채워지는 딜레이가 어색하지 않게(제목 준비 중임을 알림).
+  const nameLoading = !name.trim() && Object.values(linkLoading).some(Boolean)
+
   function updateBlock(id: string, patch: Record<string, unknown>) {
     setBlocks(prev => prev.map(b => (b.id === id ? ({ ...b, ...patch } as OptionBlock) : b)))
   }
@@ -307,10 +311,16 @@ export function OptionForm({
               }
               setName(value)
             }}
-            placeholder="링크 붙여넣기 또는 이름 입력"
+            placeholder={nameLoading ? '제목 가져오는 중…' : '링크 붙여넣기 또는 이름 입력'}
             className="w-full rounded-field border-[1.5px] border-line bg-paper px-4 py-3 pr-10 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none focus:ring-[3px] focus:ring-butter-tint"
             required
           />
+          {nameLoading && (
+            <svg className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-ink-faint" fill="none" viewBox="0 0 24 24" aria-hidden>
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+            </svg>
+          )}
           {name && (
             <button
               type="button"
