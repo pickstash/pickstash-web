@@ -24,12 +24,12 @@ export function ShareFolderLinkButton({ inviteCode }: { inviteCode: string }) {
     <button
       onClick={handleShare}
       aria-label="서랍 공유 링크"
-      className={`flex w-full items-center justify-center gap-2 rounded-field py-4 text-sm font-bold transition active:opacity-80 ${
-        copied ? 'bg-butter text-ink' : 'bg-ink text-cream'
+      className={`flex w-full items-center justify-center gap-2 rounded-field border py-3.5 text-sm font-bold transition active:opacity-80 ${
+        copied ? 'border-butter-dark bg-butter text-ink' : 'border-line bg-paper text-ink'
       }`}
     >
       <Icon name={copied ? 'check' : 'link'} size={17} />
-      {copied ? '링크 복사됨!' : hasNativeShare() ? '공유로 초대하기' : '링크로 초대하기'}
+      {copied ? '링크 복사됨!' : hasNativeShare() ? '새로운 사람 초대하기' : '링크로 초대하기'}
     </button>
   )
 }
