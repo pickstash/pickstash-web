@@ -57,7 +57,7 @@ export function NotificationSettingsScreen() {
     const r = await requestPushAgreement();
     setAgreeMsg(
       r === "agreementRejected"
-        ? "토스에서 알림을 거부했어요. 토스 앱 설정에서 켤 수 있어요."
+        ? "알림을 거부했어요. 오른쪽 위 ···(앱 설정) → 알림에서 켤 수 있어요."
         : r === "unsupported"
           ? "이 환경에선 알림 요청이 지원되지 않아요."
           : "알림이 켜졌어요.",
@@ -82,7 +82,8 @@ export function NotificationSettingsScreen() {
           </button>
           {agreeMsg && <p className="mt-2 text-center text-[12px] text-ink-soft">{agreeMsg}</p>}
           <p className="mt-3 text-[11.5px] leading-relaxed text-ink-faint">
-            완전히 끄려면 토스 앱 → 전체 → 설정 → 알림 → 서비스별 알림에서 꺼주세요.
+            결정창고 알림만 끄려면 오른쪽 위 <b className="font-bold">···(앱 설정)</b> → 알림을 꺼주세요.
+            토스 앱 알림은 그대로 유지돼요.
           </p>
         </section>
 
@@ -101,7 +102,7 @@ export function NotificationSettingsScreen() {
             ))}
           </div>
           <p className="mt-2 px-1 text-[11.5px] leading-relaxed text-ink-faint">
-            세부 알림을 꺼도 앱 알림 자체는 유지돼요. 완전히 멈추려면 위에서 토스 설정을 이용하세요.
+            세부 알림을 꺼도 앱 알림 자체는 유지돼요. 결정창고 알림을 아예 끄려면 오른쪽 위 ···(앱 설정) → 알림에서 꺼주세요.
           </p>
         </section>
       </div>
