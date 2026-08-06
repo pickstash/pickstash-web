@@ -23,18 +23,25 @@ export async function loadFolders(
 
   let cards: FolderCard[] = []
   if (ids.length > 0) {
-    const [{ data: folders }, { data: bf }, { data: allMems }] = await Promise.all([
+    const [{ data: folders }, { data: bf }, { data: allMems }, { data: myParts }] = await Promise.all([
       supabase.from('folders').select('id, name, invite_code').in('id', ids),
-      supabase.from('box_folders').select('folder_id').in('folder_id', ids),
+      supabase.from('box_folders').select('folder_id, box_id').in('folder_id', ids),
       supabase
         .from('folder_members')
         .select('folder_id, profiles(id, nickname, avatar_url)')
         .in('folder_id', ids)
         .order('joined_at', { ascending: true }),
+      supabase.from('box_participants').select('box_id').eq('user_id', userId),
     ])
 
+    // 카운트는 상세(참여자만 보임, RLS)와 일치하게 '내가 참여 중인 상자'만 센다.
+    // (상자에서 나갔는데 box_folders 행이 남은 dangling → 목록만 부풀던 불일치 방지)
+    const myBoxIds = new Set((myParts ?? []).map(p => p.box_id))
     const boxCount = new Map<string, number>()
-    for (const r of bf ?? []) boxCount.set(r.folder_id, (boxCount.get(r.folder_id) ?? 0) + 1)
+    for (const r of bf ?? []) {
+      if (!myBoxIds.has(r.box_id)) continue
+      boxCount.set(r.folder_id, (boxCount.get(r.folder_id) ?? 0) + 1)
+    }
 
     type MemRow = { folder_id: string; profiles: FolderCard['members'][number] | null }
     const memMap = new Map<string, FolderCard['members']>()
