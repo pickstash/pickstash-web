@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNav, AppLink } from '@/lib/nav/nav'
+import { requestAppReview } from '@/lib/review/native-review'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { updateNickname, updateAvatarUrl, uploadAvatar } from '@/lib/api/profile'
 import { signOut } from '@/lib/api/auth'
@@ -224,6 +225,20 @@ export function ProfileClient({ userId, nickname, avatarUrl, kakaoAvatarUrl }: P
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
             </svg>
           </AppLink>
+        )}
+
+        {/* 이용후기 (토스 네이티브 리뷰 — 피로도 정책상 항상 뜨진 않음) */}
+        {nav.platform === 'toss' && (
+          <button
+            type="button"
+            onClick={() => requestAppReview()}
+            className="flex w-full items-center justify-between overflow-hidden rounded-card border border-[#ECEADC] bg-paper px-5 py-4 text-sm text-ink active:bg-cream"
+          >
+            <span>이용후기 남기기</span>
+            <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
         )}
 
         {/* 계정 */}

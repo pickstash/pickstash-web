@@ -2,9 +2,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
-import { getSchemeUri, getTossShareLink, share, getClipboardText, getPlatformOS } from "@apps-in-toss/web-framework";
+import { getSchemeUri, getTossShareLink, share, getClipboardText, getPlatformOS, requestReview } from "@apps-in-toss/web-framework";
 import { configureNativeShare } from "@/lib/share/native-share";
 import { configureClipboardReader } from "@/lib/clipboard/native-clipboard";
+import { configureReviewRequester } from "@/lib/review/native-review";
 
 import App from "./App.tsx";
 import { TossNavProvider } from "./lib/nav-provider";
@@ -40,6 +41,16 @@ configureClipboardReader(async () => {
     if (result !== "allowed") throw new Error("clipboard denied");
   }
   return getClipboardText();
+});
+
+// 이용후기(리뷰) — 프로필의 '이용후기 남기기'가 호출. 토스 네이티브 리뷰 UI(피로도 정책상 항상 뜨진 않음).
+// 미지원 버전(5.253.0 미만)은 reject → 조용히 무시.
+configureReviewRequester(() => {
+  try {
+    requestReview().catch((e) => console.warn("[review]", e));
+  } catch (e) {
+    console.warn("[review] threw", e);
+  }
 });
 
 // iOS(WKWebView)는 viewport의 user-scalable=no를 무시해 핀치 확대가 살아있다(토스 규정 위반).
