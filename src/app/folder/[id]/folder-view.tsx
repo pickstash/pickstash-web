@@ -338,7 +338,8 @@ export function FolderView({ folderId, folderName, inviteCode, members, initialB
             <p className="break-keep text-[15px] font-extrabold text-ink">함께 쓰는 서랍이에요</p>
             <p className="mt-1.5 break-keep text-[12.5px] leading-relaxed text-ink-soft">
               &lsquo;{title}&rsquo; 서랍을 함께 쓰는{' '}
-              <span className="font-bold text-ink">{members.length}명 모두</span>에게 고른 상자가 공유돼요. 계속할까요?
+              <span className="font-bold text-ink">{members.length}명 모두</span>에게{' '}
+              {picked.size > 1 ? `고른 상자 ${picked.size}개가` : '이 상자가'} 공유돼요. 계속할까요?
             </p>
             <div className="mt-4 flex gap-2">
               <button
