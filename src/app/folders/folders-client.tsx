@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useBodyScrollLock } from '@/hooks/use-body-scroll-lock'
 import { AppLink } from '@/lib/nav/nav'
@@ -47,6 +47,9 @@ type Me = { id: string; nickname: string; avatar_url: string | null }
 
 export function FoldersClient({ initialFolders, nickname, me }: { initialFolders: FolderCard[]; nickname: string; me: Me }) {
   const [folders, setFolders] = useState(initialFolders)
+  // refetch(무효화)로 새 initialFolders가 오면 목록 동기화 — useState는 최초 1회라 prop만으론 안 바뀜
+  // (서랍 담기·상자수 변화가 새로고침 없이 반영되게).
+  useEffect(() => { setFolders(initialFolders) }, [initialFolders])
   const [adding, setAdding] = useState(false)
   const [name, setName] = useState('')
   const [menuFor, setMenuFor] = useState<FolderCard | null>(null)

@@ -34,6 +34,8 @@ function invalidateBoxViews(qc: QueryClient, boxId?: string) {
   qc.invalidateQueries({ queryKey: ['box-list'], refetchType: 'all' })
   qc.invalidateQueries({ queryKey: ['folder-view'], refetchType: 'all' })
   qc.invalidateQueries({ queryKey: ['folders'], refetchType: 'all' })
+  qc.invalidateQueries({ queryKey: ['folders-page'], refetchType: 'all' }) // 서랍 목록 상자수(참여 스코프)
+  qc.invalidateQueries({ queryKey: ['box-detail'], refetchType: 'all' })   // 토스 상자 상세
   if (boxId) qc.invalidateQueries({ queryKey: ['box', boxId], refetchType: 'all' })
 }
 

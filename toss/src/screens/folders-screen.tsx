@@ -17,6 +17,8 @@ export function FoldersScreen() {
       if (!user) throw new Error("세션이 없어요");
       return loadFolders(supabase, user.id);
     },
+    // 재진입 시 항상 최신 — 상자 담기/나가기로 바뀐 상자수·목록을 새로고침 없이 반영.
+    refetchOnMount: "always",
   });
 
   if (isPending) return <ScreenLoading />;
