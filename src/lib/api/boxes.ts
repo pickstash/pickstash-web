@@ -142,6 +142,13 @@ export async function autoDecideBox(id: string): Promise<void> {
   const supabase = createClient()
   const { error } = await supabase.rpc('auto_decide_box', { p_box_id: id })
   if (error) throw error
+
+  // 자동마감 = 사람이 아니라 마감이 정한 것 → 시스템 문구('투표가 마감돼 정리됐어요', 이름 없음)로 알린다.
+  // triggered_by = 지금 이 화면을 연 사람(라우트가 발신자는 제외) → 나머지 참여자에게 발송.
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user) {
+    sendPush({ box_id: id, triggered_by: user.id, message_key: 'decision_auto' })
+  }
 }
 
 export async function deleteBox(id: string): Promise<void> {

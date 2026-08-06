@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/client'
 
-type MessageKey = 'comment' | 'option' | 'decision' | 'mention' | 'join'
+type MessageKey = 'comment' | 'option' | 'decision' | 'decision_auto' | 'mention' | 'join'
 
 interface SendPushBody {
   box_id?: string
