@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { uploadOptionImage } from '@/lib/api/options'
 import { fetchLinkPreview, proxiedImageUrl } from '@/lib/api/unfurl'
-import { readClipboardText, peekClipboardIfAllowed } from '@/lib/clipboard/native-clipboard'
+import { peekClipboardIfAllowed } from '@/lib/clipboard/native-clipboard'
 import {
   cleanBlocks,
   linkBlocksOf,
@@ -50,13 +50,8 @@ export function OptionForm({
   const [uploading, setUploading] = useState(false)
   const [imageError, setImageError] = useState<string | null>(null)
   const [linkLoading, setLinkLoading] = useState<Record<string, boolean>>({})
-  // 클립보드 붙여넣기 미리보기 — 읽은 내용을 먼저 보여주고(어떤 링크/텍스트인지) 확인 후 담는다.
-  const [clipboardPreview, setClipboardPreview] = useState<
-    | { kind: 'link'; url: string; label: string }
-    | { kind: 'text'; text: string }
-    | { kind: 'error'; msg: string }
-    | null
-  >(null)
+  // 클립보드에 링크가 있으면(권한 허용 시 자동 감지) 카드로 제안한다. 링크 없으면 null → 아무것도 안 뜸.
+  const [clipboardPreview, setClipboardPreview] = useState<{ kind: 'link'; url: string; label: string } | null>(null)
   const [clipboardUsed, setClipboardUsed] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   // 비동기(OG 로드) 후 최신 상태를 읽기 위한 ref
@@ -134,46 +129,11 @@ export function OptionForm({
     loadLinkPreview(id, url)
   }
 
-  // 클립보드의 링크를 '한 번의 탭'(제스처)으로 읽어 선택지에 담는다.
-  // 이름 필드 붙여넣기와 동일 처리 — 섞인 글씨는 이름 후보로, URL은 링크 블록+미리보기로.
-  // 1) 읽기 — 클립보드 내용을 미리보기로만 띄운다(아직 안 담음). 뭘 붙일지 먼저 확인시킨다.
-  async function peekClipboard() {
-    setClipboardPreview(null)
-    let text = ''
-    try {
-      text = await readClipboardText() // 웹=navigator, 토스=네이티브 getClipboardText(주입)
-    } catch (e) {
-      // 웹은 navigator.clipboard가 https·권한 필요(http 프리뷰·권한 차단·일부 브라우저 미지원 시 실패).
-      console.warn('[clipboard] read failed', e)
-      setClipboardPreview({
-        kind: 'error',
-        msg: '브라우저가 클립보드 자동 읽기를 막았어요. 링크를 아래 “선택지 이름” 칸에 붙여넣으면(Ctrl+V) 자동으로 링크가 돼요.',
-      })
-      return
-    }
-    const t = text.trim()
-    if (!t) {
-      setClipboardPreview({ kind: 'error', msg: '클립보드가 비어 있어요.' })
-      return
-    }
-    const split = splitPastedLink(t)
-    if (split) setClipboardPreview({ kind: 'link', url: split.url, label: split.label })
-    else setClipboardPreview({ kind: 'text', text: t }) // 링크로 안 잡힘 → 원문을 보여주고 이름으로 넣을지 물음
-  }
-
-  // 2) 확인 — 미리보기의 링크를 실제로 담는다.
+  // 자동 제안 카드에서 '링크 넣기' 확인 — 미리보기의 링크를 실제로 담는다.
   function confirmClipboardLink() {
     if (clipboardPreview?.kind !== 'link') return
     if (clipboardPreview.label && !name.trim()) setName(clipboardPreview.label)
     addLinkWithUrl(clipboardPreview.url)
-    setClipboardUsed(true)
-    setClipboardPreview(null)
-  }
-
-  // 링크가 아닌 텍스트였을 때 — 선택지 '이름'으로 넣기(붙여넣을 게 링크가 아니었던 경우 구제).
-  function useClipboardAsName() {
-    if (clipboardPreview?.kind !== 'text') return
-    if (!name.trim()) setName(clipboardPreview.text.slice(0, 60))
     setClipboardUsed(true)
     setClipboardPreview(null)
   }
@@ -271,82 +231,32 @@ export function OptionForm({
 
   return (
     <form onSubmit={handleSubmit} onPasteCapture={handlePasteImage} className="space-y-5 pb-32">
-      {/* 복사한 링크 넣기 — 탭(제스처) 안에서 클립보드를 읽어 링크 자동 담기 */}
-      {offerClipboardLink && !clipboardUsed && (
-        <div>
-          {clipboardPreview === null ? (
-            // 읽기 전 — 탭하면 클립보드를 읽어 아래에 미리보기를 띄운다(바로 안 담음).
+      {/* 클립보드에 링크가 있을 때만 '이 링크 넣을까요?' 자동 제안(토스 계좌 추천식). 없으면 아무것도 안 뜬다. */}
+      {offerClipboardLink && !clipboardUsed && clipboardPreview?.kind === 'link' && (
+        <div className="rounded-field border-[1.5px] border-butter-dark bg-butter-tint/40 p-3">
+          <p className="text-[11.5px] font-bold text-ink-soft">이 링크를 넣을까요?</p>
+          {clipboardPreview.label && (
+            <p className="mt-1 truncate text-[13px] font-bold text-ink">{clipboardPreview.label}</p>
+          )}
+          <p className={`truncate text-[12px] text-ink-soft ${clipboardPreview.label ? '' : 'mt-1'}`}>
+            {clipboardPreview.url}
+          </p>
+          <div className="mt-2.5 flex gap-2">
             <button
               type="button"
-              onClick={peekClipboard}
-              className="flex w-full items-center gap-2 rounded-field border-[1.5px] border-dashed border-butter-dark bg-butter-tint/50 px-4 py-3 text-left text-[13px] font-bold text-ink active:bg-butter-tint"
+              onClick={confirmClipboardLink}
+              className="flex-1 rounded-field bg-ink py-2.5 text-[13px] font-bold text-cream active:opacity-80"
             >
-              <span aria-hidden className="text-base">📋</span>
-              <span className="flex-1">복사한 링크 넣기</span>
-              <span className="text-[11px] font-semibold text-ink-soft">클립보드에서</span>
+              링크 넣기
             </button>
-          ) : clipboardPreview.kind === 'link' ? (
-            // 링크 발견 — 무엇을 넣을지 보여주고 확인받는다.
-            <div className="rounded-field border-[1.5px] border-butter-dark bg-butter-tint/40 p-3">
-              <p className="text-[11.5px] font-bold text-ink-soft">이 링크를 넣을까요?</p>
-              {clipboardPreview.label && (
-                <p className="mt-1 truncate text-[13px] font-bold text-ink">{clipboardPreview.label}</p>
-              )}
-              <p className={`truncate text-[12px] text-ink-soft ${clipboardPreview.label ? '' : 'mt-1'}`}>
-                {clipboardPreview.url}
-              </p>
-              <div className="mt-2.5 flex gap-2">
-                <button
-                  type="button"
-                  onClick={confirmClipboardLink}
-                  className="flex-1 rounded-field bg-ink py-2.5 text-[13px] font-bold text-cream active:opacity-80"
-                >
-                  링크 넣기
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setClipboardPreview(null)}
-                  className="rounded-field border border-line bg-paper px-4 py-2.5 text-[13px] font-bold text-ink-soft active:bg-cream"
-                >
-                  취소
-                </button>
-              </div>
-            </div>
-          ) : clipboardPreview.kind === 'text' ? (
-            // 링크로 못 잡음 — 복사한 원문을 보여주고 '이름으로 넣기'로 구제.
-            <div className="rounded-field border-[1.5px] border-line bg-paper p-3">
-              <p className="text-[11.5px] font-bold text-tangerine">링크를 못 찾았어요. 복사한 내용:</p>
-              <p className="mt-1 line-clamp-2 break-all text-[12.5px] text-ink">{clipboardPreview.text}</p>
-              <div className="mt-2.5 flex gap-2">
-                <button
-                  type="button"
-                  onClick={useClipboardAsName}
-                  className="flex-1 rounded-field bg-ink py-2.5 text-[13px] font-bold text-cream active:opacity-80"
-                >
-                  이름으로 넣기
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setClipboardPreview(null)}
-                  className="rounded-field border border-line bg-paper px-4 py-2.5 text-[13px] font-bold text-ink-soft active:bg-cream"
-                >
-                  취소
-                </button>
-              </div>
-            </div>
-          ) : (
-            // 읽기 실패/빈 클립보드
-            <div className="rounded-field border-[1.5px] border-line bg-paper p-3">
-              <p className="text-[12px] leading-relaxed text-tangerine">{clipboardPreview.msg}</p>
-              <button
-                type="button"
-                onClick={() => setClipboardPreview(null)}
-                className="mt-2 text-[12px] font-bold text-ink-soft underline underline-offset-2"
-              >
-                닫기
-              </button>
-            </div>
-          )}
+            <button
+              type="button"
+              onClick={() => setClipboardPreview(null)}
+              className="rounded-field border border-line bg-paper px-4 py-2.5 text-[13px] font-bold text-ink-soft active:bg-cream"
+            >
+              취소
+            </button>
+          </div>
         </div>
       )}
 
