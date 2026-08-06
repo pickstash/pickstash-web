@@ -8,6 +8,7 @@ interface SendPushBody {
   option_id?: string
   triggered_by: string
   target_user_ids?: string[]
+  exclude_user_ids?: string[]
   message_key: MessageKey
 }
 

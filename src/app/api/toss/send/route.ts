@@ -27,7 +27,7 @@ const TEMPLATE_CODE: Record<MessageKey, string> = {
   option: process.env.TOSS_TPL_OPTION ?? 'pickstash-option-v2',
   decision: process.env.TOSS_TPL_DECISION ?? 'pickstash-decision-v2',
   decision_auto: process.env.TOSS_TPL_DECISION_AUTO ?? 'pickstash-auto-decision', // 자동마감(시스템 문구, 이름 X)
-  mention: process.env.TOSS_TPL_COMMENT ?? 'pickstash-comment-v2',
+  mention: process.env.TOSS_TPL_MENTION ?? 'pickstash-mention', // "{{userName}}님이 댓글에서 나를 언급했어요"
   join: process.env.TOSS_TPL_JOIN ?? 'pickstash-join-v2',
   invite: process.env.TOSS_TPL_INVITE ?? 'pickstash-invite-v2', // "○○님이 초대했어요" (콘솔 소재 필요)
 }
@@ -38,6 +38,7 @@ interface RequestBody {
   option_id?: string // 댓글·멘션: 그 댓글(선택지 상세) 화면까지 딥링크
   triggered_by: string
   target_user_ids?: string[]
+  exclude_user_ids?: string[] // 이 유형 발송에서 제외(예: 댓글 푸시에서 멘션당한 사람 빼 중복 방지)
   message_key?: MessageKey
 }
 
@@ -64,7 +65,7 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: 'invalid body' }, { status: 400 })
   }
-  const { box_id, folder_id, option_id, triggered_by, target_user_ids, message_key } = body
+  const { box_id, folder_id, option_id, triggered_by, target_user_ids, exclude_user_ids, message_key } = body
   if (!triggered_by || (!box_id && !folder_id)) {
     return NextResponse.json({ error: 'missing triggered_by/box_id|folder_id' }, { status: 400 })
   }
@@ -106,6 +107,8 @@ export async function POST(request: Request) {
     // 댓글·멘션은 그 선택지 상세(댓글 보이는 화면)까지, 그 외는 상자까지.
     deepLinkPath = option_id ? `box/${box_id}/option/${option_id}` : `box/${box_id}`
   }
+  // 제외 대상(예: 댓글 푸시에서 멘션당한 사람 — 그들은 멘션 푸시로 받으므로 중복 방지)
+  if (exclude_user_ids?.length) userIds = userIds.filter(id => !exclude_user_ids.includes(id))
   if (!userIds.length) return NextResponse.json({ ok: true, sent: 0 })
 
   // 유형별 알림 pref(028) — 이 유형을 끈 대상은 제외. 행 없으면 전부 켜진 것으로 간주.

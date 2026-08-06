@@ -55,11 +55,19 @@ export async function createComment(
   ])
   if (error) throw error
 
-  // 다른 참여자에게 push 알림. option_id로 그 댓글(선택지 상세) 화면까지 딥링크.
-  sendPush({ box_id: option.box_id, option_id: optionId, triggered_by: user.id, message_key: 'comment' })
-
-  // @멘션된 사람에게 별도 타겟 알림
+  // @멘션된 사람은 멘션 푸시로 따로 받으므로, 댓글 푸시 대상에선 제외(중복 방지).
   const mentionedUserIds = extractMentionedUserIds(body)
+
+  // 다른 참여자에게 댓글 push. option_id로 그 댓글(선택지 상세) 화면까지 딥링크.
+  sendPush({
+    box_id: option.box_id,
+    option_id: optionId,
+    triggered_by: user.id,
+    exclude_user_ids: mentionedUserIds,
+    message_key: 'comment',
+  })
+
+  // @멘션된 사람에게 "언급했어요" 타겟 알림(별도 소재)
   if (mentionedUserIds.length > 0) {
     sendPush({
       box_id: option.box_id,
