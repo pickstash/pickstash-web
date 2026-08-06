@@ -441,10 +441,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
           <div className="absolute inset-0 bg-ink/45" onClick={() => setFolderModal(false)} />
           <div className="relative mx-auto w-full max-w-[430px] rounded-t-sheet bg-paper px-5 pb-10 pt-3">
             <div className="mx-auto mb-4 h-1 w-9 rounded-full bg-line" />
-            <div className="mb-1 flex items-center justify-between">
-              <h3 className="text-base font-extrabold tracking-tight text-ink">서랍에 담기</h3>
-              <button onClick={() => setFolderModal(false)} className="text-[13px] text-ink-faint">닫기</button>
-            </div>
+            <h3 className="mb-1 text-base font-extrabold tracking-tight text-ink">서랍에 담기</h3>
             <p className="mb-3 text-[12px] text-ink-soft">여러 서랍에 담을 수 있어요. 함께 쓰는 서랍에 넣으면 그 서랍 멤버 모두 이 상자에 참여해요.</p>
 
             <div className="max-h-[46vh] space-y-1 overflow-y-auto">
@@ -596,7 +593,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
                     aria-label="링크 모아보기"
                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink active:bg-butter-tint"
                   >
-                    <Icon name="link" size={20} />
+                    <Icon name="paperclip" size={20} />
                   </AppLink>
                 )}
                 <div className="relative">

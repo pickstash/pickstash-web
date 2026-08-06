@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "./lib/supabase";
 import { requestPushAgreementOnce } from "./lib/push-agreement";
+import { useHardwareBack } from "./lib/use-hardware-back";
 import { useRealtimeAlerts } from "@/hooks/use-realtime-alerts";
 import { LoginScreen } from "./screens/login-screen";
 import { ScreenLoading } from "./screens/screen-state";
@@ -56,6 +57,8 @@ function App() {
   }, [queryClient]);
 
   const { pathname } = useLocation();
+  // 물리/제스처 뒤로가기 — 홈이 아니면 앱 내부로 뒤로, 홈에서만 토스로 나감(미구독 시 바로 종료됨).
+  useHardwareBack();
   // 초대 뷰어(공유 링크)는 비로그인도 열람 가능 — 로그인 게이트 예외. 참여 시 인라인 로그인(nav.login).
   const isInviteRoute = pathname.startsWith("/invite/") || pathname.startsWith("/folder-invite/");
   // 탭바는 폼(집중)·초대 뷰어를 제외한 모든 화면. 초대 뷰어는 자체 '참여하기' CTA만 둔다.
