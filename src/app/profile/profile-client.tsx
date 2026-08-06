@@ -234,7 +234,7 @@ export function ProfileClient({ userId, nickname, avatarUrl, kakaoAvatarUrl }: P
             onClick={() => requestAppReview()}
             className="flex w-full items-center justify-between overflow-hidden rounded-card border border-[#ECEADC] bg-paper px-5 py-4 text-sm text-ink active:bg-cream"
           >
-            <span>이용후기 남기기</span>
+            <span>이용후기 남기기 💖</span>
             <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
             </svg>
