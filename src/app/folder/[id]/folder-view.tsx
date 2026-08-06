@@ -79,6 +79,9 @@ export function FolderView({ folderId, folderName, inviteCode, members, initialB
   const [membersOpen, setMembersOpen] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
   const [picked, setPicked] = useState<Set<string>>(new Set())
+  const [confirmShareAdd, setConfirmShareAdd] = useState(false)
+
+  const isShared = members.length > 1
 
   const rename = useRenameFolder()
   const leave = useLeaveFolder()
@@ -96,14 +99,18 @@ export function FolderView({ folderId, folderName, inviteCode, members, initialB
     })
   }
 
-  function confirmAdd() {
-    if (picked.size === 0) return
+  function doAdd() {
     addBoxes.mutate(Array.from(picked), {
-      onSuccess: () => { setAddOpen(false); setPicked(new Set()); nav.refresh() },
+      onSuccess: () => { setAddOpen(false); setConfirmShareAdd(false); setPicked(new Set()); nav.refresh() },
     })
   }
 
-  const isShared = members.length > 1
+  // 공유 서랍(2명+)에 기존 상자를 담으면 멤버 전원이 보게 됨 → 유출 방지 확인.
+  function confirmAdd() {
+    if (picked.size === 0) return
+    if (isShared) { setConfirmShareAdd(true); return }
+    doAdd()
+  }
 
   function move(index: number, dir: -1 | 1) {
     setItems(prev => {
@@ -318,6 +325,36 @@ export function FolderView({ folderId, folderName, inviteCode, members, initialB
             >
               {addBoxes.isPending ? '담는 중…' : picked.size > 0 ? `${picked.size}개 담기` : '상자를 선택하세요'}
             </button>
+          </div>
+        </div>,
+        document.body,
+      )}
+
+      {/* 공유 서랍 담기 확인 — 멤버 전원이 담긴 상자를 보게 되는 유출 방지 */}
+      {confirmShareAdd && createPortal(
+        <div className="fixed inset-0 z-[60] flex items-center justify-center px-8">
+          <div className="absolute inset-0 bg-ink/40" onClick={() => setConfirmShareAdd(false)} />
+          <div className="relative w-full max-w-[300px] rounded-[20px] bg-paper p-5 shadow-[0_16px_40px_rgba(42,42,39,0.25)]">
+            <p className="text-[15px] font-extrabold text-ink">함께 쓰는 서랍이에요</p>
+            <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-soft">
+              &lsquo;{title}&rsquo;은 {members.length}명이 함께 써요. 담으면 고른 상자를{' '}
+              <span className="font-bold text-ink">모두가 보게 돼요.</span> 담을까요?
+            </p>
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={() => setConfirmShareAdd(false)}
+                className="flex-1 rounded-field border border-line py-3 text-[13px] font-bold text-ink-soft"
+              >
+                취소
+              </button>
+              <button
+                onClick={doAdd}
+                disabled={addBoxes.isPending}
+                className="flex-1 rounded-field bg-ink py-3 text-[13px] font-bold text-cream disabled:opacity-50"
+              >
+                {addBoxes.isPending ? '담는 중…' : '담기'}
+              </button>
+            </div>
           </div>
         </div>,
         document.body,

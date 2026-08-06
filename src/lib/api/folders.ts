@@ -2,9 +2,11 @@ import { createClient } from '@/lib/supabase/client'
 import type { Database } from '@/lib/supabase/types'
 
 export type Folder = Database['public']['Tables']['folders']['Row']
+/** member_count: 공유 서랍(2명+) 판별용 — 상자 담기 시 유출 방지 확인창에 쓴다. */
+export type FolderWithMemberCount = Folder & { member_count: number }
 
-/** 내가 멤버인 폴더 목록 (내 folder_members.sort 순). */
-export async function getMyFolders(): Promise<Folder[]> {
+/** 내가 멤버인 폴더 목록 (내 folder_members.sort 순) + 각 서랍의 전체 멤버 수. */
+export async function getMyFolders(): Promise<FolderWithMemberCount[]> {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
@@ -16,15 +18,24 @@ export async function getMyFolders(): Promise<Folder[]> {
   if (memErr) throw memErr
   if (!mems || mems.length === 0) return []
 
+  const folderIds = mems.map(m => m.folder_id)
   const orderMap = new Map(mems.map(m => [m.folder_id, m.sort]))
-  const { data, error } = await supabase
-    .from('folders')
-    .select('*')
-    .in('id', mems.map(m => m.folder_id))
+
+  // 각 서랍의 전체 멤버 수 (RLS: 내가 멤버인 서랍의 멤버 행은 조회 가능). folder_id별 카운트 맵.
+  const [{ data, error }, { data: allMems, error: allErr }] = await Promise.all([
+    supabase.from('folders').select('*').in('id', folderIds),
+    supabase.from('folder_members').select('folder_id').in('folder_id', folderIds),
+  ])
   if (error) throw error
+  if (allErr) throw allErr
+
+  const countMap = new Map<string, number>()
+  for (const m of allMems ?? []) countMap.set(m.folder_id, (countMap.get(m.folder_id) ?? 0) + 1)
+
   return (data ?? [])
     .slice()
     .sort((a, b) => (orderMap.get(a.id) ?? 0) - (orderMap.get(b.id) ?? 0) || a.created_at.localeCompare(b.created_at))
+    .map(f => ({ ...f, member_count: countMap.get(f.id) ?? 1 }))
 }
 
 /**

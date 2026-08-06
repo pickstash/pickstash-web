@@ -122,6 +122,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
   const [menuOpen, setMenuOpen] = useState(false)
   const [folderModal, setFolderModal] = useState(false)
   const [folderNameInput, setFolderNameInput] = useState('')
+  const [confirmShareFolder, setConfirmShareFolder] = useState<{ id: string; name: string; count: number } | null>(null)
   const [isFavorite, setIsFavorite] = useState(initialIsFavorite)
   const [deciding, setDeciding] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -167,12 +168,23 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
   const isAuto = box.decision_mode === 'auto_deadline'
   const showLikes = !isSolo                          // 혼자 상자는 좋아요 미표시
 
-  // 폴더 지정/해제 (개인별 — 참여자 누구나 자기 폴더에). 018: 다중 선택 토글(모달 유지). 무효화로 체크 갱신.
-  function toggleFolder(folderId: string) {
+  // 폴더 지정/해제 (018: 다중 선택 토글, 모달 유지). 무효화로 체크 갱신.
+  function applyFolder(folderId: string) {
     const set = new Set(myFolderIds)
     if (set.has(folderId)) set.delete(folderId)
     else set.add(folderId)
     setFolders.mutate(Array.from(set))
+  }
+
+  // 공유 서랍(2명+)에 '새로 담기'면 유출 방지 확인창을 먼저 띄운다. 빼기·개인 서랍은 즉시.
+  function toggleFolder(folderId: string) {
+    const adding = !myFolderIds.includes(folderId)
+    const f = folders.find(x => x.id === folderId)
+    if (adding && f && f.member_count > 1) {
+      setConfirmShareFolder({ id: folderId, name: f.name, count: f.member_count })
+      return
+    }
+    applyFolder(folderId)
   }
 
   const decidedOptions = options.filter(o => o.decided_at)
@@ -386,6 +398,34 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
                 className="flex-1 rounded-field bg-tomato py-3 text-[13px] font-bold text-white disabled:opacity-50"
               >
                 {isSolo ? '삭제하기' : '나가기'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 공유 서랍 담기 확인 — 멤버 전원이 이 상자를 보게 되는 유출 방지 */}
+      {confirmShareFolder && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center px-8">
+          <div className="absolute inset-0 bg-ink/40" onClick={() => setConfirmShareFolder(null)} />
+          <div className="relative w-full max-w-[300px] rounded-[20px] bg-paper p-5 shadow-[0_16px_40px_rgba(42,42,39,0.25)]">
+            <p className="text-[15px] font-extrabold text-ink">함께 쓰는 서랍이에요</p>
+            <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-soft">
+              &lsquo;{confirmShareFolder.name}&rsquo;은 {confirmShareFolder.count}명이 함께 써요. 담으면 이 상자를{' '}
+              <span className="font-bold text-ink">모두가 보게 돼요.</span> 담을까요?
+            </p>
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={() => setConfirmShareFolder(null)}
+                className="flex-1 rounded-field border border-line py-3 text-[13px] font-bold text-ink-soft"
+              >
+                취소
+              </button>
+              <button
+                onClick={() => { applyFolder(confirmShareFolder.id); setConfirmShareFolder(null) }}
+                className="flex-1 rounded-field bg-ink py-3 text-[13px] font-bold text-cream"
+              >
+                담기
               </button>
             </div>
           </div>
