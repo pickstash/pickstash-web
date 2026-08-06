@@ -11,14 +11,21 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { code } = await params
   const supabase = await createClient()
-  const { data } = await supabase.rpc('get_folder_by_invite_code', { p_code: code })
-  const folder = data?.[0]
+  const { data } = await supabase.rpc('get_folder_view_by_invite_code', { p_code: code })
+  const folder = data as unknown as FolderViewerData | null
 
   const title = folder?.name ? `${folder.name} — 결정창고` : '결정창고 서랍 초대'
+  // 설명: 서랍 안 상자 수·함께 쓰는 멤버 수로 "무엇을 함께 정리하는지" 감을 준다.
+  const boxCount = folder?.boxes?.length ?? 0
+  const members = folder?.member_count ?? 0
+  const stats = [boxCount > 0 ? `상자 ${boxCount}개` : null, members > 1 ? `${members}명이 함께` : null]
+    .filter(Boolean)
+    .join(' · ')
+  const description = stats || '함께 정리하러 가기'
   return {
     title,
-    description: '함께 정리하러 가기',
-    openGraph: { title, description: '함께 정리하러 가기', siteName: '결정창고', images: ['/icons/icon-512.png'] },
+    description,
+    openGraph: { title, description, siteName: '결정창고', images: ['/icons/icon-512.png'] },
   }
 }
 

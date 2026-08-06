@@ -11,14 +11,21 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { code } = await params
   const supabase = await createClient()
-  const { data } = await supabase.rpc('get_box_by_invite_code', { p_code: code })
+  const { data } = await supabase.rpc('get_box_preview_by_invite_code', { p_code: code })
   const box = data?.[0]
 
   const title = box?.title ? `${box.title} — 결정창고` : '결정창고 초대'
+  // 설명: 메모가 있으면 메모, 없으면 후보·참여 수로 "무엇을 정하는지" 감을 준다.
+  const optionCount = box?.option_names?.length ?? 0
+  const people = box?.participant_count ?? 0
+  const stats = [optionCount > 0 ? `후보 ${optionCount}개` : null, people > 0 ? `${people}명 참여 중` : null]
+    .filter(Boolean)
+    .join(' · ')
+  const description = box?.memo?.trim() || stats || '함께 정하러 가기'
   return {
     title,
-    description: '함께 정하러 가기',
-    openGraph: { title, description: '함께 정하러 가기', siteName: '결정창고', images: ['/icons/icon-512.png'] },
+    description,
+    openGraph: { title, description, siteName: '결정창고', images: ['/icons/icon-512.png'] },
   }
 }
 
