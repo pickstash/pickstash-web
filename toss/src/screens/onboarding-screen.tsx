@@ -6,7 +6,7 @@ import { FriendInviteButton } from "@/components/friend-invite-button";
 const STEPS: [string, string][] = [
   ["1", "고민을 상자로 만들고"],
   ["2", "후보·링크를 담고"],
-  ["3", "함께 투표해서 정해요"],
+  ["3", "비교하고 정해요"],
 ];
 
 export function OnboardingScreen({ nickname }: { nickname: string }) {
@@ -24,7 +24,7 @@ export function OnboardingScreen({ nickname }: { nickname: string }) {
           <p className="mt-2.5 text-[13px] leading-relaxed text-ink-soft">
             정하기 어려운 걸 상자에 담아
             <br />
-            친구랑 투표로 정해요.
+            혼자 정리하거나 친구랑 투표해요.
           </p>
         </div>
 
