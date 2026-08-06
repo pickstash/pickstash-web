@@ -129,8 +129,13 @@ export function OptionForm({
     let text = ''
     try {
       text = await readClipboardText() // 웹=navigator, 토스=네이티브 getClipboardText(주입)
-    } catch {
-      setClipboardPreview({ kind: 'error', msg: '클립보드를 읽을 수 없어요. 아래 링크 칸에 직접 붙여넣어 주세요.' })
+    } catch (e) {
+      // 웹은 navigator.clipboard가 https·권한 필요(http 프리뷰·권한 차단·일부 브라우저 미지원 시 실패).
+      console.warn('[clipboard] read failed', e)
+      setClipboardPreview({
+        kind: 'error',
+        msg: '브라우저가 클립보드 자동 읽기를 막았어요. 링크를 아래 “선택지 이름” 칸에 붙여넣으면(Ctrl+V) 자동으로 링크가 돼요.',
+      })
       return
     }
     const t = text.trim()
