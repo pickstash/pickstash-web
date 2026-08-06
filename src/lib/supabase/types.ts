@@ -362,6 +362,7 @@ export interface Database {
           type: string
           meta: Json
           created_at: string
+          target_user_id: string | null
         }
         Insert: {
           id?: string
@@ -370,6 +371,7 @@ export interface Database {
           type: string
           meta?: Json
           created_at?: string
+          target_user_id?: string | null
         }
         Update: {
           id?: string

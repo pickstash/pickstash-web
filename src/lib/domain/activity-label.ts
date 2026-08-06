@@ -7,6 +7,8 @@ export type BoxActivityType =
   | 'rematch_started'
   | 'deadline_changed'
   | 'participant_joined'
+  | 'invited'
+  | 'mentioned'
 
 export interface ActivityInfo {
   type: BoxActivityType
@@ -38,5 +40,9 @@ export function formatActivity({ type, actorNickname, meta }: ActivityInfo): str
       return `${who} 마감 기한을 바꿨어요`
     case 'participant_joined':
       return `${who} 들어왔어요`
+    case 'invited':
+      return `${who} 초대했어요`
+    case 'mentioned':
+      return `${who} 나를 언급했어요`
   }
 }

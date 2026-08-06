@@ -36,22 +36,26 @@ export async function getAlerts(limit = 100): Promise<AlertItem[]> {
 
   const { data: activities } = await supabase
     .from('box_activities')
-    .select('id, box_id, type, meta, created_at, profiles:actor_id(nickname)')
+    .select('id, box_id, type, meta, created_at, target_user_id, profiles:actor_id(nickname)')
     .in('box_id', boxIds)
     .neq('actor_id', user.id)
+    // 타겟 알림(초대 등)은 대상 본인만, 공용 활동(target 없음)은 참여자 전부.
+    .or(`target_user_id.is.null,target_user_id.eq.${user.id}`)
     .order('created_at', { ascending: false })
     .limit(limit)
 
   return (activities ?? []).map(a => {
     const profile = a.profiles as unknown as { nickname: string } | null
     const lastSeen = lastSeenMap.get(a.box_id)
-    const meta = (a.meta ?? {}) as { option_name?: string; vote_type?: string; option_id?: string }
+    const meta = (a.meta ?? {}) as { option_name?: string; vote_type?: string; option_id?: string; mentioned_ids?: string[] }
+    // 댓글에서 나를 언급했으면 '댓글' 대신 '언급' 문구로 리라벨(같은 활동, 사람별 표시).
+    const type = a.type === 'comment_added' && meta.mentioned_ids?.includes(user.id) ? 'mentioned' : a.type
     return {
       id: a.id,
       boxId: a.box_id,
       boxTitle: titleMap.get(a.box_id) ?? '상자',
       optionId: meta.option_id ?? null,
-      type: a.type,
+      type,
       actorNickname: profile?.nickname ?? '누군가',
       meta,
       createdAt: a.created_at,
