@@ -9,6 +9,7 @@ import { LoginScreen } from "./screens/login-screen";
 import { ScreenLoading } from "./screens/screen-state";
 import { HomeScreen } from "./screens/home-screen";
 import { OnboardingScreen } from "./screens/onboarding-screen";
+import { NotificationSettingsScreen } from "./screens/notification-settings-screen";
 import { useHome } from "./lib/use-home";
 import { BoxListScreen } from "./screens/box-list-screen";
 import { BoxesScreen } from "./screens/boxes-screen";
@@ -128,6 +129,9 @@ function App() {
       <Route path="/profile" element={<ProfileScreen />} />
       <Route path="/profile/withdraw" element={<WithdrawPage />} />
 
+      {/* 알림 설정 */}
+      <Route path="/settings/notifications" element={<NotificationSettingsScreen />} />
+
       {/* 친구 초대(/box/:id/invite)는 카카오 공유라 웹 전용 — 토스는 네이티브 공유로 별도 구현 예정.
           미정의 경로는 홈으로. */}
       <Route path="*" element={<Navigate to="/" replace />} />
@@ -145,6 +149,7 @@ function isFormRoute(p: string): boolean {
   return (
     p === "/box/new" ||
     p === "/profile/withdraw" ||
+    p.startsWith("/settings") ||
     p.endsWith("/option/new") ||
     p.endsWith("/edit")
   );

@@ -106,6 +106,20 @@ export async function POST(request: Request) {
   }
   if (!userIds.length) return NextResponse.json({ ok: true, sent: 0 })
 
+  // 유형별 알림 pref(028) — 이 유형을 끈 대상은 제외. 행 없으면 전부 켜진 것으로 간주.
+  const prefCol = `${message_key ?? 'comment'}_enabled`
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: prefRows } = await (admin.from as any)('notification_prefs')
+    .select(`user_id, ${prefCol}`)
+    .in('user_id', userIds)
+  const disabled = new Set(
+    ((prefRows ?? []) as Array<Record<string, unknown>>)
+      .filter(r => r[prefCol] === false)
+      .map(r => r.user_id as string),
+  )
+  userIds = userIds.filter(id => !disabled.has(id))
+  if (!userIds.length) return NextResponse.json({ ok: true, sent: 0 })
+
   // 발신자 닉네임 — 소재 본문의 {{userName}}에 채운다("{{userName}}님이 댓글을 달았어요").
   let userName = '누군가'
   const { data: actor } = await admin.from('profiles').select('nickname').eq('id', triggered_by).single()

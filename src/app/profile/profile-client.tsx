@@ -213,6 +213,19 @@ export function ProfileClient({ userId, nickname, avatarUrl, kakaoAvatarUrl }: P
           )}
         </div>
 
+        {/* 알림 설정 (토스 전용 — 웹은 /settings 라우트 없음) */}
+        {nav.platform === 'toss' && (
+          <AppLink
+            href="/settings/notifications"
+            className="flex items-center justify-between overflow-hidden rounded-card border border-[#ECEADC] bg-paper px-5 py-4 text-sm text-ink active:bg-cream"
+          >
+            <span>알림 설정</span>
+            <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </AppLink>
+        )}
+
         {/* 계정 */}
         <div className="overflow-hidden rounded-card border border-[#ECEADC] bg-paper">
           <button
