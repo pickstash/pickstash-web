@@ -124,6 +124,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
   const [folderModal, setFolderModal] = useState(false)
   const [folderNameInput, setFolderNameInput] = useState('')
   const [confirmShareFolder, setConfirmShareFolder] = useState<{ id: string; name: string; count: number } | null>(null)
+  const [inviteOpen, setInviteOpen] = useState(false)
   const [invitePicked, setInvitePicked] = useState<Set<string>>(new Set())
   const [isFavorite, setIsFavorite] = useState(initialIsFavorite)
   const [deciding, setDeciding] = useState(false)
@@ -158,8 +159,8 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
   const { data: myFolderIds = [] } = useMyBoxFolders(box.id)
   const setFolders = useSetBoxFolders(box.id)
   const createFolder = useCreateFolder()
-  // 부분 초대(그때그때) — 시트 열렸을 때만 '함께했던 사람' 후보 조회.
-  const { data: coParticipants = [], isPending: coLoading } = useCoParticipants(box.id, membersOpen)
+  // 부분 초대(그때그때) — 초대 시트 열렸을 때만 '함께했던 사람' 후보 조회.
+  const { data: coParticipants = [], isPending: coLoading } = useCoParticipants(box.id, inviteOpen)
   const inviteUsers = useInviteUsersToBox(box.id)
 
   function toggleInvitePick(id: string) {
@@ -173,7 +174,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
   function doInvite() {
     if (invitePicked.size === 0) return
     inviteUsers.mutate(Array.from(invitePicked), {
-      onSuccess: () => { setInvitePicked(new Set()); nav.refresh() },
+      onSuccess: () => { setInvitePicked(new Set()); setInviteOpen(false); nav.refresh() },
     })
   }
 
@@ -856,7 +857,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
         onConfirm={handleDeadlineConfirm}
       />
 
-      {/* 참여자 + 초대 시트 (토스) — 웹 전용 카카오 페이지 대신. 참여 중인 사람 목록 + 초대 링크 복사. */}
+      {/* ① 참여자 시트 — 참여 중인 사람 목록 보기 + '초대하기' 진입 */}
       {membersOpen && (
         <div className="fixed inset-0 z-[60] flex flex-col justify-end">
           <div className="absolute inset-0 bg-ink/45" onClick={() => setMembersOpen(false)} />
@@ -865,8 +866,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
             <p className="text-[15px] font-extrabold text-ink">
               {isDone ? `함께한 사람 ${box.box_participants.length}명` : `참여 중 ${box.box_participants.length}명`}
             </p>
-            {!isDone && <p className="mt-0.5 text-[12px] text-ink-soft">링크로 초대하면 함께 정할 수 있어요.</p>}
-            <div className="mb-4 mt-3 max-h-[40vh] space-y-2.5 overflow-y-auto">
+            <div className="mb-4 mt-3 max-h-[50vh] space-y-2.5 overflow-y-auto">
               {box.box_participants.map(p => (
                 <div key={p.user_id} className="flex items-center gap-3">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-butter-tint text-[11px] font-bold text-ink">
@@ -881,59 +881,83 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
                 </div>
               ))}
             </div>
-            {/* 함께했던 사람 바로 초대 — 링크 없이 고른 사람만 참여시킴(그때그때 부분 초대) */}
-            {!isDone && coParticipants.length > 0 && (
-              <div className="mb-3 border-t border-line pt-3">
-                <p className="mb-2 text-[12px] font-bold text-ink-faint">함께했던 사람</p>
-                <div className="max-h-[30vh] space-y-1 overflow-y-auto">
-                  {coParticipants.map(c => {
-                    const on = invitePicked.has(c.id)
-                    return (
-                      <button
-                        key={c.id}
-                        onClick={() => toggleInvitePick(c.id)}
-                        className={`flex w-full items-center gap-3 rounded-field border px-3 py-2.5 text-left ${
-                          on ? 'border-butter-dark bg-butter-tint' : 'border-line bg-paper active:bg-cream'
-                        }`}
-                      >
-                        <div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border border-paper bg-butter-tint text-[10px] font-bold text-ink">
-                          {c.avatar_url ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={c.avatar_url} alt="" className="h-full w-full object-cover" />
-                          ) : (c.nickname?.[0] ?? '?')}
-                        </div>
-                        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">{c.nickname}</span>
-                        <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${on ? 'border-butter-dark bg-butter' : 'border-line bg-paper'}`}>
-                          {on && <Icon name="check" size={13} strokeWidth={3.2} className="text-ink" />}
-                        </span>
-                      </button>
-                    )
-                  })}
-                </div>
-                {invitePicked.size > 0 && (
-                  <button
-                    onClick={doInvite}
-                    disabled={inviteUsers.isPending}
-                    className="mt-2 w-full rounded-field bg-ink py-3 text-sm font-bold text-cream active:opacity-80 disabled:opacity-50"
-                  >
-                    {inviteUsers.isPending ? '초대 중…' : `${invitePicked.size}명 초대하기`}
-                  </button>
-                )}
-              </div>
-            )}
-            {!isDone && coLoading && coParticipants.length === 0 && (
-              <p className="mb-3 border-t border-line pt-3 text-center text-[12px] text-ink-faint">불러오는 중…</p>
-            )}
-
             {!isDone && (
               <button
-                onClick={copyInvite}
-                className={`flex w-full items-center justify-center gap-2 rounded-field py-4 text-sm font-bold transition active:opacity-80 ${inviteCopied ? 'bg-butter text-ink' : 'bg-ink text-cream'}`}
+                onClick={() => { setMembersOpen(false); setInvitePicked(new Set()); setInviteOpen(true) }}
+                className="flex w-full items-center justify-center gap-2 rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80"
               >
-                <Icon name={inviteCopied ? 'check' : 'link'} size={17} />
-                {inviteCopied ? '링크 복사됨!' : '링크로 초대하기'}
+                <Icon name="plus" size={17} strokeWidth={2.4} />
+                초대하기
               </button>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ② 초대 시트 — 함께했던 사람 바로 초대 + 링크로 초대 */}
+      {inviteOpen && (
+        <div className="fixed inset-0 z-[60] flex flex-col justify-end">
+          <div className="absolute inset-0 bg-ink/45" onClick={() => { setInviteOpen(false); setInvitePicked(new Set()) }} />
+          <div className="relative mx-auto flex max-h-[80vh] w-full max-w-[430px] flex-col rounded-t-sheet bg-paper px-5 pb-10 pt-3">
+            <div className="mx-auto mb-4 h-1 w-9 rounded-full bg-line" />
+            <p className="text-[15px] font-extrabold text-ink">함께 정할 사람 초대</p>
+            <p className="mb-3 mt-0.5 text-[12px] text-ink-soft">함께했던 사람은 바로, 처음이면 링크로 초대해요.</p>
+
+            {/* 함께했던 사람 (다중 선택 → 바로 참여) */}
+            <div className="min-h-[3rem] flex-1 overflow-y-auto">
+              {coLoading ? (
+                <p className="py-6 text-center text-[13px] text-ink-faint">불러오는 중…</p>
+              ) : coParticipants.length === 0 ? (
+                <p className="py-6 text-center text-[13px] text-ink-faint">함께했던 사람이 아직 없어요. 링크로 초대해요.</p>
+              ) : (
+                <>
+                  <p className="mb-2 text-[12px] font-bold text-ink-faint">함께했던 사람</p>
+                  <div className="space-y-1">
+                    {coParticipants.map(c => {
+                      const on = invitePicked.has(c.id)
+                      return (
+                        <button
+                          key={c.id}
+                          onClick={() => toggleInvitePick(c.id)}
+                          className={`flex w-full items-center gap-3 rounded-field border px-3 py-2.5 text-left ${
+                            on ? 'border-butter-dark bg-butter-tint' : 'border-line bg-paper active:bg-cream'
+                          }`}
+                        >
+                          <div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border border-paper bg-butter-tint text-[10px] font-bold text-ink">
+                            {c.avatar_url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={c.avatar_url} alt="" className="h-full w-full object-cover" />
+                            ) : (c.nickname?.[0] ?? '?')}
+                          </div>
+                          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">{c.nickname}</span>
+                          <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${on ? 'border-butter-dark bg-butter' : 'border-line bg-paper'}`}>
+                            {on && <Icon name="check" size={13} strokeWidth={3.2} className="text-ink" />}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {invitePicked.size > 0 && (
+              <button
+                onClick={doInvite}
+                disabled={inviteUsers.isPending}
+                className="mt-3 w-full rounded-field bg-ink py-3.5 text-sm font-bold text-cream active:opacity-80 disabled:opacity-50"
+              >
+                {inviteUsers.isPending ? '초대 중…' : `${invitePicked.size}명 초대하기`}
+              </button>
+            )}
+
+            <button
+              onClick={copyInvite}
+              className={`mt-2 flex w-full items-center justify-center gap-2 rounded-field border py-3.5 text-sm font-bold transition active:opacity-80 ${inviteCopied ? 'border-butter-dark bg-butter text-ink' : 'border-line bg-paper text-ink'}`}
+            >
+              <Icon name={inviteCopied ? 'check' : 'link'} size={17} />
+              {inviteCopied ? '링크 복사됨!' : '링크로 초대하기'}
+            </button>
           </div>
         </div>
       )}
