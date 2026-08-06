@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Icon } from '@/components/icon'
-import { shareInviteLink } from '@/lib/share/native-share'
+import { shareInviteLink, hasNativeShare } from '@/lib/share/native-share'
 
 /**
  * 서랍 공유 버튼 — 서랍 뷰어/참여 링크(`/folder-invite/<code>`)를 공유한다.
@@ -29,7 +29,7 @@ export function ShareFolderLinkButton({ inviteCode }: { inviteCode: string }) {
       }`}
     >
       <Icon name={copied ? 'check' : 'link'} size={17} />
-      {copied ? '링크 복사됨!' : '링크로 초대하기'}
+      {copied ? '링크 복사됨!' : hasNativeShare() ? '공유로 초대하기' : '링크로 초대하기'}
     </button>
   )
 }

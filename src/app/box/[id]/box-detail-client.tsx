@@ -22,7 +22,7 @@ import { OptionsSection } from '@/components/options-section'
 import { Icon } from '@/components/icon'
 import { AppDrawer } from '@/components/app-drawer'
 import { PageHeader } from '@/components/page-header'
-import { shareInviteLink } from '@/lib/share/native-share'
+import { shareInviteLink, hasNativeShare } from '@/lib/share/native-share'
 import { getBoxStatus, isDoneStatus, BOX_STATUS_LABEL, type BoxStatus } from '@/lib/domain/box-status'
 import { parseBlocks, linkBlocksOf } from '@/lib/domain/option-content'
 import { formatDeadlineCompact, defaultDeadline } from '@/lib/utils'
@@ -961,7 +961,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
               className={`mt-2 flex w-full items-center justify-center gap-2 rounded-field border py-3.5 text-sm font-bold transition active:opacity-80 ${inviteCopied ? 'border-butter-dark bg-butter text-ink' : 'border-line bg-paper text-ink'}`}
             >
               <Icon name={inviteCopied ? 'check' : 'link'} size={17} />
-              {inviteCopied ? '링크 복사됨!' : '링크로 초대하기'}
+              {inviteCopied ? '링크 복사됨!' : hasNativeShare() ? '공유로 초대하기' : '링크로 초대하기'}
             </button>
           </div>
         </div>

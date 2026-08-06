@@ -4,7 +4,7 @@ import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
 import { getSchemeUri, getTossShareLink, share, getClipboardText, getPlatformOS, requestReview } from "@apps-in-toss/web-framework";
 import { configureNativeShare } from "@/lib/share/native-share";
-import { configureClipboardReader } from "@/lib/clipboard/native-clipboard";
+import { configureClipboardReader, configureClipboardPeeker } from "@/lib/clipboard/native-clipboard";
 import { configureReviewRequester } from "@/lib/review/native-review";
 
 import App from "./App.tsx";
@@ -41,6 +41,17 @@ configureClipboardReader(async () => {
     if (result !== "allowed") throw new Error("clipboard denied");
   }
   return getClipboardText();
+});
+
+// 조용한 peek — 권한이 이미 allowed일 때만 읽고 다이얼로그는 안 띄운다(선택지 폼 열 때 클립보드 링크 자동 제안용).
+configureClipboardPeeker(async () => {
+  try {
+    const status = await getClipboardText.getPermission();
+    if (status !== "allowed") return null;
+    return await getClipboardText();
+  } catch {
+    return null;
+  }
 });
 
 // 이용후기(리뷰) — 프로필의 '이용후기 남기기'가 호출. 토스 네이티브 리뷰 UI(피로도 정책상 항상 뜨진 않음).

@@ -1,9 +1,9 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { uploadOptionImage } from '@/lib/api/options'
 import { fetchLinkPreview, proxiedImageUrl } from '@/lib/api/unfurl'
-import { readClipboardText } from '@/lib/clipboard/native-clipboard'
+import { readClipboardText, peekClipboardIfAllowed } from '@/lib/clipboard/native-clipboard'
 import {
   cleanBlocks,
   linkBlocksOf,
@@ -64,6 +64,19 @@ export function OptionForm({
   blocksRef.current = blocks
   const nameRef = useRef(name)
   nameRef.current = name
+
+  // 토스식 자동 제안 — 폼 열 때 클립보드에 링크가 있으면(권한 이미 허용 시) 바로 미리보기 카드로 띄운다.
+  // 권한 없으면 조용히 null → 아래 수동 '복사한 링크 넣기' 버튼만 보인다(팝업 안 띄움).
+  useEffect(() => {
+    if (!offerClipboardLink) return
+    let cancelled = false
+    peekClipboardIfAllowed().then(text => {
+      if (cancelled || !text) return
+      const split = splitPastedLink(text.trim())
+      if (split) setClipboardPreview({ kind: 'link', url: split.url, label: split.label })
+    })
+    return () => { cancelled = true }
+  }, [offerClipboardLink])
 
   const imageCount = blocks.filter(b => b.type === 'image').length
   const atBlockLimit = blocks.length >= MAX_BLOCKS

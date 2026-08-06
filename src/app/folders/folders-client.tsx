@@ -8,6 +8,7 @@ import { PageHeader } from '@/components/page-header'
 import { AppDrawer } from '@/components/app-drawer'
 import { Icon } from '@/components/icon'
 import { CreateFab } from '@/components/create-fab'
+import { shareInviteLink, hasNativeShare } from '@/lib/share/native-share'
 import { useCreateFolder, useRenameFolder, useLeaveFolder } from '@/hooks/use-folders'
 
 export interface FolderCard {
@@ -76,11 +77,13 @@ export function FoldersClient({ initialFolders, nickname, me }: { initialFolders
     })
   }
 
+  // 토스: 네이티브 공유 시트, 웹: 링크 클립보드 복사(shareInviteLink가 플랫폼 분기).
   async function copyLink(f: FolderCard) {
-    const url = `${window.location.origin}/folder-invite/${f.inviteCode}`
-    try { await navigator.clipboard.writeText(url) } catch { /* 무시 */ }
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1600)
+    const result = await shareInviteLink({ path: `/folder-invite/${f.inviteCode}` })
+    if (result === 'copied') {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1600)
+    }
   }
 
   function doRename(e: React.FormEvent) {
@@ -210,7 +213,7 @@ export function FoldersClient({ initialFolders, nickname, me }: { initialFolders
                 onClick={() => { copyLink(menuFor); setMenuFor(null) }}
                 className="flex w-full items-center gap-2.5 rounded-[12px] px-3 py-3 text-left text-sm font-semibold text-ink active:bg-cream"
               >
-                <Icon name="share" size={16} className="text-ink-soft" /> 공유 링크 복사
+                <Icon name="share" size={16} className="text-ink-soft" /> {hasNativeShare() ? '서랍 공유하기' : '공유 링크 복사'}
               </button>
               <button
                 onClick={() => { setAlsoLeaveBoxes(false); setLeaveFor(menuFor); setMenuFor(null) }}
