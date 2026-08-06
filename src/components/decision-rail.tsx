@@ -10,7 +10,7 @@ function RailAvatars({ participants, max = 3 }: { participants: HeroParticipant[
   return (
     <div className="flex -space-x-1">
       {shown.map(p => (
-        <div key={p.user_id} className="flex h-[18px] w-[18px] items-center justify-center overflow-hidden rounded-full border-[1.5px] border-paper bg-cream text-[8px] font-bold text-ink">
+        <div key={p.user_id} className="flex h-[18px] w-[18px] items-center justify-center overflow-hidden rounded-full border border-paper bg-cream text-[8px] font-bold text-ink">
           {p.profiles?.avatar_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={p.profiles.avatar_url} alt="" className="h-full w-full object-cover" />
@@ -20,7 +20,7 @@ function RailAvatars({ participants, max = 3 }: { participants: HeroParticipant[
         </div>
       ))}
       {extra > 0 && (
-        <div className="flex h-[18px] w-[18px] items-center justify-center rounded-full border-[1.5px] border-paper bg-cream text-[8px] font-extrabold text-ink-soft">
+        <div className="flex h-[18px] w-[18px] items-center justify-center rounded-full border border-paper bg-cream text-[8px] font-extrabold text-ink-soft">
           +{extra}
         </div>
       )}

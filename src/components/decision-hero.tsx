@@ -19,7 +19,7 @@ function HeroAvatars({ participants, max = 4 }: { participants: HeroParticipant[
   return (
     <div className="flex -space-x-1.5">
       {shown.map(p => (
-        <div key={p.user_id} className="flex h-[22px] w-[22px] items-center justify-center overflow-hidden rounded-full border-[1.5px] border-butter-tint bg-paper text-[9px] font-bold text-ink">
+        <div key={p.user_id} className="flex h-[22px] w-[22px] items-center justify-center overflow-hidden rounded-full border border-paper bg-paper text-[9px] font-bold text-ink">
           {p.profiles?.avatar_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={p.profiles.avatar_url} alt="" className="h-full w-full object-cover" />
@@ -29,7 +29,7 @@ function HeroAvatars({ participants, max = 4 }: { participants: HeroParticipant[
         </div>
       ))}
       {extra > 0 && (
-        <div className="flex h-[22px] w-[22px] items-center justify-center rounded-full border-[1.5px] border-butter-tint bg-cream text-[9px] font-extrabold text-ink-soft">
+        <div className="flex h-[22px] w-[22px] items-center justify-center rounded-full border border-paper bg-cream text-[9px] font-extrabold text-ink-soft">
           +{extra}
         </div>
       )}

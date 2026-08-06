@@ -76,7 +76,7 @@ export function BoxViewer({
               {view.participants.slice(0, 6).map(p => (
                 <div
                   key={p.id}
-                  className="h-7 w-7 overflow-hidden rounded-full border-2 border-paper bg-butter-tint"
+                  className="h-7 w-7 overflow-hidden rounded-full border border-paper bg-butter-tint"
                   title={p.nickname}
                 >
                   {p.avatar_url ? (
@@ -90,7 +90,7 @@ export function BoxViewer({
                 </div>
               ))}
               {view.participant_count > 6 && (
-                <div className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-paper bg-cream text-[10px] font-bold text-ink-soft">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full border border-paper bg-cream text-[10px] font-bold text-ink-soft">
                   +{view.participant_count - 6}
                 </div>
               )}

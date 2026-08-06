@@ -45,7 +45,7 @@ function MemberAvatars({ members, max = 6 }: { members: FolderMember[]; max?: nu
   return (
     <div className="flex -space-x-2">
       {shown.map(m => (
-        <div key={m.user_id} className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full border-2 border-cream bg-butter-tint text-[10px] font-bold text-ink">
+        <div key={m.user_id} className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full border border-paper bg-butter-tint text-[10px] font-bold text-ink">
           {m.profiles?.avatar_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={m.profiles.avatar_url} alt={m.profiles.nickname} className="h-full w-full object-cover" />
@@ -55,7 +55,7 @@ function MemberAvatars({ members, max = 6 }: { members: FolderMember[]; max?: nu
         </div>
       ))}
       {extra > 0 && (
-        <div className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-cream bg-cream text-[10px] font-extrabold text-ink-soft">
+        <div className="flex h-7 w-7 items-center justify-center rounded-full border border-paper bg-cream text-[10px] font-extrabold text-ink-soft">
           +{extra}
         </div>
       )}

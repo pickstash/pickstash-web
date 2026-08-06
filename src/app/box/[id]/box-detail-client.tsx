@@ -51,7 +51,7 @@ function ParticipantAvatars({ participants, max = 5, trailing }: { participants:
   return (
     <div className="flex -space-x-2">
       {shown.map(p => (
-        <div key={p.user_id} className="h-7 w-7 overflow-hidden rounded-full border-2 border-cream bg-butter-tint">
+        <div key={p.user_id} className="h-7 w-7 overflow-hidden rounded-full border border-paper bg-butter-tint">
           {p.profiles?.avatar_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={p.profiles.avatar_url} alt={p.profiles.nickname} className="h-full w-full object-cover" />
@@ -63,7 +63,7 @@ function ParticipantAvatars({ participants, max = 5, trailing }: { participants:
         </div>
       ))}
       {extra > 0 && (
-        <div className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-cream bg-cream text-[10px] font-extrabold text-ink-soft">
+        <div className="flex h-7 w-7 items-center justify-center rounded-full border border-paper bg-cream text-[10px] font-extrabold text-ink-soft">
           +{extra}
         </div>
       )}

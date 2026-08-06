@@ -23,7 +23,7 @@ function MemberAvatars({ members, max = 4 }: { members: FolderCard['members']; m
   return (
     <div className="flex -space-x-1.5">
       {shown.map(m => (
-        <div key={m.id} className="flex h-[22px] w-[22px] items-center justify-center overflow-hidden rounded-full border-[1.5px] border-paper bg-butter-tint text-[9px] font-bold text-ink">
+        <div key={m.id} className="flex h-[22px] w-[22px] items-center justify-center overflow-hidden rounded-full border border-paper bg-butter-tint text-[9px] font-bold text-ink">
           {m.avatar_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={m.avatar_url} alt="" className="h-full w-full object-cover" />
@@ -33,7 +33,7 @@ function MemberAvatars({ members, max = 4 }: { members: FolderCard['members']; m
         </div>
       ))}
       {extra > 0 && (
-        <div className="flex h-[22px] w-[22px] items-center justify-center rounded-full border-[1.5px] border-paper bg-cream text-[9px] font-extrabold text-ink-soft">
+        <div className="flex h-[22px] w-[22px] items-center justify-center rounded-full border border-paper bg-cream text-[9px] font-extrabold text-ink-soft">
           +{extra}
         </div>
       )}
