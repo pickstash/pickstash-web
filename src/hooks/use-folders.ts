@@ -13,6 +13,7 @@ import {
   getMyBoxesNotInFolder,
   addBoxesToFolder,
 } from '@/lib/api/folders'
+import { getCoParticipantsForFolder, inviteUsersToFolder } from '@/lib/api/folder-invites'
 
 // 서랍을 보여주는 모든 화면 캐시 무효화 — 생성·삭제·이름변경이 뒤로가기 시 즉시 반영되게.
 // FolderChips(홈, ['folders']) + 토스 서랍 목록(['folders-page']) + 서랍 상세(['folder-view',*]).
@@ -116,5 +117,26 @@ export function useReorderFolderBoxes(folderId: string) {
   return useMutation({
     mutationFn: (orderedBoxIds: string[]) => reorderBoxFolders(folderId, orderedBoxIds),
     onSuccess: () => invalidateFolderViews(queryClient),
+  })
+}
+
+/** '함께했던 사람' 초대 후보(이 서랍에 아직 없는 과거 공동 참여자). 시트 열렸을 때만 조회. */
+export function useCoParticipantsForFolder(folderId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['co-participants-folder', folderId],
+    queryFn: () => getCoParticipantsForFolder(folderId),
+    enabled: enabled && !!folderId,
+  })
+}
+
+/** 고른 사람들을 이 서랍에 바로 추가(+초대 푸시). 초대 즉시 서랍 뷰가 갱신되게 무효화. */
+export function useInviteUsersToFolder(folderId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (userIds: string[]) => inviteUsersToFolder(folderId, userIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['co-participants-folder', folderId], refetchType: 'all' })
+      invalidateFolderViews(queryClient)
+    },
   })
 }

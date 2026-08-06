@@ -103,7 +103,7 @@ export function NotificationSettingsScreen() {
               </div>
             ))}
           </div>
-          <p className="mt-2 px-1 text-[11.5px] leading-relaxed text-ink-faint">
+          <p className="mt-2 px-1 pb-12 text-[11.5px] leading-relaxed text-ink-faint">
             세부 알림을 꺼도 앱 알림 자체는 유지돼요. 결정창고 알림을 아예 끄려면 오른쪽 위 ···(앱 설정) → 알림에서 꺼주세요.
           </p>
         </section>

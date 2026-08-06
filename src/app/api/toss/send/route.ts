@@ -84,12 +84,17 @@ export async function POST(request: Request) {
   if (isFolder) {
     const { data: folder } = await admin.from('folders').select('id').eq('id', folder_id!).single()
     if (!folder) return NextResponse.json({ error: 'folder not found' }, { status: 404 })
-    const { data: members } = await admin
-      .from('folder_members')
-      .select('user_id')
-      .eq('folder_id', folder_id!)
-      .neq('user_id', triggered_by)
-    userIds = (members ?? []).map(m => m.user_id)
+    if (target_user_ids?.length) {
+      // 특정 대상만(예: 서랍에 바로 초대한 사람) — 폴더 멤버 전체가 아니라.
+      userIds = target_user_ids.filter(id => id !== triggered_by)
+    } else {
+      const { data: members } = await admin
+        .from('folder_members')
+        .select('user_id')
+        .eq('folder_id', folder_id!)
+        .neq('user_id', triggered_by)
+      userIds = (members ?? []).map(m => m.user_id)
+    }
     deepLinkPath = `folder/${folder_id}`
   } else {
     const { data: box } = await admin.from('boxes').select('id').eq('id', box_id!).single()

@@ -906,7 +906,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
           <div className="relative mx-auto flex max-h-[80vh] w-full max-w-[430px] flex-col rounded-t-sheet bg-paper px-5 pb-10 pt-3">
             <div className="mx-auto mb-4 h-1 w-9 rounded-full bg-line" />
             <p className="text-[15px] font-extrabold text-ink">함께 정할 사람 초대</p>
-            <p className="mb-3 mt-0.5 text-[12px] text-ink-soft">전에 같이 정한 분은 바로, 처음이면 링크로 초대해요.</p>
+            <p className="mb-3 mt-0.5 text-[12px] text-ink-soft">전에 같이 정한 분은 바로, 처음이면 새롭게 공유로 초대해요.</p>
 
             {/* 함께했던 사람 (다중 선택 → 바로 참여) */}
             <div className="min-h-[3rem] flex-1 overflow-y-auto">
@@ -961,7 +961,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
               className={`mt-2 flex w-full items-center justify-center gap-2 rounded-field border py-3.5 text-sm font-bold transition active:opacity-80 ${inviteCopied ? 'border-butter-dark bg-butter text-ink' : 'border-line bg-paper text-ink'}`}
             >
               <Icon name={inviteCopied ? 'check' : 'link'} size={17} />
-              {inviteCopied ? '링크 복사됨!' : hasNativeShare() ? '공유로 초대하기' : '링크로 초대하기'}
+              {inviteCopied ? '링크 복사됨!' : hasNativeShare() ? '새로운 사람 초대하기' : '링크로 초대하기'}
             </button>
           </div>
         </div>

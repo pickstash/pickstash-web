@@ -16,6 +16,8 @@ import {
   useReorderFolderBoxes,
   useBoxesNotInFolder,
   useAddBoxesToFolder,
+  useCoParticipantsForFolder,
+  useInviteUsersToFolder,
 } from '@/hooks/use-folders'
 import type { Box } from '@/lib/api/boxes'
 
@@ -78,10 +80,12 @@ export function FolderView({ folderId, folderName, inviteCode, members, initialB
   const [alsoLeaveBoxes, setAlsoLeaveBoxes] = useState(false)
   const [nameInput, setNameInput] = useState(folderName)
   const [membersOpen, setMembersOpen] = useState(false)
+  const [inviteOpen, setInviteOpen] = useState(false)
+  const [invitePicked, setInvitePicked] = useState<Set<string>>(new Set())
   const [addOpen, setAddOpen] = useState(false)
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [confirmShareAdd, setConfirmShareAdd] = useState(false)
-  useBodyScrollLock(addOpen || confirmShareAdd || membersOpen || renaming || confirmLeave)
+  useBodyScrollLock(addOpen || confirmShareAdd || membersOpen || inviteOpen || renaming || confirmLeave)
 
   const isShared = members.length > 1
 
@@ -92,6 +96,24 @@ export function FolderView({ folderId, folderName, inviteCode, members, initialB
   const addBoxes = useAddBoxesToFolder(folderId)
   // 시트 열렸을 때만 후보 조회
   const { data: candidates = [], isPending: candLoading } = useBoxesNotInFolder(folderId, addOpen)
+  // 초대 시트: '함께했던 사람' 후보(시트 열렸을 때만) + 바로 추가 뮤테이션
+  const { data: coParticipants = [], isPending: coLoading } = useCoParticipantsForFolder(folderId, inviteOpen)
+  const inviteUsers = useInviteUsersToFolder(folderId)
+
+  function toggleInvitePick(id: string) {
+    setInvitePicked(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  function doInvite() {
+    if (invitePicked.size === 0) return
+    inviteUsers.mutate(Array.from(invitePicked), {
+      onSuccess: () => { setInvitePicked(new Set()); setInviteOpen(false); nav.refresh() },
+    })
+  }
 
   function togglePick(id: string) {
     setPicked(prev => {
@@ -171,12 +193,7 @@ export function FolderView({ folderId, folderName, inviteCode, members, initialB
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
                   <div className="absolute right-0 top-10 z-50 w-44 overflow-hidden rounded-[14px] border border-line bg-paper py-1 shadow-[0_10px_30px_rgba(42,42,39,0.18)]">
-                    <button
-                      onClick={() => { setMenuOpen(false); setMembersOpen(true) }}
-                      className="flex w-full items-center gap-2 px-3.5 py-2.5 text-left text-[13.5px] font-semibold text-ink active:bg-cream"
-                    >
-                      <Icon name="link" size={15} className="text-ink-soft" /> 링크로 초대
-                    </button>
+                    {/* '링크로 초대'는 멤버 영역 탭으로 여는 시트와 중복이라 ⋯ 메뉴에선 제거(멤버 영역 탭으로 접근). */}
                     {items.length > 0 && (
                       <button
                         onClick={() => { setMenuOpen(false); setEditing(true) }}
@@ -372,7 +389,7 @@ export function FolderView({ folderId, folderName, inviteCode, members, initialB
             <p className="text-[15px] font-extrabold text-ink">
               {isShared ? `함께 정리 중 ${members.length}명` : '아직 나만 있어요'}
             </p>
-            <p className="mb-4 mt-0.5 text-[12px] text-ink-soft">링크로 초대하면 이 서랍의 상자를 함께 정리할 수 있어요.</p>
+            <p className="mb-4 mt-0.5 text-[12px] text-ink-soft">초대하면 이 서랍의 상자를 함께 정리할 수 있어요.</p>
             <div className="mb-4 max-h-[38vh] space-y-2.5 overflow-y-auto">
               {members.map(m => (
                 <div key={m.user_id} className="flex items-center gap-3">
@@ -388,7 +405,78 @@ export function FolderView({ folderId, folderName, inviteCode, members, initialB
                 </div>
               ))}
             </div>
-            <ShareFolderLinkButton inviteCode={inviteCode} />
+            <button
+              onClick={() => { setMembersOpen(false); setInvitePicked(new Set()); setInviteOpen(true) }}
+              className="flex w-full items-center justify-center gap-2 rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80"
+            >
+              <Icon name="plus" size={17} strokeWidth={2.4} />
+              초대하기
+            </button>
+          </div>
+        </div>,
+        document.body,
+      )}
+
+      {/* 초대 시트 — 함께했던 사람 바로 초대 + 링크로 초대 (상자와 동일 플로우). */}
+      {inviteOpen && createPortal(
+        <div className="fixed inset-0 z-50 flex flex-col justify-end">
+          <div className="absolute inset-0 bg-ink/45" onClick={() => { setInviteOpen(false); setInvitePicked(new Set()) }} />
+          <div className="relative mx-auto flex max-h-[80vh] w-full max-w-[430px] flex-col rounded-t-sheet bg-paper px-5 pb-10 pt-3">
+            <div className="mx-auto mb-4 h-1 w-9 rounded-full bg-line" />
+            <p className="text-[15px] font-extrabold text-ink">함께 정리할 사람 초대</p>
+            <p className="mb-3 mt-0.5 text-[12px] text-ink-soft">전에 같이 정한 분은 바로, 처음이면 새롭게 공유로 초대해요.</p>
+
+            {/* 함께했던 사람 (다중 선택 → 바로 서랍 참여) */}
+            <div className="min-h-[3rem] flex-1 overflow-y-auto">
+              {coLoading ? (
+                <p className="py-6 text-center text-[13px] text-ink-faint">불러오는 중…</p>
+              ) : coParticipants.length === 0 ? (
+                <p className="py-6 text-center text-[13px] text-ink-faint">아직 같이 정한 사람이 없어요. 링크로 초대해요.</p>
+              ) : (
+                <>
+                  <p className="mb-2 text-[12px] font-bold text-ink-faint">함께했던 사람</p>
+                  <div className="space-y-1">
+                    {coParticipants.map(c => {
+                      const on = invitePicked.has(c.id)
+                      return (
+                        <button
+                          key={c.id}
+                          onClick={() => toggleInvitePick(c.id)}
+                          className={`flex w-full items-center gap-3 rounded-field border px-3 py-2.5 text-left ${
+                            on ? 'border-butter-dark bg-butter-tint' : 'border-line bg-paper active:bg-cream'
+                          }`}
+                        >
+                          <div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border border-paper bg-butter-tint text-[10px] font-bold text-ink">
+                            {c.avatar_url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={c.avatar_url} alt="" className="h-full w-full object-cover" />
+                            ) : (c.nickname?.[0] ?? '?')}
+                          </div>
+                          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">{c.nickname}</span>
+                          <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${on ? 'border-butter-dark bg-butter' : 'border-line bg-paper'}`}>
+                            {on && <Icon name="check" size={13} strokeWidth={3.2} className="text-ink" />}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {invitePicked.size > 0 && (
+              <button
+                onClick={doInvite}
+                disabled={inviteUsers.isPending}
+                className="mt-3 w-full rounded-field bg-ink py-3.5 text-sm font-bold text-cream active:opacity-80 disabled:opacity-50"
+              >
+                {inviteUsers.isPending ? '초대 중…' : `${invitePicked.size}명 초대하기`}
+              </button>
+            )}
+
+            <div className="mt-2">
+              <ShareFolderLinkButton inviteCode={inviteCode} />
+            </div>
           </div>
         </div>,
         document.body,
