@@ -34,7 +34,7 @@ export function HomeView({
 
       {banner}
 
-      <div className="flex-1 pb-28">
+      <div className="flex-1 pb-28 pt-2.5">
         {/* ① 마감 히어로 (가장 급한 상자) */}
         <DecisionHero box={hero} />
 
