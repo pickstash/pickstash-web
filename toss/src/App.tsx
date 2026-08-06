@@ -88,7 +88,7 @@ function App() {
     //   폼 화면(탭바 없음)은 CTA가 bottom-0라 직접 인셋(safe-bottom)이 필요하다.
     <div
       style={{
-        "--app-banner-h": showBanner ? "72px" : "0px", // 배너 높이(권장 96px보다 낮춤 — 너무 높아 보여서)
+        "--app-banner-h": showBanner ? "56px" : "0px", // 배너 높이(권장 96px보다 낮춤 — 너무 높아 보여서)
         "--app-nav-h": showTabBar
           ? "calc(3.5rem + var(--app-safe-bottom, 0px) + var(--app-banner-h, 0px))"
           : "0px",

@@ -18,6 +18,8 @@ export function BoxDetailScreen() {
       if (!user) throw new Error("세션이 없어요");
       return { r: await loadBoxDetail(supabase, id!, user.id), userId: user.id };
     },
+    // 재진입 시 항상 최신화 — 다른 사람이 나가거나 들어온 참여자 변화를 반영(staleTime 캐시 무시).
+    refetchOnMount: "always",
   });
 
   if (isPending) return <ScreenLoading />;

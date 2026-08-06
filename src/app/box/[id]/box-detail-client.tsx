@@ -109,6 +109,11 @@ function PencilCircle({ children }: { children: ReactNode }) {
 export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions, initialIsFavorite }: BoxDetailClientProps) {
   const nav = useNav()
   const [box, setBox] = useState(initialBox)
+  // 재진입/refetch로 참여자가 바뀌면(다른 사람이 나감/들어옴) 로컬 box에 반영.
+  // 참여자만 동기화 — 제목·메모 등 로컬 편집 중인 필드는 덮지 않는다.
+  useEffect(() => {
+    setBox(prev => ({ ...prev, box_participants: initialBox.box_participants }))
+  }, [initialBox.box_participants])
   const [inviteCopied, setInviteCopied] = useState(false)
   const [membersOpen, setMembersOpen] = useState(false)
   const [editingTitle, setEditingTitle] = useState(false)

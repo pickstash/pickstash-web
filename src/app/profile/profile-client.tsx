@@ -229,8 +229,8 @@ export function ProfileClient({ userId, nickname, avatarUrl, kakaoAvatarUrl }: P
           </AppLink>
         )}
 
-        {/* 이용후기 (토스 네이티브 리뷰 — 피로도 정책상 항상 뜨진 않음) */}
-        {nav.platform === 'toss' && (
+        {/* 이용후기 (토스 네이티브 리뷰) — 피로도 정책상 화면이 안 떠 일단 숨김(코드 보존, 추후 복원). */}
+        {false && nav.platform === 'toss' && (
           <button
             type="button"
             onClick={() => requestAppReview()}
