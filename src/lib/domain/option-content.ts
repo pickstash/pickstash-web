@@ -169,12 +169,17 @@ export function splitPastedLink(raw: string): { url: string; label: string } | n
     return { url, label }
   }
 
-  // 2) 스킴 없는 맨 도메인(naver.com, coupang.com/vp/...)은 '입력 전체가 URL 하나'일 때만 인정.
-  //    문장·코드·파일명 속의 word.ext(예: option-form.tsx)를 링크로 오탐하지 않기 위함.
-  const bare = text.replace(/[.,;:)\]}"'»]+$/, '') // 끝 구두점 제거 후 통짜 검사
-  const looksLikeDomain = /^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}(?:\/[^\s]*)?$/i.test(bare)
-  if (looksLikeDomain && !(!bare.includes('/') && FILE_EXT_RE.test(bare))) {
-    return { url: bare, label: '' }
+  // 2) 스킴 없는 도메인(naver.com, coupang.com/vp/...)을 텍스트 '어느 토큰이든'에서 찾는다.
+  //    (예: "네이버 최저가 coupang.com/vp/...") — 파일명(option-form.tsx)·문장 단어 오탐은 FILE_EXT_RE로 막는다.
+  //    경로(/)가 있으면 확실한 링크로 보고, 경로 없는 맨 도메인만 파일확장자 검사를 적용.
+  const domainRe = /^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}(?:\/[^\s]*)?$/i
+  const tokens = text.split(/\s+/)
+  for (const tok of tokens) {
+    const bare = tok.replace(/^[("'«]+/, '').replace(/[.,;:)\]}"'»]+$/, '')
+    if (!domainRe.test(bare)) continue
+    if (!bare.includes('/') && FILE_EXT_RE.test(bare)) continue // 경로 없는 word.ext → 파일명 오탐
+    const label = tokens.filter(t => t !== tok).join(' ').replace(/\s+/g, ' ').trim()
+    return { url: bare, label }
   }
 
   return null
