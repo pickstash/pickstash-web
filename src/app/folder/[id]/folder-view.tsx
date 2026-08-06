@@ -335,10 +335,10 @@ export function FolderView({ folderId, folderName, inviteCode, members, initialB
         <div className="fixed inset-0 z-[60] flex items-center justify-center px-8">
           <div className="absolute inset-0 bg-ink/40" onClick={() => setConfirmShareAdd(false)} />
           <div className="relative w-full max-w-[300px] rounded-[20px] bg-paper p-5 shadow-[0_16px_40px_rgba(42,42,39,0.25)]">
-            <p className="text-[15px] font-extrabold text-ink">함께 쓰는 서랍이에요</p>
-            <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-soft">
-              &lsquo;{title}&rsquo;은 {members.length}명이 함께 써요. 담으면 고른 상자를{' '}
-              <span className="font-bold text-ink">모두가 보게 돼요.</span> 담을까요?
+            <p className="break-keep text-[15px] font-extrabold text-ink">함께 쓰는 서랍이에요</p>
+            <p className="mt-1.5 break-keep text-[12.5px] leading-relaxed text-ink-soft">
+              &lsquo;{title}&rsquo; 서랍을 함께 쓰는{' '}
+              <span className="font-bold text-ink">{members.length}명 모두</span>에게 고른 상자가 공유돼요. 계속할까요?
             </p>
             <div className="mt-4 flex gap-2">
               <button
