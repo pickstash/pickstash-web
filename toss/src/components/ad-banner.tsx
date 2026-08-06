@@ -51,7 +51,11 @@ export function AdBanner() {
     return () => attached.destroy();
   }, [initialized]);
 
-  if (!AD_GROUP_ID) return null;
-
-  return <div ref={containerRef} className="h-24 w-full" />;
+  // 탭바 바로 위(‘새 상자’ CTA 아래)에 고정. 높이는 --app-banner-h(App.tsx가 홈에서만 세팅, 기본 6rem).
+  // 광고가 안 떠도(브라우저·ID 미설정·no-fill) 검정 영역 플레이스홀더로 자리를 항상 확보한다.
+  return (
+    <div className="fixed inset-x-0 bottom-[calc(var(--app-tabbar-h,3.5rem)+var(--app-safe-bottom,0px))] z-30 h-[var(--app-banner-h,96px)] overflow-hidden border-t border-line bg-black">
+      <div ref={containerRef} className="h-full w-full" />
+    </div>
+  );
 }

@@ -8,6 +8,9 @@ import { useRealtimeAlerts } from "@/hooks/use-realtime-alerts";
 import { LoginScreen } from "./screens/login-screen";
 import { ScreenLoading } from "./screens/screen-state";
 import { HomeScreen } from "./screens/home-screen";
+import { OnboardingScreen } from "./screens/onboarding-screen";
+import { AdBanner } from "./components/ad-banner";
+import { useHome } from "./lib/use-home";
 import { BoxListScreen } from "./screens/box-list-screen";
 import { BoxesScreen } from "./screens/boxes-screen";
 import { BoxDetailScreen } from "./screens/box-detail-screen";
@@ -57,9 +60,28 @@ function App() {
   const isInviteRoute = pathname.startsWith("/invite/") || pathname.startsWith("/folder-invite/");
   // 탭바는 폼(집중)·초대 뷰어를 제외한 모든 화면. 초대 뷰어는 자체 '참여하기' CTA만 둔다.
   const showTabBar = !isFormRoute(pathname) && !isInviteRoute;
+  // 배너는 홈에서만(탭바 위 고정). 그 높이를 --app-nav-h에 더해 CTA·콘텐츠가 배너 위로 밀리게 한다.
+  const showBanner = pathname === "/" && showTabBar;
+
+  // 홈에서만 홈 데이터를 미리 본다(첫 로그인=상자 0개면 온보딩 전용 화면으로 분기). HomeScreen과 ['home'] 공유.
+  const home = useHome(pathname === "/" && !!session);
 
   if (!ready) return null;
   if (!session && !isInviteRoute) return <LoginScreen />;
+
+  // 첫 로그인(상자 open·done 모두 0) → 헤더·탭바 없이 온보딩 전용, 하단엔 배너만.
+  if (pathname === "/" && session) {
+    if (home.isPending) return <ScreenLoading />;
+    if (home.data && home.data.openCount === 0 && home.data.doneCount === 0) {
+      return (
+        // --app-tabbar-h:0 → 배너가 탭바 자리 없이 화면 맨 아래에 붙는다. --app-banner-h로 온보딩 하단 여백 확보.
+        <div style={{ "--app-banner-h": "96px", "--app-tabbar-h": "0px" } as CSSProperties}>
+          <OnboardingScreen nickname={home.data.nickname} />
+          <AdBanner />
+        </div>
+      );
+    }
+  }
 
   return (
     // --app-nav-h: 탭바 있는 라우트에서만 탭바 실제 높이(3.5rem + iOS 홈 인디케이터 인셋)로 올린다(하위 main·CTA가 상속).
@@ -68,7 +90,10 @@ function App() {
     //   폼 화면(탭바 없음)은 CTA가 bottom-0라 직접 인셋(safe-bottom)이 필요하다.
     <div
       style={{
-        "--app-nav-h": showTabBar ? "calc(3.5rem + var(--app-safe-bottom, 0px))" : "0px",
+        "--app-banner-h": showBanner ? "96px" : "0px", // 앱인토스 고정형 배너 권장 높이
+        "--app-nav-h": showTabBar
+          ? "calc(3.5rem + var(--app-safe-bottom, 0px) + var(--app-banner-h, 0px))"
+          : "0px",
         "--app-cta-safe": showTabBar ? "0px" : "var(--app-safe-bottom, 0px)",
       } as CSSProperties}
     >
