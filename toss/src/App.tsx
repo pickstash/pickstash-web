@@ -66,18 +66,23 @@ function App() {
   // 배너는 홈·알림에서(탭바 위 고정). 그 높이를 --app-nav-h에 더해 콘텐츠가 배너 위로 밀리게 한다.
   const showBanner = (pathname === "/" || pathname === "/alerts") && showTabBar;
 
-  // 홈에서만 홈 데이터를 미리 본다(첫 로그인=상자 0개면 온보딩 전용 화면으로 분기). HomeScreen과 ['home'] 공유.
+  // 홈에서만 홈 데이터를 미리 본다(완전 신규면 온보딩 전용 화면으로 분기). HomeScreen과 ['home'] 공유.
   const home = useHome(pathname === "/" && !!session);
 
   if (!ready) return null;
   if (!session && !isInviteRoute) return <LoginScreen />;
 
-  // 첫 로그인(상자 open·done 모두 0) → 헤더·탭바 없이 온보딩 전용, 하단엔 배너만.
+  // 온보딩: 지금 상자(진행중·정리됨)·서랍이 하나도 없을 때만. 헤더·탭바 없이 독립 화면.
+  // 상태 기준이라 초대로 뭐라도 생기면 즉시 홈. (다 지워 0이 된 복귀자도 빈 상태라 온보딩이 자연스러움 → '상자를 만들어볼까요' 문구.)
   if (pathname === "/" && session) {
     if (home.isPending) return <ScreenLoading />;
-    if (home.data && home.data.openCount === 0 && home.data.doneCount === 0) {
-      // 온보딩은 광고 없이 — 첫 화면은 방해 없이 상자 만들기에 집중.
-      return <OnboardingScreen nickname={home.data.nickname} />;
+    if (home.data) {
+      const nothing =
+        home.data.openCount === 0 && home.data.doneCount === 0 && home.data.folders.length === 0;
+      if (nothing) {
+        // 온보딩은 광고 없이 — 첫 화면은 방해 없이 상자 만들기에 집중.
+        return <OnboardingScreen nickname={home.data.nickname} />;
+      }
     }
   }
 

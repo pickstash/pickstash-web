@@ -20,7 +20,7 @@ export function OnboardingScreen({ nickname }: { nickname: string }) {
         <div className="mt-6">
           <p className="text-[18px]">{nickname}님의 결정창고에서</p>
           <h1 className="mt-1 text-[25px] font-extrabold leading-[1.25] tracking-tight text-ink text-balance">
-            첫 상자를 만들어볼까요?
+            상자를 만들어볼까요?
           </h1>
           <p className="mt-3 text-[13px] leading-relaxed text-ink-soft">
             정하기 어려운 걸 상자에 담아

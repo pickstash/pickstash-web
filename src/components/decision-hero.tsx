@@ -43,26 +43,19 @@ function HeroAvatars({ participants, max = 4 }: { participants: HeroParticipant[
  */
 export function DecisionHero({ box }: { box: OpenBoxCard | null }) {
   if (!box) {
-    // 데이터가 없는 첫 화면 — 휑하지 않게 환영 + 1·2·3 온보딩 + 친구 초대.
-    // 주 행동('새 상자 만들기')은 홈 하단 고정 CTA가 담당하므로 여기선 안내와 친구 초대만.
+    // 진행 중인 상자가 없는 복귀 사용자용 빈 상태(정리된 상자·서랍은 있음).
+    // 완전 신규(상자·서랍 0)는 별도 온보딩 화면으로 분기되므로, 여기선 온보딩 안내(첫 상자·1·2·3)를 쓰지 않는다.
+    // 주 행동('새 상자 만들기')은 홈 하단 고정 CTA가 담당 → 여기선 가벼운 안내 + 친구 초대만.
     return (
       <section className="px-5 pt-1">
-        <div className="flex flex-col items-center gap-4 px-2 py-6 text-center">
+        <div className="flex flex-col items-center gap-4 px-2 py-10 text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icons/character.png" alt="" className="h-[56px] w-auto" />
+          <img src="/icons/character.png" alt="" className="h-[52px] w-auto" />
           <div>
-            <p className="text-[18px] font-extrabold tracking-tight text-ink">첫 상자를 만들어볼까요?</p>
+            <p className="text-[16px] font-extrabold tracking-tight text-ink">지금 정리 중인 상자가 없어요</p>
             <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-soft">
-              정하기 어려운 걸 상자에 담아<br />친구랑 투표로 정해요.
+              새 상자를 만들거나,<br />정리된 상자를 다시 볼 수 있어요.
             </p>
-          </div>
-          <div className="w-full space-y-2">
-            {([['1', '고민을 상자로 만들고'], ['2', '후보·링크를 담고'], ['3', '함께 투표해서 정해요']] as const).map(([n, t]) => (
-              <div key={n} className="flex items-center gap-3 rounded-[14px] border border-line bg-paper px-3.5 py-3 text-left">
-                <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full bg-butter text-[12px] font-extrabold text-ink">{n}</span>
-                <span className="text-[12.5px] font-semibold text-ink">{t}</span>
-              </div>
-            ))}
           </div>
           <FriendInviteButton />
         </div>
