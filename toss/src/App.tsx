@@ -9,7 +9,6 @@ import { LoginScreen } from "./screens/login-screen";
 import { ScreenLoading } from "./screens/screen-state";
 import { HomeScreen } from "./screens/home-screen";
 import { OnboardingScreen } from "./screens/onboarding-screen";
-import { AdBanner } from "./components/ad-banner";
 import { useHome } from "./lib/use-home";
 import { BoxListScreen } from "./screens/box-list-screen";
 import { BoxesScreen } from "./screens/boxes-screen";
@@ -73,13 +72,8 @@ function App() {
   if (pathname === "/" && session) {
     if (home.isPending) return <ScreenLoading />;
     if (home.data && home.data.openCount === 0 && home.data.doneCount === 0) {
-      return (
-        // --app-tabbar-h:0 → 배너가 탭바 자리 없이 화면 맨 아래에 붙는다. --app-banner-h로 온보딩 하단 여백 확보.
-        <div style={{ "--app-banner-h": "96px", "--app-tabbar-h": "0px" } as CSSProperties}>
-          <OnboardingScreen nickname={home.data.nickname} />
-          <AdBanner />
-        </div>
-      );
+      // 온보딩은 광고 없이 — 첫 화면은 방해 없이 상자 만들기에 집중.
+      return <OnboardingScreen nickname={home.data.nickname} />;
     }
   }
 

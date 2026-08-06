@@ -11,14 +11,14 @@ const STEPS: [string, string][] = [
 
 export function OnboardingScreen({ nickname }: { nickname: string }) {
   return (
-    <main className="flex min-h-dvh flex-col justify-center bg-cream px-6 pt-[calc(env(safe-area-inset-top)+1rem)] pb-[calc(var(--app-banner-h,96px)+var(--app-safe-bottom,0px)+1.5rem)]">
+    <main className="flex min-h-dvh flex-col justify-center bg-cream px-6 pt-[calc(env(safe-area-inset-top)+1rem)] pb-[calc(var(--app-safe-bottom,0px)+2rem)]">
       <div className="mx-auto flex w-full max-w-[360px] flex-col items-center gap-5 text-center">
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
-        <img src="/icons/icon_heart.svg" alt="" className="h-[96px] w-auto" />
+        <img src="/icons/icon_heart.svg" alt="" className="h-14 w-auto" />
 
         <div>
-          <p className="text-[13px] font-bold text-ink-soft">{nickname}님의 결정창고에서</p>
-          <h1 className="mt-1 text-[24px] font-extrabold leading-tight tracking-tight text-ink text-balance">
+          <p className="text-[12.5px] font-semibold text-ink-faint">{nickname}님의 결정창고에서</p>
+          <h1 className="mt-1.5 text-[23px] font-extrabold leading-tight tracking-tight text-ink text-balance">
             첫 상자를 만들어볼까요?
           </h1>
           <p className="mt-2.5 text-[13px] leading-relaxed text-ink-soft">
@@ -41,8 +41,11 @@ export function OnboardingScreen({ nickname }: { nickname: string }) {
 
         <div className="w-full space-y-2.5 pt-1">
           <AppLink href="/box/new" className="block">
-            <button className="w-full rounded-field bg-ink py-4 text-sm font-extrabold text-cream active:opacity-80">
-              ＋ 새 상자 만들기
+            <button className="flex w-full items-center justify-center gap-1.5 rounded-field bg-ink py-4 text-sm font-extrabold text-cream active:opacity-80">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              새 상자 만들기
             </button>
           </AppLink>
           <FriendInviteButton />
