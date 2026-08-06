@@ -15,6 +15,7 @@ import { useToggleFavorite } from '@/hooks/use-favorites'
 import { useFolders, useMyBoxFolders, useSetBoxFolders, useCreateFolder } from '@/hooks/use-folders'
 import { useOptions } from '@/hooks/use-options'
 import { useBoxVotes } from '@/hooks/use-votes'
+import { useCoParticipants, useInviteUsersToBox } from '@/hooks/use-invites'
 import { DeadlineBottomSheet } from '@/components/deadline-bottom-sheet'
 import { OptionsSection } from '@/components/options-section'
 import { Icon } from '@/components/icon'
@@ -123,6 +124,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
   const [folderModal, setFolderModal] = useState(false)
   const [folderNameInput, setFolderNameInput] = useState('')
   const [confirmShareFolder, setConfirmShareFolder] = useState<{ id: string; name: string; count: number } | null>(null)
+  const [invitePicked, setInvitePicked] = useState<Set<string>>(new Set())
   const [isFavorite, setIsFavorite] = useState(initialIsFavorite)
   const [deciding, setDeciding] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -156,6 +158,24 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
   const { data: myFolderIds = [] } = useMyBoxFolders(box.id)
   const setFolders = useSetBoxFolders(box.id)
   const createFolder = useCreateFolder()
+  // 부분 초대(그때그때) — 시트 열렸을 때만 '함께했던 사람' 후보 조회.
+  const { data: coParticipants = [], isPending: coLoading } = useCoParticipants(box.id, membersOpen)
+  const inviteUsers = useInviteUsersToBox(box.id)
+
+  function toggleInvitePick(id: string) {
+    setInvitePicked(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  function doInvite() {
+    if (invitePicked.size === 0) return
+    inviteUsers.mutate(Array.from(invitePicked), {
+      onSuccess: () => { setInvitePicked(new Set()); nav.refresh() },
+    })
+  }
 
   const { data: options = initialOptions } = useOptions(box.id)
   const { data: votes = {} } = useBoxVotes(box.id, box.current_round)
@@ -861,6 +881,50 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
                 </div>
               ))}
             </div>
+            {/* 함께했던 사람 바로 초대 — 링크 없이 고른 사람만 참여시킴(그때그때 부분 초대) */}
+            {!isDone && coParticipants.length > 0 && (
+              <div className="mb-3 border-t border-line pt-3">
+                <p className="mb-2 text-[12px] font-bold text-ink-faint">함께했던 사람</p>
+                <div className="max-h-[30vh] space-y-1 overflow-y-auto">
+                  {coParticipants.map(c => {
+                    const on = invitePicked.has(c.id)
+                    return (
+                      <button
+                        key={c.id}
+                        onClick={() => toggleInvitePick(c.id)}
+                        className={`flex w-full items-center gap-3 rounded-field border px-3 py-2.5 text-left ${
+                          on ? 'border-butter-dark bg-butter-tint' : 'border-line bg-paper active:bg-cream'
+                        }`}
+                      >
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border border-paper bg-butter-tint text-[10px] font-bold text-ink">
+                          {c.avatar_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={c.avatar_url} alt="" className="h-full w-full object-cover" />
+                          ) : (c.nickname?.[0] ?? '?')}
+                        </div>
+                        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">{c.nickname}</span>
+                        <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${on ? 'border-butter-dark bg-butter' : 'border-line bg-paper'}`}>
+                          {on && <Icon name="check" size={13} strokeWidth={3.2} className="text-ink" />}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+                {invitePicked.size > 0 && (
+                  <button
+                    onClick={doInvite}
+                    disabled={inviteUsers.isPending}
+                    className="mt-2 w-full rounded-field bg-ink py-3 text-sm font-bold text-cream active:opacity-80 disabled:opacity-50"
+                  >
+                    {inviteUsers.isPending ? '초대 중…' : `${invitePicked.size}명 초대하기`}
+                  </button>
+                )}
+              </div>
+            )}
+            {!isDone && coLoading && coParticipants.length === 0 && (
+              <p className="mb-3 border-t border-line pt-3 text-center text-[12px] text-ink-faint">불러오는 중…</p>
+            )}
+
             {!isDone && (
               <button
                 onClick={copyInvite}

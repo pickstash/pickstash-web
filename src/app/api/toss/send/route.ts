@@ -18,7 +18,7 @@ import { tossRequest } from '@/lib/toss/mtls'
 
 export const runtime = 'nodejs' // node:https(mTLS)·admin 사용 → Edge 아님
 
-type MessageKey = 'comment' | 'option' | 'decision' | 'decision_auto' | 'mention' | 'join'
+type MessageKey = 'comment' | 'option' | 'decision' | 'decision_auto' | 'mention' | 'join' | 'invite'
 
 // 이벤트별 소재(발송 코드)를 나눈다 — 잠금화면에서 무슨 일인지 제목으로 미리 알려주려고.
 // (이동 URL은 4개 다 알림함 /alerts 고정. 문구/제목만 소재별로 다르다.) 멘션은 댓글 소재 공용.
@@ -29,6 +29,7 @@ const TEMPLATE_CODE: Record<MessageKey, string> = {
   decision_auto: process.env.TOSS_TPL_DECISION_AUTO ?? 'pickstash-auto-decision', // 자동마감(시스템 문구, 이름 X)
   mention: process.env.TOSS_TPL_COMMENT ?? 'pickstash-comment-v2',
   join: process.env.TOSS_TPL_JOIN ?? 'pickstash-join-v2',
+  invite: process.env.TOSS_TPL_INVITE ?? 'pickstash-invite-v2', // "○○님이 초대했어요" (콘솔 소재 필요)
 }
 
 interface RequestBody {
@@ -109,7 +110,9 @@ export async function POST(request: Request) {
 
   // 유형별 알림 pref(028) — 이 유형을 끈 대상은 제외. 행 없으면 전부 켜진 것으로 간주.
   // decision_auto는 '정리 완료' 토글(decision)을 공유한다.
-  const prefKey = message_key === 'decision_auto' ? 'decision' : (message_key ?? 'comment')
+  // decision_auto→decision, invite→join 으로 pref 컬럼 공유(신규 컬럼 없이 게이팅).
+  const prefKey =
+    message_key === 'decision_auto' ? 'decision' : message_key === 'invite' ? 'join' : (message_key ?? 'comment')
   const prefCol = `${prefKey}_enabled`
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: prefRows } = await (admin.from as any)('notification_prefs')
