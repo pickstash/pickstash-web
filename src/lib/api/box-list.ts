@@ -46,27 +46,33 @@ export async function loadBoxList(
 
   let boxes: RawBox[] = []
 
+  const byCreatedDesc = (a: RawBox, b: RawBox) => b.created_at.localeCompare(a.created_at)
+
   if (kind === 'messy') {
+    // 진행중: 생성일 최신순
     const { data } = await supabase
       .from('boxes')
       .select('*, box_participants(user_id, profiles(avatar_url, nickname))')
       .is('closed_at', null)
-      .order('updated_at', { ascending: false })
+      .order('created_at', { ascending: false })
     boxes = (data ?? []) as unknown as RawBox[]
   } else if (kind === 'done') {
+    // 정리됨: 정리마감일(closed_at) 최신순, 동점이면 생성일 최신순
     const { data } = await supabase
       .from('boxes')
       .select('*, box_participants(user_id, profiles(avatar_url, nickname)), options(id, name, decided_at)')
       .not('closed_at', 'is', null)
-      .order('updated_at', { ascending: false })
+      .order('closed_at', { ascending: false })
+      .order('created_at', { ascending: false })
     boxes = (data ?? []) as unknown as RawBox[]
   } else {
+    // 즐겨찾기: 진행·정리 섞임 → 상자 생성일 최신순(다른 탭과 일관). 조인이라 client 정렬.
     const { data } = await supabase
       .from('favorites')
       .select('box_id, boxes(*, box_participants(user_id, profiles(avatar_url, nickname)), options(id, name, decided_at))')
       .eq('user_id', userId)
-      .order('created_at', { ascending: false })
     boxes = (data ?? []).map(f => f.boxes).filter(Boolean) as unknown as RawBox[]
+    boxes.sort(byCreatedDesc)
   }
 
   const items: BoxListItem[] = boxes.map(box => {
