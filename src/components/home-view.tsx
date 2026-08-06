@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { AppLink } from '@/lib/nav/nav'
+import { CreateFab } from '@/components/create-fab'
 import { AppDrawer } from '@/components/app-drawer'
 import { DecisionHero } from '@/components/decision-hero'
 import { DecisionRail } from '@/components/decision-rail'
@@ -48,16 +48,8 @@ export function HomeView({
         {bottomBanner && <div className="px-5 pt-2">{bottomBanner}</div>}
       </div>
 
-      {/* 새 상자 FAB — 우하단 플로팅. 하단 full-width 바를 없애 배너·탭바와 3층으로 겹치던 걸 해소.
-          토스는 --app-nav-h(탭바+홈 배너)만큼, 웹은 safe-area만큼 띄운다. xl(데스크톱)은 430px 컨테이너 안쪽. */}
-      <AppLink
-        href="/box/new"
-        aria-label="새 상자 만들기"
-        className="fixed right-5 z-30 flex items-center gap-1 rounded-full bg-ink py-3.5 pl-[15px] pr-[18px] text-sm font-extrabold text-cream shadow-[0_10px_24px_-6px_rgba(42,42,39,0.55)] active:opacity-85 bottom-[calc(var(--app-nav-h,0px)+var(--app-cta-safe,env(safe-area-inset-bottom))+1rem)] xl:right-[calc(50%-195px)] xl:bottom-12"
-      >
-        <span className="text-[17px] leading-none">＋</span>
-        새 상자
-      </AppLink>
+      {/* 새 상자 FAB — 하단 full-width 바를 없애 배너·탭바와 3층 겹침 해소. 상자·서랍 탭과 톤 통일. */}
+      <CreateFab href="/box/new" label="새 상자" />
     </main>
   )
 }

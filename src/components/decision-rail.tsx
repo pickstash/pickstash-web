@@ -58,8 +58,9 @@ export function DecisionRail({ boxes, totalOpen }: { boxes: OpenBoxCard[]; total
         {/* 상자가 주인공 — 라벨은 얇게(“정리 중 · N”). */}
         <h2 className="text-[12px] font-bold text-ink-soft">정리 중 · {totalOpen}</h2>
         {totalOpen > boxes.length + 1 && (
-          <AppLink href="/messy" className="text-[12px] font-semibold text-ink-faint active:opacity-70">
-            전체 ›
+          <AppLink href="/messy" className="inline-flex items-center gap-0.5 text-[12px] font-semibold text-ink-faint active:opacity-70">
+            전체
+            <Icon name="chevronRight" size={13} strokeWidth={2.5} />
           </AppLink>
         )}
       </div>

@@ -6,6 +6,7 @@ import { AppLink } from '@/lib/nav/nav'
 import { PageHeader } from '@/components/page-header'
 import { AppDrawer } from '@/components/app-drawer'
 import { Icon } from '@/components/icon'
+import { CreateFab } from '@/components/create-fab'
 import { useCreateFolder, useRenameFolder, useLeaveFolder } from '@/hooks/use-folders'
 
 export interface FolderCard {
@@ -165,16 +166,8 @@ export function FoldersClient({ initialFolders, nickname, me }: { initialFolders
         )}
       </div>
 
-      {/* 하단 고정 CTA — 헤더 대신(토스 시스템 버튼 겹침 회피). 토스는 --app-nav-h만큼 탭바 위로. */}
-      <div className="fixed inset-x-0 bottom-[var(--app-nav-h,0px)] z-20 bg-cream px-5 pt-3 pb-[calc(var(--app-cta-safe,env(safe-area-inset-bottom))+0.75rem)] xl:inset-x-auto xl:bottom-10 xl:left-1/2 xl:w-[430px] xl:-translate-x-1/2 xl:rounded-b-[30px]">
-        <button
-          onClick={() => setAdding(true)}
-          className="flex w-full items-center justify-center gap-1.5 rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80"
-        >
-          <Icon name="plus" size={16} strokeWidth={2.4} />
-          새 서랍
-        </button>
-      </div>
+      {/* 새 서랍 FAB — 홈·상자와 톤 통일. 누르면 새 서랍 만들기 시트. */}
+      <CreateFab onClick={() => setAdding(true)} label="새 서랍" />
 
       {/* 새 서랍 만들기 바텀시트 */}
       {adding && createPortal(

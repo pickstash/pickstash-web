@@ -37,7 +37,7 @@ export function AlertsView({ items }: { items: AlertItem[] }) {
         <h1 className="text-[17px] font-extrabold tracking-tight text-ink">알림</h1>
       </header>
 
-      <div className="flex-1 px-5 pb-28 pt-1">
+      <div className="flex-1 px-5 pb-[calc(var(--app-nav-h,7rem)+3.5rem)] pt-1">
         {items.length === 0 ? (
           <div className="mt-10 rounded-card border border-dashed border-[#D9D6C2] bg-paper/60 px-6 py-14 text-center">
             <span className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-butter-tint text-ink">

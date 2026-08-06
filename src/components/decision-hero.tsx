@@ -141,8 +141,9 @@ export function DecisionHero({ box }: { box: OpenBoxCard | null }) {
             ) : (
               <span className="text-[11.5px] font-semibold text-ink-soft">천천히 골라보세요</span>
             )}
-            <span className="flex items-center gap-1 rounded-full bg-ink px-3.5 py-2 text-[12.5px] font-extrabold text-cream">
-              정하러 가기 ›
+            <span className="flex items-center gap-0.5 rounded-full bg-ink py-2 pl-3.5 pr-2.5 text-[12.5px] font-extrabold text-cream">
+              정하러 가기
+              <Icon name="chevronRight" size={14} strokeWidth={2.5} />
             </span>
           </div>
         </div>

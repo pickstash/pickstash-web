@@ -59,8 +59,8 @@ function App() {
   const isInviteRoute = pathname.startsWith("/invite/") || pathname.startsWith("/folder-invite/");
   // 탭바는 폼(집중)·초대 뷰어를 제외한 모든 화면. 초대 뷰어는 자체 '참여하기' CTA만 둔다.
   const showTabBar = !isFormRoute(pathname) && !isInviteRoute;
-  // 배너는 홈에서만(탭바 위 고정). 그 높이를 --app-nav-h에 더해 CTA·콘텐츠가 배너 위로 밀리게 한다.
-  const showBanner = pathname === "/" && showTabBar;
+  // 배너는 홈·알림에서(탭바 위 고정). 그 높이를 --app-nav-h에 더해 콘텐츠가 배너 위로 밀리게 한다.
+  const showBanner = (pathname === "/" || pathname === "/alerts") && showTabBar;
 
   // 홈에서만 홈 데이터를 미리 본다(첫 로그인=상자 0개면 온보딩 전용 화면으로 분기). HomeScreen과 ['home'] 공유.
   const home = useHome(pathname === "/" && !!session);
