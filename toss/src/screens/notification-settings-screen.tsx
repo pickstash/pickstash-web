@@ -56,16 +56,18 @@ export function NotificationSettingsScreen() {
     setAgreeMsg("요청 중…");
     const r = await requestPushAgreement();
     setAgreeMsg(
-      r === "agreementRejected"
-        ? "알림을 거부했어요. 오른쪽 위 ···(앱 설정) → 알림에서 켤 수 있어요."
-        : r === "unsupported"
-          ? "이 환경에선 알림 요청이 지원되지 않아요."
-          : "알림이 켜졌어요.",
+      r === "newAgreement"
+        ? "알림이 켜졌어요."
+        : r === "alreadyAgreed"
+          ? "이미 알림에 동의돼 있어요. 껐다 켜는 건 오른쪽 위 ···(앱 설정) → 알림에서 해요."
+          : r === "agreementRejected"
+            ? "알림을 거부했어요. 오른쪽 위 ···(앱 설정) → 알림에서 켤 수 있어요."
+            : "이 환경에선 알림 요청이 지원되지 않아요.",
     );
   }
 
   return (
-    <main className="min-h-dvh bg-cream pb-10">
+    <main className="min-h-dvh bg-cream pb-[calc(var(--app-safe-bottom,0px)+3rem)]">
       <PageHeader title="알림 설정" />
       <div className="mx-auto max-w-[430px] space-y-5 px-5 pt-2">
         {/* 마스터 — 토스 동의(켜기). 끄기는 토스 앱 설정 안내(앱에서 OFF API 없음). */}
