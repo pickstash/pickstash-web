@@ -60,18 +60,37 @@ export function OptionForm({
   const nameRef = useRef(name)
   nameRef.current = name
 
-  // 토스식 자동 제안 — 폼 열 때 클립보드에 링크가 있으면(권한 이미 허용 시) 바로 미리보기 카드로 띄운다.
-  // 권한 없으면 조용히 null → 아래 수동 '복사한 링크 넣기' 버튼만 보인다(팝업 안 띄움).
+  // 토스식 자동 제안 — 클립보드에 링크가 있으면(권한 허용 시) '이 링크 넣을까요?' 카드로 띄운다.
+  // 폼 마운트 + 앱 재활성화(포그라운드 복귀)마다 재검사 — 앱 나가서 복사 후 돌아와도 새 링크를 잡는다.
+  // 이미 담았거나(handledUrlRef) 취소한 링크는 다시 안 띄운다(같은 링크로 계속 나대지 않게).
+  const handledUrlRef = useRef<string | null>(null)
   useEffect(() => {
     if (!offerClipboardLink) return
     let cancelled = false
-    peekClipboardIfAllowed().then(text => {
-      if (cancelled || !text) return
-      const split = splitPastedLink(text.trim())
-      if (split) setClipboardPreview({ kind: 'link', url: split.url, label: split.label })
-    })
-    return () => { cancelled = true }
+    const check = () => {
+      if (document.visibilityState !== 'visible') return
+      peekClipboardIfAllowed().then(text => {
+        if (cancelled || !text) return
+        const split = splitPastedLink(text.trim())
+        if (!split || split.url === handledUrlRef.current) return
+        setClipboardPreview({ kind: 'link', url: split.url, label: split.label })
+      })
+    }
+    check()
+    document.addEventListener('visibilitychange', check)
+    window.addEventListener('focus', check)
+    return () => {
+      cancelled = true
+      document.removeEventListener('visibilitychange', check)
+      window.removeEventListener('focus', check)
+    }
   }, [offerClipboardLink])
+
+  // 제안 카드를 닫는다(취소·담기 공통) — 같은 링크가 재활성화 때 또 뜨지 않게 처리 완료로 표시.
+  function dismissClipboard() {
+    if (clipboardPreview?.kind === 'link') handledUrlRef.current = clipboardPreview.url
+    setClipboardPreview(null)
+  }
 
   const imageCount = blocks.filter(b => b.type === 'image').length
   const atBlockLimit = blocks.length >= MAX_BLOCKS
@@ -134,6 +153,7 @@ export function OptionForm({
     if (clipboardPreview?.kind !== 'link') return
     if (clipboardPreview.label && !name.trim()) setName(clipboardPreview.label)
     addLinkWithUrl(clipboardPreview.url)
+    handledUrlRef.current = clipboardPreview.url
     setClipboardUsed(true)
     setClipboardPreview(null)
   }
@@ -251,7 +271,7 @@ export function OptionForm({
             </button>
             <button
               type="button"
-              onClick={() => setClipboardPreview(null)}
+              onClick={dismissClipboard}
               className="rounded-field border border-line bg-paper px-4 py-2.5 text-[13px] font-bold text-ink-soft active:bg-cream"
             >
               취소
