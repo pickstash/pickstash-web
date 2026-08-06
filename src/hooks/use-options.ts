@@ -34,8 +34,11 @@ export function useCreateOption(boxId: string) {
   return useMutation({
     mutationFn: (input: CreateOptionInput) => createOption(input),
     onSuccess: (option) => {
-      qc.invalidateQueries({ queryKey: ['options', boxId] })
-      qc.invalidateQueries({ queryKey: ['box', boxId] })
+      // 추가 직후 옵션상세로 이동 → 상자 상세·목록은 비활성. refetchType:'all'로 뒤로가기 시 새 선택지 반영.
+      qc.invalidateQueries({ queryKey: ['options', boxId], refetchType: 'all' })
+      qc.invalidateQueries({ queryKey: ['box', boxId], refetchType: 'all' })
+      qc.invalidateQueries({ queryKey: ['box-detail', boxId], refetchType: 'all' })
+      qc.invalidateQueries({ queryKey: ['home'], refetchType: 'all' })
       // replace: 추가 폼(/new)을 히스토리에서 교체 — 새 선택지 상세에서 뒤로가기 시 빈 폼으로 안 돌아가게
       nav.replace(`/box/${boxId}/option/${option.id}`)
     },
@@ -49,8 +52,11 @@ export function useUpdateOption(optionId: string, boxId: string) {
     mutationFn: (input: UpdateOptionInput) => updateOption(optionId, input),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['option', optionId] })
-      qc.invalidateQueries({ queryKey: ['options', boxId] })
-      // 상자 상세(서버 컴포넌트)에도 이름이 노출되므로 Router Cache도 비워 즉시 반영.
+      // 토스 옵션상세는 ['option-detail',boxId,optionId] 키를 쓴다 — 이름/메모 수정 반영에 필수.
+      qc.invalidateQueries({ queryKey: ['option-detail', boxId, optionId], refetchType: 'all' })
+      qc.invalidateQueries({ queryKey: ['options', boxId], refetchType: 'all' })
+      qc.invalidateQueries({ queryKey: ['box-detail', boxId], refetchType: 'all' })
+      // 상자 상세(웹 서버 컴포넌트)에도 이름이 노출되므로 Router Cache도 비워 즉시 반영.
       nav.refresh()
     },
   })
@@ -62,7 +68,9 @@ export function useDeleteOption(boxId: string) {
   return useMutation({
     mutationFn: (optionId: string) => deleteOption(optionId),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['options', boxId] })
+      qc.invalidateQueries({ queryKey: ['options', boxId], refetchType: 'all' })
+      qc.invalidateQueries({ queryKey: ['box-detail', boxId], refetchType: 'all' })
+      qc.invalidateQueries({ queryKey: ['home'], refetchType: 'all' })
       // replace: 삭제된 선택지 상세로 back하면 빈 화면/리다이렉트가 되므로 히스토리에서 교체
       nav.replace(`/box/${boxId}`)
     },

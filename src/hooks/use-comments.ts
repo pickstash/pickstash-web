@@ -16,7 +16,11 @@ export function useCreateComment(optionId: string) {
   return useMutation({
     mutationFn: ({ body, parentCommentId }: { body: string; parentCommentId?: string }) =>
       createComment(optionId, body, { parentCommentId }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['comments', optionId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['comments', optionId] })
+      // 홈 카드 댓글수(totalComments)는 loadHomeView가 계산 → 댓글 시 홈은 비활성이라 'all'로 최신화.
+      qc.invalidateQueries({ queryKey: ['home'], refetchType: 'all' })
+    },
   })
 }
 
@@ -32,6 +36,9 @@ export function useDeleteComment(optionId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => deleteComment(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['comments', optionId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['comments', optionId] })
+      qc.invalidateQueries({ queryKey: ['home'], refetchType: 'all' })
+    },
   })
 }

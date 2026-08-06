@@ -25,6 +25,14 @@ export function useToggleFavorite(boxId: string) {
     onError: (_e, _v, ctx) => {
       if (ctx?.prev) qc.setQueryData(['favorites'], ctx.prev)
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: ['favorites'] }),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['favorites'] })
+      // 즐겨찾기(별표)는 홈 히어로/레일·상자탭('즐겨찾기' 필터)·서랍·상세에 반영된다.
+      // 토글 시 이 화면들은 대부분 비활성이라 refetchType:'all'로 즉시 최신화(안 하면 새로고침해야 보임).
+      qc.invalidateQueries({ queryKey: ['home'], refetchType: 'all' })
+      qc.invalidateQueries({ queryKey: ['box-list'], refetchType: 'all' })
+      qc.invalidateQueries({ queryKey: ['folder-view'], refetchType: 'all' })
+      qc.invalidateQueries({ queryKey: ['box-detail', boxId], refetchType: 'all' })
+    },
   })
 }

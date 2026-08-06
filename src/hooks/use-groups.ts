@@ -28,7 +28,8 @@ export function useCreateGroup() {
   return useMutation({
     mutationFn: (name: string) => createGroup(name),
     onSuccess: (group) => {
-      qc.invalidateQueries({ queryKey: ['groups'] })
+      // 생성 후 그룹 상세로 이동 → 목록 비활성. refetchType:'all'로 뒤로가기 시 새 그룹 반영.
+      qc.invalidateQueries({ queryKey: ['groups'], refetchType: 'all' })
       nav.push(`/groups/${group.id}`)
     },
   })
@@ -40,7 +41,8 @@ export function useLeaveGroup(groupId: string) {
   return useMutation({
     mutationFn: () => leaveGroup(groupId),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['groups'] })
+      // replace 후 목록이 staleTime 내면 나간 그룹이 잔존 → refetchType:'all'로 즉시 제거.
+      qc.invalidateQueries({ queryKey: ['groups'], refetchType: 'all' })
       nav.replace('/groups') // 나간 그룹으로 back하면 '멤버 아님→/groups' 리다이렉트 루프 → 교체
     },
   })
