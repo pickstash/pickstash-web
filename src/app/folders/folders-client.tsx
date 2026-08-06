@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useBodyScrollLock } from '@/hooks/use-body-scroll-lock'
 import { AppLink } from '@/lib/nav/nav'
 import { PageHeader } from '@/components/page-header'
 import { AppDrawer } from '@/components/app-drawer'
@@ -53,6 +54,7 @@ export function FoldersClient({ initialFolders, nickname, me }: { initialFolders
   const [leaveFor, setLeaveFor] = useState<FolderCard | null>(null)
   const [alsoLeaveBoxes, setAlsoLeaveBoxes] = useState(false)
   const [copied, setCopied] = useState(false)
+  useBodyScrollLock(adding || menuFor != null || renameFor != null || leaveFor != null)
 
   const createFolder = useCreateFolder()
   const rename = useRenameFolder()

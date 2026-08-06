@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useBodyScrollLock } from '@/hooks/use-body-scroll-lock'
 import { useNav } from '@/lib/nav/nav'
 import { setPendingBoxFolder } from '@/lib/nav/pending-box-folder'
 import { PageHeader } from '@/components/page-header'
@@ -80,6 +81,7 @@ export function FolderView({ folderId, folderName, inviteCode, members, initialB
   const [addOpen, setAddOpen] = useState(false)
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [confirmShareAdd, setConfirmShareAdd] = useState(false)
+  useBodyScrollLock(addOpen || confirmShareAdd || membersOpen || renaming || confirmLeave)
 
   const isShared = members.length > 1
 

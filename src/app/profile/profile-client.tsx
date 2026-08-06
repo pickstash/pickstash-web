@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useBodyScrollLock } from '@/hooks/use-body-scroll-lock'
 import { useNav, AppLink } from '@/lib/nav/nav'
 import { requestAppReview } from '@/lib/review/native-review'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -24,6 +25,7 @@ export function ProfileClient({ userId, nickname, avatarUrl, kakaoAvatarUrl }: P
   const [editingNickname, setEditingNickname] = useState(false)
   const [nicknameValue, setNicknameValue] = useState(nickname)
   const [confirmLogout, setConfirmLogout] = useState(false)
+  useBodyScrollLock(confirmLogout)
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState(avatarUrl)
   const [avatarError, setAvatarError] = useState<string | null>(null)
 

@@ -6,6 +6,7 @@ import { useNav, AppLink } from '@/lib/nav/nav'
 import { signOut } from '@/lib/api/auth'
 import { Icon } from '@/components/icon'
 import { useFolders } from '@/hooks/use-folders'
+import { useBodyScrollLock } from '@/hooks/use-body-scroll-lock'
 
 type PwaPrompt = Event & { prompt(): Promise<void> }
 declare global { interface Window { __pwaPrompt?: PwaPrompt } }
@@ -50,6 +51,7 @@ export function AppDrawer({ nickname }: AppDrawerProps) {
   const [browser, setBrowser] = useState<BrowserType | null>(null)
   const [pwaPrompt, setPwaPrompt] = useState<PwaPrompt | null>(null)
   const nav = useNav()
+  useBodyScrollLock(open)
 
   useEffect(() => {
     setBrowser(detectBrowser())
