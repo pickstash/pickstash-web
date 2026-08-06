@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNav } from '@/lib/nav/nav'
 import { setPendingBoxFolder } from '@/lib/nav/pending-box-folder'
@@ -13,6 +13,8 @@ import {
   useLeaveFolder,
   useRemoveBoxFromFolder,
   useReorderFolderBoxes,
+  useBoxesNotInFolder,
+  useAddBoxesToFolder,
 } from '@/hooks/use-folders'
 import type { Box } from '@/lib/api/boxes'
 
@@ -66,17 +68,40 @@ export function FolderView({ folderId, folderName, inviteCode, members, initialB
   const [title, setTitle] = useState(folderName)
   const [items, setItems] = useState(initialBoxes)
   const [editing, setEditing] = useState(false)
+  // 토스: 담기/무효화 후 쿼리가 새 initialBoxes를 넘기면 목록을 동기화(useState는 최초 1회라 prop만으론 안 바뀜).
+  // 편집(순서/제외) 중엔 로컬 편집을 덮지 않도록 스킵.
+  useEffect(() => { if (!editing) setItems(initialBoxes) }, [initialBoxes, editing])
   const [menuOpen, setMenuOpen] = useState(false)
   const [renaming, setRenaming] = useState(false)
   const [confirmLeave, setConfirmLeave] = useState(false)
   const [alsoLeaveBoxes, setAlsoLeaveBoxes] = useState(false)
   const [nameInput, setNameInput] = useState(folderName)
   const [membersOpen, setMembersOpen] = useState(false)
+  const [addOpen, setAddOpen] = useState(false)
+  const [picked, setPicked] = useState<Set<string>>(new Set())
 
   const rename = useRenameFolder()
   const leave = useLeaveFolder()
   const removeBox = useRemoveBoxFromFolder()
   const reorder = useReorderFolderBoxes(folderId)
+  const addBoxes = useAddBoxesToFolder(folderId)
+  // 시트 열렸을 때만 후보 조회
+  const { data: candidates = [], isPending: candLoading } = useBoxesNotInFolder(folderId, addOpen)
+
+  function togglePick(id: string) {
+    setPicked(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  function confirmAdd() {
+    if (picked.size === 0) return
+    addBoxes.mutate(Array.from(picked), {
+      onSuccess: () => { setAddOpen(false); setPicked(new Set()); nav.refresh() },
+    })
+  }
 
   const isShared = members.length > 1
 
@@ -226,13 +251,76 @@ export function FolderView({ folderId, folderName, inviteCode, members, initialB
       {!editing && (
         <div className="fixed inset-x-0 bottom-[var(--app-nav-h,0px)] z-20 bg-cream px-5 pt-3 pb-[calc(var(--app-cta-safe,env(safe-area-inset-bottom))+0.75rem)] xl:inset-x-auto xl:bottom-10 xl:left-1/2 xl:w-[430px] xl:-translate-x-1/2 xl:rounded-b-[30px]">
           <button
-            onClick={() => { setPendingBoxFolder({ id: folderId, name: title }); nav.push('/box/new') }}
+            onClick={() => { setPicked(new Set()); setAddOpen(true) }}
             className="flex w-full items-center justify-center gap-2 rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80"
           >
             <Icon name="plus" size={17} strokeWidth={2.4} />
             상자 추가하기
           </button>
         </div>
+      )}
+
+      {/* 상자 추가 시트 — 새 상자 만들기 + 기존 상자 담기(다중 선택). */}
+      {addOpen && createPortal(
+        <div className="fixed inset-0 z-50 flex flex-col justify-end">
+          <div className="absolute inset-0 bg-ink/45" onClick={() => setAddOpen(false)} />
+          <div className="relative mx-auto flex max-h-[80vh] w-full max-w-[430px] flex-col rounded-t-sheet bg-paper px-5 pb-10 pt-3">
+            <div className="mx-auto mb-4 h-1 w-9 rounded-full bg-line" />
+            <p className="text-[15px] font-extrabold text-ink">상자 추가</p>
+            <p className="mb-3 mt-0.5 text-[12px] text-ink-soft">새 상자를 만들거나, 이미 있는 상자를 담아요.</p>
+
+            {/* 새 상자 만들기 */}
+            <button
+              onClick={() => { setAddOpen(false); setPendingBoxFolder({ id: folderId, name: title }); nav.push('/box/new') }}
+              className="mb-3 flex w-full items-center gap-2.5 rounded-field border border-line bg-cream/60 px-4 py-3.5 text-left active:bg-cream"
+            >
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink text-cream">
+                <Icon name="plus" size={16} strokeWidth={2.4} />
+              </span>
+              <span className="text-[14px] font-bold text-ink">새 상자 만들기</span>
+            </button>
+
+            {/* 기존 상자 담기 */}
+            <p className="mb-2 text-[12px] font-bold text-ink-faint">이미 있는 상자</p>
+            <div className="mb-4 min-h-[3rem] flex-1 space-y-1.5 overflow-y-auto">
+              {candLoading ? (
+                <p className="py-6 text-center text-[13px] text-ink-faint">불러오는 중…</p>
+              ) : candidates.length === 0 ? (
+                <p className="py-6 text-center text-[13px] text-ink-faint">담을 수 있는 상자가 없어요.</p>
+              ) : (
+                candidates.map(b => {
+                  const on = picked.has(b.id)
+                  return (
+                    <button
+                      key={b.id}
+                      onClick={() => togglePick(b.id)}
+                      className={`flex w-full items-center gap-3 rounded-field border px-4 py-3 text-left ${
+                        on ? 'border-butter-dark bg-butter-tint' : 'border-line bg-paper active:bg-cream'
+                      }`}
+                    >
+                      <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-[1.5px] ${
+                        on ? 'border-ink bg-ink text-cream' : 'border-line'
+                      }`}>
+                        {on && <Icon name="check" size={12} strokeWidth={3} />}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-[14px] font-semibold text-ink">{b.title}</span>
+                      {b.isDone && <span className="shrink-0 rounded-full bg-leaf-tint px-2 py-0.5 text-[10px] font-bold text-[#37714A]">정리됨</span>}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+
+            <button
+              onClick={confirmAdd}
+              disabled={picked.size === 0 || addBoxes.isPending}
+              className="w-full rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80 disabled:opacity-40"
+            >
+              {addBoxes.isPending ? '담는 중…' : picked.size > 0 ? `${picked.size}개 담기` : '상자를 선택하세요'}
+            </button>
+          </div>
+        </div>,
+        document.body,
       )}
 
       {/* 멤버 + 초대 시트 — 밴드의 멤버 영역 탭 시. '초대하기 화면'(참여자 목록 + 링크로 초대). */}

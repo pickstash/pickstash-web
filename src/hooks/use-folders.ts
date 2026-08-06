@@ -10,6 +10,8 @@ import {
   setBoxFolders,
   removeBoxFromFolder,
   reorderBoxFolders,
+  getMyBoxesNotInFolder,
+  addBoxesToFolder,
 } from '@/lib/api/folders'
 
 // 서랍을 보여주는 모든 화면 캐시 무효화 — 생성·삭제·이름변경이 뒤로가기 시 즉시 반영되게.
@@ -70,6 +72,27 @@ export function useSetBoxFolders(boxId: string) {
     mutationFn: (folderIds: string[]) => setBoxFolders(boxId, folderIds),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['boxFolder', boxId] })
+      invalidateFolderViews(queryClient)
+    },
+  })
+}
+
+/** 서랍 상세 '기존 상자 담기' — 담을 후보(이 폴더에 아직 없는 내 상자). */
+export function useBoxesNotInFolder(folderId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['boxes-not-in-folder', folderId],
+    queryFn: () => getMyBoxesNotInFolder(folderId),
+    enabled: enabled && !!folderId,
+  })
+}
+
+/** 기존 상자(들)를 이 폴더에 담기 */
+export function useAddBoxesToFolder(folderId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (boxIds: string[]) => addBoxesToFolder(folderId, boxIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['boxes-not-in-folder', folderId], refetchType: 'all' })
       invalidateFolderViews(queryClient)
     },
   })
