@@ -23,6 +23,9 @@ function invalidateFolderViews(qc: QueryClient) {
   qc.invalidateQueries({ queryKey: ['folders'], refetchType: 'all' })
   qc.invalidateQueries({ queryKey: ['folders-page'], refetchType: 'all' })
   qc.invalidateQueries({ queryKey: ['folder-view'], refetchType: 'all' })
+  // 홈 온보딩 분기는 home.folders 수를 본다 → 서랍 삭제/나가기가 여기 반영 안 되면
+  // 상자·서랍 0인데도 nothing=false로 온보딩이 안 뜬다.
+  qc.invalidateQueries({ queryKey: ['home'], refetchType: 'all' })
 }
 
 export function useFolders() {
