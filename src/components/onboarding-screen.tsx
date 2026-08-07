@@ -1,5 +1,4 @@
 import { AppLink } from '@/lib/nav/nav'
-import { FriendInviteButton } from '@/components/friend-invite-button'
 
 // 완전 신규(상자·서랍 0) 전용 온보딩 — 헤더·탭바·광고 없이 전체 화면. 웹·토스 공유.
 // "○○님의 결정창고에서 / 상자를 만들어볼까요?"로 첫 행동(상자 만들기)을 분명히 한다.
@@ -42,8 +41,8 @@ export function OnboardingScreen({ nickname }: { nickname: string }) {
           ))}
         </div>
 
-        {/* 액션 — 주(새 상자) + 부(친구 초대) */}
-        <div className="mt-10 w-full space-y-2.5">
+        {/* 액션 — 새 상자 하나에 집중(초대는 상자를 만든 뒤 상자 상세에서). */}
+        <div className="mt-10 w-full">
           <AppLink href="/box/new" className="block">
             <button className="flex w-full items-center justify-center gap-1.5 rounded-field bg-ink py-4 text-sm font-extrabold text-cream active:opacity-80">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
@@ -52,7 +51,6 @@ export function OnboardingScreen({ nickname }: { nickname: string }) {
               상자 만들기
             </button>
           </AppLink>
-          <FriendInviteButton />
         </div>
       </div>
     </main>
