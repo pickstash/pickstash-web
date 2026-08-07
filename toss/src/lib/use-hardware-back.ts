@@ -1,21 +1,31 @@
 import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { graniteEvent } from "@apps-in-toss/web-framework";
+import { graniteEvent, setIosSwipeGestureEnabled } from "@apps-in-toss/web-framework";
 
-// 안드로이드 물리 뒤로가기 / iOS 스와이프 뒤로가기 처리.
-// 미구독 상태에선 뒤로가기가 네이티브로 가 미니앱이 바로 종료된다(=결정창고가 꺼지고 토스로 나감).
-// 홈('/')이 아닐 때만 backEvent를 구독해 앱 내부에서 navigate(-1)로 이전 화면으로 돌아가고,
-// 홈에선 구독하지 않아 기본 동작(토스로 나가기)을 그대로 둔다. (구독 시 기본 뒤로가기는 차단됨)
-export function useHardwareBack() {
+// 물리(안드로이드) / 시스템·제스처(iOS) 뒤로가기 통제.
+// - iOS 엣지 스와이프는 네이티브 제스처라 backEvent로 안 잡힌다 → setIosSwipeGestureEnabled(false)로 끈다.
+//   뒤로가기는 화면 내 PageHeader back·토스 시스템 백으로만 → 전부 backEvent를 거쳐 통제된다.
+// - backEvent를 항상 구독: 하위 화면=navigate(-1), 홈('/')=종료 확인(onHomeBack).
+//   미구독 시 뒤로가기가 네이티브로 가 미니앱이 확인 없이 바로 종료된다.
+export function useHardwareBack(onHomeBack: () => void) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (pathname === "/") return; // 홈: 기본 뒤로가기(토스로 나가기) 허용
+    // iOS 스와이프 뒤로가기 OFF — 네비게이션마다 재확인해 확실히 꺼둔다(화면 전환 시 초기화 대비).
+    try {
+      void setIosSwipeGestureEnabled({ isEnabled: false });
+    } catch {
+      /* 브라우저·미지원 환경 → noop */
+    }
+
     let unsubscribe: (() => void) | undefined;
     try {
       unsubscribe = graniteEvent.addEventListener("backEvent", {
-        onEvent: () => navigate(-1),
+        onEvent: () => {
+          if (pathname === "/") onHomeBack(); // 홈: 종료 확인 모달
+          else navigate(-1); // 하위: 이전 화면
+        },
         onError: (e: unknown) => console.error("[backEvent]", e),
       });
     } catch {
@@ -24,5 +34,5 @@ export function useHardwareBack() {
     return () => {
       try { unsubscribe?.(); } catch { /* noop */ }
     };
-  }, [pathname, navigate]);
+  }, [pathname, navigate, onHomeBack]);
 }
