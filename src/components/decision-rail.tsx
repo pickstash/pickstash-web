@@ -1,4 +1,4 @@
-import { AppLink } from '@/lib/nav/nav'
+import { AppLink, useNav } from '@/lib/nav/nav'
 import { Icon } from '@/components/icon'
 import { formatDday } from '@/lib/utils'
 import { leadersLabel, type HeroParticipant, type OpenBoxCard } from '@/components/decision-hero'
@@ -50,19 +50,22 @@ function CornerDeadline({ deadlineAt }: { deadlineAt: string }) {
  * boxes가 비면(어질러진 상자가 히어로 1개뿐) 섹션 자체를 렌더하지 않는다.
  */
 export function DecisionRail({ boxes, totalOpen }: { boxes: OpenBoxCard[]; totalOpen: number }) {
+  const nav = useNav()
   if (boxes.length === 0) return null
+
+  // 토스는 '상자' 탭(/boxes)에서 필터를 바꿔 보여준다 → 별도 화면 대신 탭 액티브로. 웹은 /messy 화면 유지.
+  const allHref = nav.platform === 'toss' ? '/boxes?filter=messy' : '/messy'
 
   return (
     <section className="pt-5">
       <div className="mb-2.5 flex items-center justify-between px-5">
         {/* 상자가 주인공 — 라벨은 얇게(“정리 중 · N”). */}
         <h2 className="text-[12px] font-bold text-ink-soft">정리 중 · {totalOpen}</h2>
-        {totalOpen > boxes.length + 1 && (
-          <AppLink href="/messy" className="inline-flex items-center gap-0.5 text-[12px] font-semibold text-ink-faint active:opacity-70">
-            전체
-            <Icon name="chevronRight" size={13} strokeWidth={2.5} />
-          </AppLink>
-        )}
+        {/* '상자' 탭으로 가는 바로가기 — 레일이 뜨면(정리중 1개+) 항상 노출. */}
+        <AppLink href={allHref} className="inline-flex items-center gap-0.5 text-[12px] font-semibold text-ink-faint active:opacity-70">
+          전체
+          <Icon name="chevronRight" size={13} strokeWidth={2.5} />
+        </AppLink>
       </div>
 
       <div className="flex gap-2.5 overflow-x-auto px-5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

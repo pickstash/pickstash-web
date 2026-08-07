@@ -9,7 +9,7 @@ import { useRealtimeAlerts } from "@/hooks/use-realtime-alerts";
 import { LoginScreen } from "./screens/login-screen";
 import { ScreenLoading } from "./screens/screen-state";
 import { HomeScreen } from "./screens/home-screen";
-import { OnboardingScreen } from "./screens/onboarding-screen";
+import { OnboardingScreen } from "@/components/onboarding-screen";
 import { NotificationSettingsScreen } from "./screens/notification-settings-screen";
 import { useHome } from "./lib/use-home";
 import { BoxListScreen } from "./screens/box-list-screen";
@@ -79,7 +79,9 @@ function App() {
     if (home.data) {
       const nothing =
         home.data.openCount === 0 && home.data.doneCount === 0 && home.data.folders.length === 0;
-      if (nothing) {
+      // isFetching 가드: 상자 생성 후 홈 복귀 시 캐시가 잠깐 stale(0)인 채 refetch 중이면
+      // 온보딩이 깜빡였다 사라진다 → 재검증 중엔 온보딩으로 안 넘어가고 정상 홈을 그린다.
+      if (nothing && !home.isFetching) {
         // 온보딩은 광고 없이 — 첫 화면은 방해 없이 상자 만들기에 집중.
         return <OnboardingScreen nickname={home.data.nickname} />;
       }

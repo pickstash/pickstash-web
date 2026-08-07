@@ -1,7 +1,6 @@
 import { AppLink } from '@/lib/nav/nav'
 import { Icon } from '@/components/icon'
 import { formatDday } from '@/lib/utils'
-import { FriendInviteButton } from '@/components/friend-invite-button'
 import type { HeroParticipant, OpenBoxCard } from '@/lib/domain/home'
 
 // 타입은 공유 도메인(home.ts)에 단일 정의 — 기존 임포터 호환 위해 여기서 re-export.
@@ -38,31 +37,11 @@ function HeroAvatars({ participants, max = 4 }: { participants: HeroParticipant[
 }
 
 /**
- * 메인 히어로 — 가장 급한(마감 임박) 정리중 상자 하나를 큰 카드로. box=null이면 여유 빈 상태.
+ * 메인 히어로 — 가장 급한(마감 임박) 정리중 상자 하나를 큰 카드로.
  * 홈의 임팩트 지점. 좋아요 동점이면 "공동 1위"로 함께 표시.
+ * 정리중 0(box 없음)일 때의 빈 홈은 HomeView가 HomeEmpty로 분기한다.
  */
-export function DecisionHero({ box }: { box: OpenBoxCard | null }) {
-  if (!box) {
-    // 진행 중인 상자가 없는 복귀 사용자용 빈 상태(정리된 상자·서랍은 있음).
-    // 완전 신규(상자·서랍 0)는 별도 온보딩 화면으로 분기되므로, 여기선 온보딩 안내(첫 상자·1·2·3)를 쓰지 않는다.
-    // 주 행동('새 상자 만들기')은 홈 하단 고정 CTA가 담당 → 여기선 가벼운 안내 + 친구 초대만.
-    return (
-      <section className="px-5 pt-1">
-        <div className="flex flex-col items-center gap-4 px-2 py-10 text-center">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icons/character.png" alt="" className="h-[52px] w-auto" />
-          <div>
-            <p className="text-[16px] font-extrabold tracking-tight text-ink">지금 정리 중인 상자가 없어요</p>
-            <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-soft">
-              새 상자를 만들거나,<br />정리된 상자를 다시 볼 수 있어요.
-            </p>
-          </div>
-          <FriendInviteButton />
-        </div>
-      </section>
-    )
-  }
-
+export function DecisionHero({ box }: { box: OpenBoxCard }) {
   const dday = box.isAuto && box.deadlineAt ? formatDday(box.deadlineAt) : null
   const ddayUrgent = dday === 'D-day' || dday === 'D-1' || dday === '마감 지남'
 

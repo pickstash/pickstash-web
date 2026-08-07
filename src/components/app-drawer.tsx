@@ -112,23 +112,6 @@ export function AppDrawer({ nickname }: AppDrawerProps) {
                 홈으로
               </AppLink>
 
-              <p className="px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.08em] text-ink-faint">결정창고</p>
-              {([
-                { href: '/messy', icon: 'box', name: '어질러진 창고' },
-                { href: '/done', icon: 'check', name: '정리된 창고' },
-                { href: '/favorites', icon: 'star', name: '즐겨찾는 창고' },
-              ] as const).map(({ href, icon, name }) => (
-                <AppLink
-                  key={href}
-                  href={href}
-                  onClick={() => setOpen(false)}
-                  className="flex items-center gap-2.5 rounded-[14px] px-3 py-2.5 text-sm font-semibold text-ink hover:bg-cream active:bg-butter-tint"
-                >
-                  <Icon name={icon} size={18} className="text-ink-soft" />
-                  {name}
-                </AppLink>
-              ))}
-
               <DrawerFolders onNavigate={() => setOpen(false)} />
 
               <div className="pt-3">
