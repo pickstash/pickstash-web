@@ -12,6 +12,17 @@ const TABS: { href: string; icon: IconName; label: string }[] = [
   { href: "/profile", icon: "user", label: "프로필" },
 ];
 
+// 하위 화면(상세·목록)에서도 소속 탭을 액티브로 — 탭바만 뜨고 아무것도 안 켜지는 상태 방지.
+// 박스 상세(/box/*)는 어디서 열든 '상자' 탭 소속으로 고정(진입 출처 추적 안 함).
+function tabOf(p: string): string {
+  if (p === "/") return "/";
+  if (p === "/boxes" || p.startsWith("/box/") || p === "/messy" || p === "/done" || p === "/favorites") return "/boxes";
+  if (p === "/folders" || p.startsWith("/folder/")) return "/folders";
+  if (p.startsWith("/alerts")) return "/alerts";
+  if (p.startsWith("/profile")) return "/profile";
+  return ""; // 그 외 → 아무 탭도 안 켜짐
+}
+
 export function TabBar() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -29,10 +40,12 @@ export function TabBar() {
     navigate(href);
   }
 
+  const activeHref = tabOf(pathname);
+
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-line bg-paper pb-[var(--app-safe-bottom,0px)]">
       {TABS.map((t) => {
-        const active = pathname === t.href;
+        const active = activeHref === t.href;
         return (
           <button
             key={t.href}

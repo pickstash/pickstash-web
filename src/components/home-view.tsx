@@ -5,6 +5,7 @@ import { CreateFab } from '@/components/create-fab'
 import { AppDrawer } from '@/components/app-drawer'
 import { DecisionHero } from '@/components/decision-hero'
 import { DecisionRail } from '@/components/decision-rail'
+import { HomeEmpty } from '@/components/home-empty'
 import { FolderChips } from '@/components/folder-chips'
 import type { HomeViewData } from '@/lib/api/home'
 
@@ -17,6 +18,8 @@ export function HomeView({
   railCards,
   folders,
   openCount,
+  doneCount,
+  doneRecap,
   banner,
   bottomBanner,
 }: HomeViewData & { banner?: ReactNode; bottomBanner?: ReactNode }) {
@@ -35,11 +38,18 @@ export function HomeView({
       {banner}
 
       <div className="flex-1 pb-28 pt-2.5">
-        {/* ① 마감 히어로 (가장 급한 상자) */}
-        <DecisionHero box={hero} />
+        {hero ? (
+          <>
+            {/* ① 마감 히어로 (가장 급한 상자) */}
+            <DecisionHero box={hero} />
 
-        {/* ② 이어서 정할 상자 (가로 레일) */}
-        <DecisionRail boxes={railCards} totalOpen={openCount} />
+            {/* ② 이어서 정할 상자 (가로 레일) */}
+            <DecisionRail boxes={railCards} totalOpen={openCount} />
+          </>
+        ) : (
+          /* 정리중 0 → 회고(정리완료 있음) 또는 담백한 빈 상태 */
+          <HomeEmpty doneCount={doneCount} recap={doneRecap} />
+        )}
 
         {/* ③ 서랍(주제) 칩 (탐색) */}
         <FolderChips initialFolders={folders} />
@@ -48,8 +58,9 @@ export function HomeView({
         {bottomBanner && <div className="px-5 pt-2">{bottomBanner}</div>}
       </div>
 
-      {/* 새 상자 FAB — 하단 full-width 바를 없애 배너·탭바와 3층 겹침 해소. 상자·서랍 탭과 톤 통일. */}
-      <CreateFab href="/box/new" label="새 상자" />
+      {/* 새 상자 FAB — 하단 full-width 바를 없애 배너·탭바와 3층 겹침 해소. 상자·서랍 탭과 톤 통일.
+          정리중 상자가 있을 때만(빈 홈은 HomeEmpty의 '새로운 상자 만들기' 버튼이 주 CTA라 FAB 생략). */}
+      {hero && <CreateFab href="/box/new" label="새 상자" />}
     </main>
   )
 }

@@ -4,12 +4,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "./lib/supabase";
 import { requestPushAgreementOnce } from "./lib/push-agreement";
-import { useHardwareBack } from "./lib/use-hardware-back";
 import { useRealtimeAlerts } from "@/hooks/use-realtime-alerts";
 import { LoginScreen } from "./screens/login-screen";
 import { ScreenLoading } from "./screens/screen-state";
 import { HomeScreen } from "./screens/home-screen";
-import { OnboardingScreen } from "./screens/onboarding-screen";
+import { OnboardingScreen } from "@/components/onboarding-screen";
 import { NotificationSettingsScreen } from "./screens/notification-settings-screen";
 import { useHome } from "./lib/use-home";
 import { BoxListScreen } from "./screens/box-list-screen";
@@ -57,8 +56,7 @@ function App() {
   }, [queryClient]);
 
   const { pathname } = useLocation();
-  // 물리/제스처 뒤로가기 — 홈이 아니면 앱 내부로 뒤로, 홈에서만 토스로 나감(미구독 시 바로 종료됨).
-  useHardwareBack();
+  // 뒤로가기 통제(iOS 스와이프 OFF + 홈 종료 확인)는 BackHandler가 담당 — main.tsx에서 App 형제로 항상 마운트.
   // 초대 뷰어(공유 링크)는 비로그인도 열람 가능 — 로그인 게이트 예외. 참여 시 인라인 로그인(nav.login).
   const isInviteRoute = pathname.startsWith("/invite/") || pathname.startsWith("/folder-invite/");
   // 탭바는 폼(집중)·초대 뷰어를 제외한 모든 화면. 초대 뷰어는 자체 '참여하기' CTA만 둔다.
@@ -79,7 +77,9 @@ function App() {
     if (home.data) {
       const nothing =
         home.data.openCount === 0 && home.data.doneCount === 0 && home.data.folders.length === 0;
-      if (nothing) {
+      // isFetching 가드: 상자 생성 후 홈 복귀 시 캐시가 잠깐 stale(0)인 채 refetch 중이면
+      // 온보딩이 깜빡였다 사라진다 → 재검증 중엔 온보딩으로 안 넘어가고 정상 홈을 그린다.
+      if (nothing && !home.isFetching) {
         // 온보딩은 광고 없이 — 첫 화면은 방해 없이 상자 만들기에 집중.
         return <OnboardingScreen nickname={home.data.nickname} />;
       }

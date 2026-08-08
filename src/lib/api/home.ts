@@ -5,6 +5,12 @@ import { sortOpenBoxes, buildHomeCards, HOME_RAIL_LIMIT, type OpenBoxCard, type 
 
 // 홈 화면 데이터 로더 — 웹(서버 클라이언트)·토스(브라우저 클라이언트)가 같은 함수를 호출한다.
 // 모든 Supabase 접근은 lib/api/*에만(아키텍처 규칙). 계산은 domain/home.ts 공유 로직.
+export interface RecapCard {
+  id: string
+  title: string
+  winnerName: string | null
+}
+
 export interface HomeViewData {
   nickname: string
   hero: OpenBoxCard | null
@@ -13,6 +19,7 @@ export interface HomeViewData {
   openCount: number
   doneCount: number
   favoriteCount: number
+  doneRecap: RecapCard[] // 정리중 0 & 정리완료≥1일 때만 채움(홈 회고 레일)
 }
 
 export async function loadHomeView(
@@ -67,6 +74,22 @@ export async function loadHomeView(
 
   const { hero, railCards } = buildHomeCards(displayed, { lastSeen, favorites, options, votes, comments })
 
+  // 정리중 0 & 정리완료≥1인 빈 홈에서만 회고 레일용 최근 정리완료 3개를 조회.
+  // (정상 홈은 openBoxes≥1이라 이 쿼리를 안 태워 부담 0.)
+  let doneRecap: RecapCard[] = []
+  if (openBoxes.length === 0 && (doneCount ?? 0) > 0) {
+    const { data: recent } = await supabase
+      .from('boxes')
+      .select('id, title, options(name, decided_at)')
+      .not('closed_at', 'is', null)
+      .order('closed_at', { ascending: false })
+      .limit(3)
+    doneRecap = ((recent ?? []) as unknown as { id: string; title: string; options: { name: string; decided_at: string | null }[] }[]).map(b => {
+      const decided = (b.options ?? []).filter(o => o.decided_at).map(o => o.name)
+      return { id: b.id, title: b.title, winnerName: decided.length ? decided.join(', ') : null }
+    })
+  }
+
   return {
     nickname: profile?.nickname ?? '',
     hero,
@@ -75,5 +98,6 @@ export async function loadHomeView(
     openCount: openBoxes.length,
     doneCount: doneCount ?? 0,
     favoriteCount: favs?.length ?? 0,
+    doneRecap,
   }
 }

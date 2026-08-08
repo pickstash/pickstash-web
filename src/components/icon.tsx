@@ -29,6 +29,7 @@ export type IconName =
   | 'home'
   | 'comment'
   | 'user'
+  | 'broom'
 
 function inner(name: IconName): ReactNode {
   switch (name) {
@@ -170,6 +171,19 @@ function inner(name: IconName): ReactNode {
         <>
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
           <circle cx="12" cy="7" r="4" />
+        </>
+      )
+    case 'broom':
+      // 비스듬히 쓰는 빗자루 + 먼지 한 톨(장난기). 손그림 라인 톤.
+      return (
+        <>
+          <line x1="20" y1="3.8" x2="12" y2="11.8" />
+          <line x1="9.9" y1="9.7" x2="14.1" y2="13.9" />
+          <line x1="11" y1="12.6" x2="6.2" y2="17" />
+          <line x1="12.4" y1="13.4" x2="8.6" y2="18.4" />
+          <line x1="13.6" y1="14.2" x2="10.8" y2="19.6" />
+          <circle cx="5" cy="19.4" r="0.7" fill="currentColor" stroke="none" />
+          <circle cx="6.7" cy="21" r="0.7" fill="currentColor" stroke="none" />
         </>
       )
   }

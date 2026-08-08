@@ -10,6 +10,7 @@ import { configureReviewRequester } from "@/lib/review/native-review";
 import App from "./App.tsx";
 import { TossNavProvider } from "./lib/nav-provider";
 import { ErrorBoundary } from "./components/error-boundary";
+import { BackHandler } from "./components/back-handler";
 import { configureUnfurl } from "@/lib/api/unfurl";
 import { createClient } from "@/lib/supabase/client";
 import "./index.css";
@@ -120,6 +121,8 @@ createRoot(document.getElementById("root")!).render(
           <ErrorBoundary>
             <App />
           </ErrorBoundary>
+          {/* 뒤로가기 통제 + 홈 종료 확인 모달 — App의 early return(온보딩·로딩)과 무관하게 항상 마운트 */}
+          <BackHandler />
         </TossNavProvider>
       </MemoryRouter>
     </QueryClientProvider>

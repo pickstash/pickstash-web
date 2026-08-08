@@ -14,6 +14,9 @@ import { useComments, useCreateComment, useUpdateComment, useDeleteComment } fro
 import { useRealtimeComments } from '@/hooks/use-realtime-comments'
 import { useCommentLikes, useToggleCommentLike } from '@/hooks/use-comment-likes'
 import { useRealtimeCommentLikes } from '@/hooks/use-realtime-comment-likes'
+import { useCommentLikers } from '@/hooks/use-likers'
+import { CommentLikeButton } from '@/components/comment-like-button'
+import { LikersSheet } from '@/components/likers-sheet'
 import {
   parseBlocks,
   linkFallbackTitle,
@@ -72,6 +75,9 @@ export function OptionDetailClient({
   const deleteComment = useDeleteComment(option.id)
   const { data: commentLikes = {} } = useCommentLikes(option.id)
   const toggleCommentLike = useToggleCommentLike(option.id)
+  // 꾸욱(롱프레스) → 이 댓글을 좋아한 사람 명단 시트
+  const [likersComment, setLikersComment] = useState<string | null>(null)
+  const commentLikers = useCommentLikers(likersComment, !!likersComment)
 
   useRealtimeVotes(boxId, round)
   useRealtimeComments(option.id)
@@ -95,13 +101,12 @@ export function OptionDetailClient({
     const like = commentLikes[comment.id] ?? { count: 0, likedByMe: false }
     return (
       <div className="mt-1 flex items-center gap-3">
-        <button
-          onClick={() => toggleCommentLike.mutate({ commentId: comment.id, likedByMe: like.likedByMe })}
-          className={`flex items-center gap-1 text-[11px] font-bold ${like.likedByMe ? 'text-butter-dark' : 'text-ink-faint'}`}
-        >
-          <Icon name="heart" filled={like.likedByMe} size={12} />
-          {like.count > 0 && <span className="tabular-nums">{like.count}</span>}
-        </button>
+        <CommentLikeButton
+          count={like.count}
+          likedByMe={like.likedByMe}
+          onToggle={() => toggleCommentLike.mutate({ commentId: comment.id, likedByMe: like.likedByMe })}
+          onShowLikers={() => setLikersComment(comment.id)}
+        />
         <button
           onClick={() => {
             setReplyingTo({
@@ -439,6 +444,14 @@ export function OptionDetailClient({
           />
         </div>
       </div>
+
+      <LikersSheet
+        open={!!likersComment}
+        title="이 댓글을 좋아해요"
+        likers={commentLikers.data ?? []}
+        isLoading={commentLikers.isLoading}
+        onClose={() => setLikersComment(null)}
+      />
     </main>
   )
 }

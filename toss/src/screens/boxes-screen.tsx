@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { loadBoxList, type BoxListKind } from "@/lib/api/box-list";
@@ -7,15 +8,21 @@ import { BoxCard } from "@/components/box-card";
 import { BOX_LIST_META } from "@/components/box-list-view";
 import { Spinner } from "@/components/spinner";
 
-// '상자' 탭 — 진행중/정리됨/즐겨찾기를 필터 하나로 통합(옛 창고 3장 카드 대체). loadBoxList·BoxCard 재사용.
+// '상자' 탭 — 어질러진/정리된/즐겨찾기를 필터 하나로 통합(옛 창고 3장 카드 대체). loadBoxList·BoxCard 재사용.
 const FILTERS: { kind: BoxListKind; label: string }[] = [
-  { kind: "messy", label: "진행중" },
-  { kind: "done", label: "정리됨" },
+  { kind: "messy", label: "어질러진" },
+  { kind: "done", label: "정리된" },
   { kind: "favorites", label: "즐겨찾기" },
 ];
 
 export function BoxesScreen() {
-  const [kind, setKind] = useState<BoxListKind>("messy");
+  // 홈 '전체' 버튼이 /boxes?filter=messy|done 로 진입 → 해당 탭을 액티브로. 없으면 어질러진 기본.
+  const [searchParams] = useSearchParams();
+  const filterParam = searchParams.get("filter") as BoxListKind | null;
+  const [kind, setKind] = useState<BoxListKind>(filterParam ?? "messy");
+  useEffect(() => {
+    if (filterParam) setKind(filterParam);
+  }, [filterParam]);
   const { data, isPending, error } = useQuery({
     queryKey: ["box-list", kind],
     queryFn: async () => {

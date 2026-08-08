@@ -21,7 +21,13 @@ export function AlertsView({ items }: { items: AlertItem[] }) {
   function openAlert(a: AlertItem) {
     qc.setQueryData<AlertItem[]>(['alerts'], old => old?.map(x => (x.boxId === a.boxId ? { ...x, unseen: false } : x)))
     markBoxSeen(a.boxId).catch(() => {})
-    nav.push(a.optionId ? `/box/${a.boxId}/option/${a.optionId}` : `/box/${a.boxId}`)
+    if (a.optionId) {
+      // 선택지(댓글) 알림 → 상자를 스택에 먼저 끼워 뒤로가기가 알림이 아니라 그 상자로 가게 한다.
+      nav.push(`/box/${a.boxId}`)
+      nav.push(`/box/${a.boxId}/option/${a.optionId}`)
+    } else {
+      nav.push(`/box/${a.boxId}`)
+    }
   }
 
   // 모두 읽음 — 내 모든 상자 last_seen 갱신. 홈 들썩임 배지도 함께 정리.
