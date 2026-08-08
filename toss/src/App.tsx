@@ -8,9 +8,7 @@ import { useRealtimeAlerts } from "@/hooks/use-realtime-alerts";
 import { LoginScreen } from "./screens/login-screen";
 import { ScreenLoading } from "./screens/screen-state";
 import { HomeScreen } from "./screens/home-screen";
-import { OnboardingScreen } from "@/components/onboarding-screen";
 import { NotificationSettingsScreen } from "./screens/notification-settings-screen";
-import { useHome } from "./lib/use-home";
 import { BoxListScreen } from "./screens/box-list-screen";
 import { BoxesScreen } from "./screens/boxes-screen";
 import { BoxDetailScreen } from "./screens/box-detail-screen";
@@ -64,27 +62,8 @@ function App() {
   // 배너는 홈·알림에서(탭바 위 고정). 그 높이를 --app-nav-h에 더해 콘텐츠가 배너 위로 밀리게 한다.
   const showBanner = (pathname === "/" || pathname === "/alerts") && showTabBar;
 
-  // 홈에서만 홈 데이터를 미리 본다(완전 신규면 온보딩 전용 화면으로 분기). HomeScreen과 ['home'] 공유.
-  const home = useHome(pathname === "/" && !!session);
-
   if (!ready) return null;
   if (!session && !isInviteRoute) return <LoginScreen />;
-
-  // 온보딩: 지금 상자(진행중·정리됨)·서랍이 하나도 없을 때만. 헤더·탭바 없이 독립 화면.
-  // 상태 기준이라 초대로 뭐라도 생기면 즉시 홈. (다 지워 0이 된 복귀자도 빈 상태라 온보딩이 자연스러움 → '상자를 만들어볼까요' 문구.)
-  if (pathname === "/" && session) {
-    if (home.isPending) return <ScreenLoading />;
-    if (home.data) {
-      const nothing =
-        home.data.openCount === 0 && home.data.doneCount === 0 && home.data.folders.length === 0;
-      // isFetching 가드: 상자 생성 후 홈 복귀 시 캐시가 잠깐 stale(0)인 채 refetch 중이면
-      // 온보딩이 깜빡였다 사라진다 → 재검증 중엔 온보딩으로 안 넘어가고 정상 홈을 그린다.
-      if (nothing && !home.isFetching) {
-        // 온보딩은 광고 없이 — 첫 화면은 방해 없이 상자 만들기에 집중.
-        return <OnboardingScreen nickname={home.data.nickname} />;
-      }
-    }
-  }
 
   return (
     // --app-nav-h: 탭바 있는 라우트에서만 탭바 실제 높이(3.5rem + iOS 홈 인디케이터 인셋)로 올린다(하위 main·CTA가 상속).
