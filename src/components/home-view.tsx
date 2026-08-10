@@ -6,6 +6,7 @@ import { AppDrawer } from '@/components/app-drawer'
 import { DecisionHero } from '@/components/decision-hero'
 import { DecisionRail } from '@/components/decision-rail'
 import { HomeEmpty } from '@/components/home-empty'
+import { RecapRail } from '@/components/recap-rail'
 import { FolderChips } from '@/components/folder-chips'
 import type { HomeViewData } from '@/lib/api/home'
 
@@ -45,6 +46,9 @@ export function HomeView({
 
             {/* ② 이어서 정할 상자 (가로 레일) */}
             <DecisionRail boxes={railCards} totalOpen={openCount} />
+
+            {/* ②-b 최근 정리됨 — 방금 자동마감된 상자가 홈에서 바로 증발하지 않게 노출 */}
+            <RecapRail title="최근 정리됨" boxes={doneRecap} />
           </>
         ) : (
           /* 정리중 0 → 회고(정리완료 있음) 또는 담백한 빈 상태 */

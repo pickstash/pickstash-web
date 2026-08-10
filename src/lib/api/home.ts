@@ -74,16 +74,16 @@ export async function loadHomeView(
 
   const { hero, railCards } = buildHomeCards(displayed, { lastSeen, favorites, options, votes, comments })
 
-  // 정리중 0 & 정리완료≥1인 빈 홈에서만 회고 레일용 최근 정리완료 3개를 조회.
-  // (정상 홈은 openBoxes≥1이라 이 쿼리를 안 태워 부담 0.)
+  // 홈 '최근 정리됨' 레일 — 정리완료가 있으면 항상 최근 5개 조회(정리중이 있어도).
+  // 자동마감(pg_cron)으로 방금 정리된 상자가 홈에서 바로 증발해 안 보이던 문제 방지 + 정리된 상자 접근성.
   let doneRecap: RecapCard[] = []
-  if (openBoxes.length === 0 && (doneCount ?? 0) > 0) {
+  if ((doneCount ?? 0) > 0) {
     const { data: recent } = await supabase
       .from('boxes')
       .select('id, title, options(name, decided_at)')
       .not('closed_at', 'is', null)
       .order('closed_at', { ascending: false })
-      .limit(3)
+      .limit(5)
     doneRecap = ((recent ?? []) as unknown as { id: string; title: string; options: { name: string; decided_at: string | null }[] }[]).map(b => {
       const decided = (b.options ?? []).filter(o => o.decided_at).map(o => o.name)
       return { id: b.id, title: b.title, winnerName: decided.length ? decided.join(', ') : null }
