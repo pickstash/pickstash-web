@@ -6,7 +6,6 @@ import { fetchLinkPreview, proxiedImageUrl } from '@/lib/api/unfurl'
 import { peekClipboardIfAllowed } from '@/lib/clipboard/native-clipboard'
 import {
   cleanBlocks,
-  linkBlocksOf,
   linkHref,
   linkKindEmoji,
   linkKindLabel,
@@ -94,15 +93,6 @@ export function OptionForm({
 
   const imageCount = blocks.filter(b => b.type === 'image').length
   const atBlockLimit = blocks.length >= MAX_BLOCKS
-
-  // 링크는 추가됐지만(URL 있음) OG 미리보기(제목)를 못 가져와 이름이 비어있는 상태.
-  // 쿠팡·피그마처럼 봇 미리보기를 막는 사이트 → 이름 자동채움이 안 되므로 직접 입력하라고 안내.
-  const urlLinks = linkBlocksOf(blocks).filter(b => b.url.trim() !== '')
-  const showNoPreviewHint =
-    !name.trim() &&
-    Object.keys(linkLoading).length === 0 &&
-    urlLinks.length > 0 &&
-    urlLinks.every(b => !b.title)
 
   // 링크 넣은 직후 OG 제목을 가져오는 동안(이름이 아직 빔) 이름 칸에 로딩 표시 —
   // 비어있다 툭 채워지는 딜레이가 어색하지 않게(제목 준비 중임을 알림).
@@ -329,12 +319,6 @@ export function OptionForm({
             </button>
           )}
         </div>
-        {showNoPreviewHint && (
-          <p className="mt-1.5 flex items-start gap-1 text-[11.5px] leading-relaxed text-tangerine">
-            <span aria-hidden>💡</span>
-            <span>이 링크는 미리보기를 막아둔 사이트라 이름을 자동으로 못 가져왔어요.<br />선택지 이름을 직접 적어주세요.</span>
-          </p>
-        )}
       </div>
 
       {/* 본문 블록 */}
