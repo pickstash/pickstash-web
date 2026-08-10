@@ -214,8 +214,9 @@ export function CommentComposer({
     <form onSubmit={handleSubmit} className={compact ? 'flex gap-2' : 'space-y-2'}>
       <div className="relative min-w-0 flex-1">
         {inputEl}
+        {/* 위로 펼침(bottom-full) — 컴포저가 화면 맨 아래일 때 목록이 화면 밖으로 잘려 선택 불가하던 문제 해결. */}
         {suggestions.length > 0 && (
-          <div className="absolute left-0 top-full z-30 mt-1 w-full overflow-hidden rounded-[14px] border border-line bg-paper py-1 shadow-[0_8px_24px_rgba(42,42,39,0.16)]">
+          <div className="absolute bottom-full left-0 z-30 mb-1 max-h-[40dvh] w-full overflow-y-auto rounded-[14px] border border-line bg-paper py-1 shadow-[0_8px_24px_rgba(42,42,39,0.16)]">
             {suggestions.map(p => (
               <button
                 key={p.id}
