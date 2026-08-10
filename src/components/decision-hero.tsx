@@ -38,7 +38,7 @@ function HeroAvatars({ participants, max = 4 }: { participants: HeroParticipant[
 
 /**
  * 메인 히어로 — 가장 급한(마감 임박) 정리중 상자 하나를 큰 카드로.
- * 홈의 임팩트 지점. 좋아요 동점이면 "공동 1위"로 함께 표시.
+ * 홈의 임팩트 지점. '인기'는 좋아요 최다가 단독+2개 이상일 때만(동점·1개는 미표시).
  * 정리중 0(box 없음)일 때의 빈 홈은 HomeView가 HomeEmpty로 분기한다.
  */
 export function DecisionHero({ box }: { box: OpenBoxCard }) {
@@ -48,7 +48,7 @@ export function DecisionHero({ box }: { box: OpenBoxCard }) {
   return (
     <section className="px-5">
       <AppLink href={`/box/${box.id}`} className="block">
-        <div className="rounded-[24px] border border-butter-deep bg-butter-tint p-[18px] shadow-[0_6px_18px_-6px_rgba(227,185,58,0.35)] active:brightness-[0.98]">
+        <div className="rounded-[24px] border border-butter-deep bg-butter-tint px-[18px] py-[12px] shadow-[0_6px_18px_-6px_rgba(227,185,58,0.35)] active:brightness-[0.98]">
           <div className="flex items-start justify-between gap-2.5">
             <h3 className="min-w-0 text-[21px] font-extrabold leading-tight tracking-tight text-ink text-balance">
               {box.title}
@@ -75,11 +75,11 @@ export function DecisionHero({ box }: { box: OpenBoxCard }) {
             </div>
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+          <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
             {!box.isSolo && box.leaders.length > 0 && (
               <span className="flex min-w-0 max-w-full items-start gap-1.5 text-[12.5px] font-extrabold text-ink">
                 <span className="shrink-0 whitespace-nowrap rounded-full bg-butter px-[7px] py-0.5 text-[10.5px] font-extrabold">
-                  {box.leaders.length > 1 ? '공동 1위' : '지금 1위'}
+                  인기
                 </span>
                 <span className="min-w-0 break-words">{leadersLabel(box.leaders)}</span>
               </span>
@@ -104,7 +104,7 @@ export function DecisionHero({ box }: { box: OpenBoxCard }) {
             )}
           </div>
 
-          <div className="mt-[15px] flex items-center justify-between border-t border-[rgba(227,185,58,0.35)] pt-[13px]">
+          <div className="mt-[12px] flex items-center justify-between border-t border-[rgba(227,185,58,0.35)] pt-[10px]">
             {!box.isSolo && box.participants.length > 1 ? (
               <div className="flex items-center gap-1.5">
                 <HeroAvatars participants={box.participants} />

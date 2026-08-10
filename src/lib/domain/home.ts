@@ -22,7 +22,7 @@ export interface OpenBoxCard {
   participants: HeroParticipant[]
   totalLikes: number
   totalComments: number
-  leaders: string[] // 좋아요 1위 이름들 (0=없음, 1=단독, 2+=공동)
+  leaders: string[] // '인기' 이름 (0=없음, 1=단독 최다+2개↑만. 동점·1개는 미표시)
 }
 
 export const HOME_RAIL_LIMIT = 8 // 히어로 1개 + 레일 최대 8개까지만 좋아요 집계/표시

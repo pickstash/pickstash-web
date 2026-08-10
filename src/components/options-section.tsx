@@ -9,6 +9,7 @@ import { useRealtimeOptions } from '@/hooks/use-realtime-options'
 import { useInfiniteReveal } from '@/hooks/use-infinite-reveal'
 import { sortOptions, OPTION_SORT_MODES, OPTION_SORT_LABELS, type OptionSortMode } from '@/lib/domain/option-sort'
 import { parseBlocks, getOptionPreview } from '@/lib/domain/option-content'
+import { getLeaderKey } from '@/lib/domain/winner'
 import { proxiedImageUrl } from '@/lib/api/unfurl'
 import { VoteButtons } from './vote-buttons'
 import { Icon } from './icon'
@@ -39,13 +40,9 @@ export function OptionsSection({ boxId, round, initialOptions, canVote, showLike
   const { visibleCount, sentinelRef, hasMore } = useInfiniteReveal(sorted.length, PAGE_SIZE, sortMode)
   const visible = sorted.slice(0, visibleCount)
 
-  // 1위 강조: 선택지 2개 이상 + 좋아요 최다(공동 1위 전부 포함)
-  const leaderIds = (() => {
-    if (sorted.length <= 1) return new Set<string>()
-    const max = Math.max(...sorted.map(o => votes[o.id]?.like ?? 0))
-    if (max <= 0) return new Set<string>()
-    return new Set(sorted.filter(o => (votes[o.id]?.like ?? 0) === max).map(o => o.id))
-  })()
+  // '인기' 강조: 좋아요 최다가 단독 + 임계값(2개) 이상일 때만 그 하나. 동점·1개는 강조 없음(참고 신호 취지).
+  const leaderKey = getLeaderKey(sorted.map(o => ({ key: o.id, like: votes[o.id]?.like ?? 0 })))
+  const leaderIds = new Set<string>(leaderKey ? [leaderKey] : [])
 
   return (
     <section className="space-y-2.5">
@@ -127,7 +124,7 @@ export function OptionsSection({ boxId, round, initialOptions, canVote, showLike
                       )}
                       {isLead && showLikes && (
                         <span className="shrink-0 rounded-md bg-butter px-1.5 py-0.5 text-[10px] font-extrabold text-ink shadow-[0_1px_0_#E3B93A]">
-                          1위
+                          인기
                         </span>
                       )}
                       <span className="min-w-0 truncate text-[14.5px] font-extrabold text-ink">

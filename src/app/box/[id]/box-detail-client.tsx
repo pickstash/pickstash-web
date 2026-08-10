@@ -25,6 +25,7 @@ import { PageHeader } from '@/components/page-header'
 import { shareInviteLink, hasNativeShare } from '@/lib/share/native-share'
 import { getBoxStatus, isDoneStatus, BOX_STATUS_LABEL, type BoxStatus } from '@/lib/domain/box-status'
 import { parseBlocks, linkBlocksOf } from '@/lib/domain/option-content'
+import { getLeaderKey } from '@/lib/domain/winner'
 import { formatDeadlineCompact, defaultDeadline } from '@/lib/utils'
 import type { BoxWithParticipants, BoxParticipant, DecisionMode } from '@/lib/api/boxes'
 import type { Option } from '@/lib/api/options'
@@ -221,8 +222,11 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
   const decidedOptions = options.filter(o => o.decided_at)
   const likeOf = (id: string) => votes[id]?.like ?? 0
   const maxLikes = options.reduce((m, o) => Math.max(m, likeOf(o.id)), 0)
+  // 결정 시트 미리선택용 — 좋아요 최다(동점 포함) 전부. (표시용 '인기'와 별개: 미리선택은 관대하게)
   const leaderIds = maxLikes > 0 ? options.filter(o => likeOf(o.id) === maxLikes).map(o => o.id) : []
-  const leaderNames = options.filter(o => leaderIds.includes(o.id)).map(o => o.name)
+  // 표시용 '인기' — 최다가 단독 + 임계값(2개) 이상일 때만. 동점·1개는 표시 안 함.
+  const displayLeaderKey = getLeaderKey(options.map(o => ({ key: o.id, like: likeOf(o.id) })))
+  const displayLeaderName = displayLeaderKey ? options.find(o => o.id === displayLeaderKey)?.name ?? null : null
 
   const inviteButton = (
     <div className="flex h-7 items-center gap-0.5 rounded-full border-2 border-cream bg-butter pl-1.5 pr-2.5 text-[12px] font-extrabold text-ink shadow-[0_1px_0_#E3B93A]">
@@ -596,7 +600,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
               <button onClick={() => setDeciding(false)} className="text-[13px] text-ink-faint">닫기</button>
             </div>
             <p className="mb-3 text-[12px] text-ink-soft">
-              여러 개 골라도 돼요{showLikes && leaderNames.length > 0 ? ' · 좋아요 1위를 미리 골라놨어요' : ''}.
+              여러 개 골라도 돼요{showLikes && leaderIds.length > 0 ? ' · 좋아요 많은 걸 미리 골라놨어요' : ''}.
             </p>
             <div className="flex-1 space-y-2 overflow-y-auto">
               {options.length === 0 ? (
@@ -822,10 +826,10 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
           </div>
         )}
 
-        {/* 지금 1위 (진행 중 · 여럿 상자) */}
-        {!isDone && showLikes && leaderNames.length > 0 && (
+        {/* 인기 (진행 중 · 여럿 상자) — 좋아요 최다 단독+2개↑일 때만 */}
+        {!isDone && showLikes && displayLeaderName && (
           <p className="text-[12.5px] font-bold text-ink-soft">
-            지금 1위 · <span className="text-ink">{leaderNames.join(', ')}</span>
+            인기 · <span className="text-ink">{displayLeaderName}</span>
           </p>
         )}
 
