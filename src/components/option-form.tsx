@@ -295,19 +295,16 @@ export function OptionForm({
             value={name}
             onChange={e => {
               const value = e.target.value
-              // "네이버 https://..." 처럼 글씨+링크가 섞여 붙여넣어지면 이름/링크로 자동 분리.
-              // onPaste는 토스 웹뷰에서 안 뜨는 경우가 있어, 값 변화에서 '붙여넣기'만 감지한다
-              // (inputType 또는 한 번에 여러 글자 급증). 타이핑(한 글자씩)엔 오작동 안 함.
-              const isPaste =
-                (e.nativeEvent as InputEvent).inputType === 'insertFromPaste' ||
-                value.length - name.length > 3
-              if (isPaste) {
-                const split = splitPastedLink(value)
-                if (split) {
-                  if (split.label && !name.trim()) setName(split.label)
-                  addLinkWithUrl(split.url)
-                  return
-                }
+              // "네이버 https://..." 처럼 글씨+링크가 섞이면 이름/링크로 자동 분리.
+              // 이벤트 종류(onPaste·inputType)에 기대지 않는다 — 토스 웹뷰에서 들쭉날쭉 발화해
+              // 같은 문자열도 될 때/안 될 때가 생겼다. 대신 '값 자체'로 결정적으로 판단:
+              //   명시적 URL(http(s)://·www.) 이거나, 글자와 링크가 공백으로 나뉘어 있을 때만 분리.
+              //   (맨 도메인 한 토막만 타이핑 중인 경우엔 안 건드림.)
+              const split = splitPastedLink(value)
+              if (split && (/(https?:\/\/|www\.)/i.test(value) || /\s/.test(value))) {
+                if (split.label && !name.trim()) setName(split.label)
+                addLinkWithUrl(split.url)
+                return
               }
               setName(value)
             }}
