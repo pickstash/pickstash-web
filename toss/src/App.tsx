@@ -36,11 +36,18 @@ function App() {
   useRealtimeAlerts();
 
   useEffect(() => {
+    // 알림 동의 바텀시트는 미니앱 접속 직후 바로 뜨면 안 된다(심사 반려 사유) — 첫 화면을
+    // 어느 정도 보고 난 뒤에 자연스럽게 뜨도록 지연시킨다. 언마운트 시 취소.
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    function requestPushAgreementDelayed() {
+      timers.push(setTimeout(requestPushAgreementOnce, 3000));
+    }
+
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setReady(true);
       // 이미 로그인된 채 재실행 → 아직 동의 안 받았으면 이때 요청(내부에서 1회 가드).
-      if (data.session) requestPushAgreementOnce();
+      if (data.session) requestPushAgreementDelayed();
     });
     const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
@@ -48,9 +55,12 @@ function App() {
       // 버리고 새로 불러온다. 로그아웃 시에도 남의 데이터가 남지 않게 정리.
       if (event === "SIGNED_IN" || event === "SIGNED_OUT") queryClient.clear();
       // 로그인 시 푸시 알림 동의 요청(미동의 유저는 스마트발송에서 제외됨). 내부에서 1회만.
-      if (event === "SIGNED_IN") requestPushAgreementOnce();
+      if (event === "SIGNED_IN") requestPushAgreementDelayed();
     });
-    return () => sub.subscription.unsubscribe();
+    return () => {
+      sub.subscription.unsubscribe();
+      timers.forEach(clearTimeout);
+    };
   }, [queryClient]);
 
   const { pathname } = useLocation();
@@ -66,7 +76,8 @@ function App() {
   if (!session && !isInviteRoute) return <LoginScreen />;
 
   return (
-    // --app-nav-h: 탭바 있는 라우트에서만 탭바 실제 높이(3.5rem + iOS 홈 인디케이터 인셋)로 올린다(하위 main·CTA가 상속).
+    // --app-nav-h: 탭바 있는 라우트에서만 탭바 실제 높이로 올린다(하위 main·CTA가 상속).
+    //   탭바는 플로팅(브랜딩 가이드) — 바 자체 높이(3.5rem) + 화면 하단과의 여백(0.75rem) + iOS 홈 인디케이터 인셋.
     // --app-cta-safe: 하단 CTA가 먹을 인셋. 탭바 화면은 CTA가 이미 --app-nav-h만큼 탭바 위로 떠서
     //   탭바가 홈 인디케이터를 전담 → 0(여기서 또 더하면 이중 계산으로 버튼이 붕 뜬다).
     //   폼 화면(탭바 없음)은 CTA가 bottom-0라 직접 인셋(safe-bottom)이 필요하다.
@@ -74,7 +85,7 @@ function App() {
       style={{
         "--app-banner-h": showBanner ? "56px" : "0px", // 배너 높이(권장 96px보다 낮춤 — 너무 높아 보여서)
         "--app-nav-h": showTabBar
-          ? "calc(3.5rem + var(--app-safe-bottom, 0px) + var(--app-banner-h, 0px))"
+          ? "calc(3.5rem + 0.75rem + var(--app-safe-bottom, 0px) + var(--app-banner-h, 0px))"
           : "0px",
         "--app-cta-safe": showTabBar ? "0px" : "var(--app-safe-bottom, 0px)",
       } as CSSProperties}

@@ -43,29 +43,33 @@ export function TabBar() {
   const activeHref = tabOf(pathname);
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-line bg-paper pb-[var(--app-safe-bottom,0px)]">
-      {TABS.map((t) => {
-        const active = activeHref === t.href;
-        return (
-          <button
-            key={t.href}
-            onClick={() => goTab(t.href)}
-            className={`relative flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-semibold ${
-              active ? "text-ink" : "text-ink-faint"
-            }`}
-          >
-            <span className="relative">
-              <Icon name={t.icon} size={22} strokeWidth={active ? 2.1 : 1.75} />
-              {t.href === "/alerts" && unseenCount > 0 && (
-                <span className="absolute -right-2 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-tomato px-1 text-[9px] font-extrabold leading-none text-white">
-                  {unseenCount > 99 ? "99+" : unseenCount}
-                </span>
-              )}
-            </span>
-            {t.label}
-          </button>
-        );
-      })}
-    </nav>
+    // 토스 미니앱 브랜딩 가이드: 탭바는 화면에 붙는 전체폭 바가 아니라 여백을 둔 플로팅 형태여야 한다.
+    // 바깥 div가 좌우·하단 여백(+safe-area)을 잡고, 안쪽 nav가 둥근 모서리·그림자로 뜬 카드로 보이게 한다.
+    <div className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-[calc(var(--app-safe-bottom,0px)+0.75rem)]">
+      <nav className="flex w-full max-w-[400px] items-center justify-around rounded-[28px] border border-line bg-paper py-2 shadow-[0_10px_28px_-6px_rgba(42,42,39,0.22)]">
+        {TABS.map((t) => {
+          const active = activeHref === t.href;
+          return (
+            <button
+              key={t.href}
+              onClick={() => goTab(t.href)}
+              className={`relative flex flex-1 flex-col items-center gap-0.5 py-1.5 text-[10px] font-semibold ${
+                active ? "text-ink" : "text-ink-faint"
+              }`}
+            >
+              <span className="relative">
+                <Icon name={t.icon} size={22} strokeWidth={active ? 2.1 : 1.75} />
+                {t.href === "/alerts" && unseenCount > 0 && (
+                  <span className="absolute -right-2 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-tomato px-1 text-[9px] font-extrabold leading-none text-white">
+                    {unseenCount > 99 ? "99+" : unseenCount}
+                  </span>
+                )}
+              </span>
+              {t.label}
+            </button>
+          );
+        })}
+      </nav>
+    </div>
   );
 }
