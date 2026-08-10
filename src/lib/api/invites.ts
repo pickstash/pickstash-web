@@ -116,6 +116,8 @@ export interface BoxViewerOption {
   name: string
   content: unknown // OptionBlock[](jsonb) — parseBlocks로 안전 파싱
   decided_at: string | null
+  checked_at: string | null
+  group_label: string | null
   created_at: string
   created_by: string
   like_count: number
@@ -133,6 +135,7 @@ export interface BoxViewerData {
   title: string
   memo: string | null
   decision_mode: 'manual' | 'auto_deadline'
+  mode: 'decide' | 'checklist'
   deadline_at: string | null
   closed_at: string | null
   created_at: string

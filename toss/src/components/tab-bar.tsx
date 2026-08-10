@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Icon, type IconName } from "@/components/icon";
@@ -26,10 +27,29 @@ function tabOf(p: string): string {
 export function TabBar() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const rootRef = useRef<HTMLDivElement>(null);
 
   // 알림 탭 배지 — 안읽음(unseen) 개수. 알림함과 같은 ['alerts'] 캐시 공유.
   const { data: alerts = [] } = useQuery({ queryKey: ["alerts"], queryFn: () => getAlerts() });
   const unseenCount = alerts.filter((a) => a.unseen).length;
+
+  // 탭바 실제 풋프린트(필 카드 높이 + 화면과의 여백)를 --app-tabbar-h로 :root에 실시간 반영한다.
+  // 이 높이는 아이콘·라벨·패딩으로 정해지는 내용 기반 높이라 rem 상수로 흉내내면 틀어지기 쉽다
+  // (AdBanner가 그 상수를 믿고 탭바 바로 위에 앉다가 실제 높이보다 낮게 잡혀 가려지는 사고가 났었다).
+  // ResizeObserver로 실측해 반영하면 폰트·아이콘 크기가 바뀌어도 항상 맞는다.
+  useLayoutEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const root = document.documentElement;
+    const sync = () => root.style.setProperty("--app-tabbar-h", `${el.offsetHeight}px`);
+    sync();
+    const observer = new ResizeObserver(sync);
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      root.style.removeProperty("--app-tabbar-h");
+    };
+  }, []);
 
   // 탭 전환은 히스토리에 쌓지 않는다: 홈("/")을 바닥에 깔고 그 위에 탭을 얹어
   // 어느 탭에서든 뒤로가기 = 홈으로 가게 한다(탭끼리 뒤로가기가 이어지던 문제 해결).
@@ -44,9 +64,13 @@ export function TabBar() {
 
   return (
     // 토스 미니앱 브랜딩 가이드: 탭바는 화면에 붙는 전체폭 바가 아니라 여백을 둔 플로팅 형태여야 한다.
-    // 바깥 div가 좌우·하단 여백(+safe-area)을 잡고, 안쪽 nav가 둥근 모서리·그림자로 뜬 카드로 보이게 한다.
-    <div className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-[calc(var(--app-safe-bottom,0px)+0.75rem)]">
-      <nav className="flex w-full max-w-[400px] items-center justify-around rounded-[28px] border border-line bg-paper py-2 shadow-[0_10px_28px_-6px_rgba(42,42,39,0.22)]">
+    // 실제 토스 탭바(Mobile_Tabbar) 레퍼런스: 완전한 필(알약) 모양, 테두리 없이 그림자로만 뜬 흰 카드.
+    // 바깥 div가 좌우·하단 여백(+safe-area)을 잡고, 안쪽 nav가 rounded-full·그림자로 뜬 카드로 보이게 한다.
+    <div
+      ref={rootRef}
+      className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-2.5 pb-[calc(var(--app-safe-bottom,0px)+0.375rem)]"
+    >
+      <nav className="flex w-full max-w-[400px] items-center justify-around rounded-full bg-paper py-1.5 shadow-[0_6px_18px_-4px_rgba(42,42,39,0.18)]">
         {TABS.map((t) => {
           const active = activeHref === t.href;
           return (

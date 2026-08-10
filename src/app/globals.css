@@ -69,3 +69,32 @@ body {
     min-height: 100% !important;
   }
 }
+
+/* 선택지 본문 글 블록 에디터(Tiptap, src/components/rich-text-editor.tsx) — 서식 관련 최소 스타일. */
+.option-editor p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  color: var(--color-ink-faint);
+  pointer-events: none;
+}
+.option-editor ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+.option-editor ul[data-type='taskList'] {
+  list-style: none;
+  padding-left: 0;
+}
+.option-editor ul[data-type='taskList'] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+.option-editor ul[data-type='taskList'] li > label {
+  margin-top: 0.15rem;
+}
+.option-editor ul[data-type='taskList'] li[data-checked='true'] > div {
+  color: var(--color-ink-faint);
+  text-decoration: line-through;
+}

@@ -8,8 +8,10 @@ import {
   createOption,
   updateOption,
   deleteOption,
+  toggleOptionChecked,
   type CreateOptionInput,
   type UpdateOptionInput,
+  type OptionWithCounts,
 } from '@/lib/api/options'
 
 export function useOptions(boxId: string) {
@@ -58,6 +60,29 @@ export function useUpdateOption(optionId: string, boxId: string) {
       qc.invalidateQueries({ queryKey: ['box-detail', boxId], refetchType: 'all' })
       // 상자 상세(웹 서버 컴포넌트)에도 이름이 노출되므로 Router Cache도 비워 즉시 반영.
       nav.refresh()
+    },
+  })
+}
+
+/** 체크형 상자 아이템 체크 토글 — 즉시 반응해야 하는 direct-manipulation이라 낙관적 업데이트. */
+export function useToggleOptionChecked(boxId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ optionId, checked }: { optionId: string; checked: boolean }) => toggleOptionChecked(optionId, checked),
+    onMutate: async ({ optionId, checked }) => {
+      await qc.cancelQueries({ queryKey: ['options', boxId] })
+      const prev = qc.getQueryData<OptionWithCounts[]>(['options', boxId])
+      qc.setQueryData<OptionWithCounts[]>(['options', boxId], old =>
+        old?.map(o => (o.id === optionId ? { ...o, checked_at: checked ? new Date().toISOString() : null } : o))
+      )
+      return { prev }
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(['options', boxId], ctx.prev)
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['options', boxId] })
+      qc.invalidateQueries({ queryKey: ['box-detail', boxId], refetchType: 'all' })
     },
   })
 }

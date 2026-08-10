@@ -51,10 +51,13 @@ export function AdBanner() {
     return () => attached.destroy();
   }, [initialized]);
 
-  // 탭바 바로 위(‘새 상자’ CTA 아래)에 고정. 높이는 --app-banner-h(App.tsx가 홈에서만 세팅, 기본 6rem).
+  // 탭바 바로 위(‘새 상자’ CTA 아래)에 고정. --app-tabbar-h는 TabBar가 자기 실제 렌더 높이를
+  // ResizeObserver로 실측해 세팅한다(tab-bar.tsx) — 여기서 임의 기본값을 믿고 쓰면 탭바 치수가
+  // 바뀔 때마다 광고배너가 플로팅 탭바에 가려지는 문제가 재발한다(과거 실패 원인).
+  // 높이는 --app-banner-h(App.tsx가 홈에서만 세팅, 기본 6rem).
   // 광고가 안 떠도(브라우저·ID 미설정·no-fill) 검정 영역 플레이스홀더로 자리를 항상 확보한다.
   return (
-    <div className="fixed inset-x-0 bottom-[calc(var(--app-tabbar-h,3.5rem)+var(--app-safe-bottom,0px))] z-30 h-[var(--app-banner-h,72px)] overflow-hidden border-t border-line bg-black">
+    <div className="fixed inset-x-0 bottom-[var(--app-tabbar-h,3.625rem)] z-30 h-[var(--app-banner-h,72px)] overflow-hidden border-t border-line bg-black">
       <div ref={containerRef} className="h-full w-full" />
     </div>
   );

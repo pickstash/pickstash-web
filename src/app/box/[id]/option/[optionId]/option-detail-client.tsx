@@ -9,7 +9,8 @@ import { Icon } from '@/components/icon'
 import { CommentComposer } from '@/components/comment-composer'
 import { useBoxVotes } from '@/hooks/use-votes'
 import { useRealtimeVotes } from '@/hooks/use-realtime-votes'
-import { useOption, useDeleteOption } from '@/hooks/use-options'
+import { useOption, useDeleteOption, useUpdateOption, useToggleOptionChecked } from '@/hooks/use-options'
+import { RichText } from '@/components/rich-text'
 import { useComments, useCreateComment, useUpdateComment, useDeleteComment } from '@/hooks/use-comments'
 import { useRealtimeComments } from '@/hooks/use-realtime-comments'
 import { useCommentLikes, useToggleCommentLike } from '@/hooks/use-comment-likes'
@@ -17,6 +18,7 @@ import { useRealtimeCommentLikes } from '@/hooks/use-realtime-comment-likes'
 import { useCommentLikers } from '@/hooks/use-likers'
 import { CommentLikeButton } from '@/components/comment-like-button'
 import { LikersSheet } from '@/components/likers-sheet'
+import { ImageLightbox } from '@/components/image-lightbox'
 import {
   parseBlocks,
   linkFallbackTitle,
@@ -24,6 +26,7 @@ import {
   linkKindOf,
   linkKindEmoji,
   parseYouTubeId,
+  toggleCheckedAtIndex,
 } from '@/lib/domain/option-content'
 import { groupComments } from '@/lib/domain/comments'
 import { parseMentionBody } from '@/lib/domain/mentions'
@@ -42,6 +45,8 @@ interface OptionDetailClientProps {
   boxId: string
   round: number
   canVote: boolean
+  /** 체크형 상자(§033) — 좋아요 대신 체크박스, 그룹 라벨을 보여준다. */
+  checklist?: boolean
   currentUserId: string
   myNickname: string
   participants: Participant[]
@@ -53,6 +58,7 @@ export function OptionDetailClient({
   boxId,
   round,
   canVote,
+  checklist = false,
   currentUserId,
   myNickname,
   participants,
@@ -61,6 +67,7 @@ export function OptionDetailClient({
   const { data: fetchedOption } = useOption(initialOption.id)
   const option = fetchedOption ?? initialOption
   const { data: votes = {} } = useBoxVotes(boxId, round)
+  const toggleChecked = useToggleOptionChecked(boxId)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [replyingTo, setReplyingTo] = useState<{ parentId: string; mention?: { id: string; nickname: string } } | null>(null)
@@ -69,6 +76,7 @@ export function OptionDetailClient({
   // 등록 성공 시 key를 올려 새 댓글 컴포저를 리마운트(입력 내용 비우기 → 중복 등록 방지)
   const [composerKey, setComposerKey] = useState(0)
   const deleteOption = useDeleteOption(boxId)
+  const updateOption = useUpdateOption(option.id, boxId)
   const { data: comments = [] } = useComments(option.id)
   const createComment = useCreateComment(option.id)
   const updateComment = useUpdateComment(option.id)
@@ -77,6 +85,7 @@ export function OptionDetailClient({
   const toggleCommentLike = useToggleCommentLike(option.id)
   // 꾸욱(롱프레스) → 이 댓글을 좋아한 사람 명단 시트
   const [likersComment, setLikersComment] = useState<string | null>(null)
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
   const commentLikers = useCommentLikers(likersComment, !!likersComment)
 
   useRealtimeVotes(boxId, round)
@@ -85,6 +94,12 @@ export function OptionDetailClient({
 
   const counts = votes[option.id] ?? { like: 0, dislike: 0, myVote: null }
   const blocks = parseBlocks(option.content)
+
+  // 본문 체크박스 클릭 → 즉시 저장(참여자 누구나 편집 가능, §3-4에 따라 정리완료여도 허용)
+  function toggleCheck(blockId: string, checkIndex: number) {
+    const next = blocks.map(b => (b.id === blockId && b.type === 'text' ? { ...b, text: toggleCheckedAtIndex(b.text, checkIndex) } : b))
+    updateOption.mutate({ content: next })
+  }
   const { top: topComments, repliesByParent } = groupComments(comments)
 
   function renderCommentBody(body: string) {
@@ -251,10 +266,31 @@ export function OptionDetailClient({
       <div className="flex-1 space-y-4 px-5 pb-10 pt-1">
         {/* 히어로: 제목 · 생성자 · 생성일 · 좋아요 (정보성 데이터 상단 집중) */}
         <div className="space-y-3">
+          {checklist && option.group_label && (
+            <span className="inline-flex w-fit items-center rounded-full border border-line bg-cream px-2.5 py-0.5 text-[11px] font-bold text-ink-soft">
+              {option.group_label}
+            </span>
+          )}
+
           <div className="flex items-start justify-between gap-2">
-            <h1 className="min-w-0 text-[22px] font-extrabold leading-tight tracking-tight text-ink">
-              {option.name}
-            </h1>
+            <div className="flex min-w-0 items-start gap-2.5">
+              {checklist && (
+                <button
+                  type="button"
+                  onClick={() => toggleChecked.mutate({ optionId: option.id, checked: !option.checked_at })}
+                  aria-pressed={!!option.checked_at}
+                  aria-label={option.checked_at ? '체크 해제' : '체크'}
+                  className={`mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-[8px] border-[1.5px] ${
+                    option.checked_at ? 'border-ink bg-ink text-cream' : 'border-line bg-paper'
+                  }`}
+                >
+                  {option.checked_at && <Icon name="check" size={14} strokeWidth={3} />}
+                </button>
+              )}
+              <h1 className={`min-w-0 text-[22px] font-extrabold leading-tight tracking-tight ${option.checked_at ? 'text-ink-faint line-through' : 'text-ink'}`}>
+                {option.name}
+              </h1>
+            </div>
             {/* 편집 메뉴 — 참여자 누구나 (008 RLS). 수정·삭제를 한 곳에. */}
             <div className="relative shrink-0">
               <button
@@ -272,7 +308,7 @@ export function OptionDetailClient({
                       href={`/box/${boxId}/option/${option.id}/edit`}
                       className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-ink active:bg-cream"
                     >
-                      선택지 수정
+                      {checklist ? '항목 수정' : '선택지 수정'}
                     </AppLink>
                     <button
                       onClick={() => { setMenuOpen(false); setConfirmDelete(true) }}
@@ -302,11 +338,13 @@ export function OptionDetailClient({
             <span className="text-ink-faint">· {formatKoreanDate(option.created_at)}</span>
           </div>
 
-          {/* 좋아요(투표) */}
-          <div className="flex items-center gap-2">
-            <VoteButtons optionId={option.id} boxId={boxId} round={round} counts={counts} disabled={!canVote} />
-            {!canVote && <span className="text-[11.5px] text-ink-faint">정리된 상자에선 투표할 수 없어요</span>}
-          </div>
+          {/* 좋아요(투표) — 체크형 상자는 투표 개념이 없어 생략 */}
+          {!checklist && (
+            <div className="flex items-center gap-2">
+              <VoteButtons optionId={option.id} boxId={boxId} round={round} counts={counts} disabled={!canVote} />
+              {!canVote && <span className="text-[11.5px] text-ink-faint">정리된 상자에선 투표할 수 없어요</span>}
+            </div>
+          )}
         </div>
 
         {/* 본문 (블록: 글·사진·라벨링크 순서대로) */}
@@ -315,21 +353,24 @@ export function OptionDetailClient({
             {blocks.map(block => {
               if (block.type === 'text') {
                 return (
-                  <p key={block.id} className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-ink">
-                    {block.text}
-                  </p>
+                  <RichText
+                    key={block.id}
+                    text={block.text}
+                    className="space-y-1.5 text-[13.5px] leading-relaxed text-ink"
+                    onToggleCheck={lineIndex => toggleCheck(block.id, lineIndex)}
+                  />
                 )
               }
               if (block.type === 'image') {
                 return (
-                  <a key={block.id} href={linkHref(block.url)} target="_blank" rel="noopener noreferrer" className="block">
+                  <button key={block.id} type="button" onClick={() => setLightboxSrc(block.url)} className="block w-full">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={block.url}
                       alt="첨부 사진"
                       className="h-auto w-full rounded-[14px] border border-line"
                     />
-                  </a>
+                  </button>
                 )
               }
               // link — 유튜브면 인라인 플레이어, 아니면 미리보기 카드
@@ -452,6 +493,8 @@ export function OptionDetailClient({
         isLoading={commentLikers.isLoading}
         onClose={() => setLikersComment(null)}
       />
+
+      <ImageLightbox open={!!lightboxSrc} src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
     </main>
   )
 }

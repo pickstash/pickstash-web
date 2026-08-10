@@ -30,6 +30,7 @@ export function OptionDetailScreen() {
       boxId={boxId!}
       round={data.r.round}
       canVote={data.r.canVote}
+      checklist={data.r.checklist}
       currentUserId={data.userId}
       myNickname={data.r.myNickname}
       participants={data.r.participants}

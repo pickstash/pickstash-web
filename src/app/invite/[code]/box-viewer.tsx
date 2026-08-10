@@ -1,6 +1,7 @@
 import Image from 'next/image'
 import { Icon } from '@/components/icon'
 import { YouTubeEmbed } from '@/components/youtube-embed'
+import { RichText } from '@/components/rich-text'
 import {
   parseBlocks,
   linkFallbackTitle,
@@ -31,7 +32,8 @@ export function BoxViewer({
 }) {
   const status = getBoxStatus({ closed_at: view.closed_at })
   const isDone = status === 'RESOLVED'
-  const showLikes = view.participant_count > 1 // 혼자 상자는 좋아요 미표시 (앱과 동일)
+  const isChecklist = view.mode === 'checklist'
+  const showLikes = !isChecklist && view.participant_count > 1 // 혼자 상자·체크형 상자는 좋아요 미표시 (앱과 동일)
 
   const maxLikes = view.options.reduce((m, o) => Math.max(m, o.like_count), 0)
   const decidedNames = view.options.filter(o => o.decided_at).map(o => o.name)
@@ -106,7 +108,9 @@ export function BoxViewer({
         {/* 결정 결과 (정리완료) */}
         {isDone && (
           <section className="rounded-card border border-butter-dark/30 bg-butter-tint p-4">
-            {decidedNames.length > 0 ? (
+            {isChecklist ? (
+              <p className="text-[14px] font-bold text-ink-soft">체크리스트를 정리했어요.</p>
+            ) : decidedNames.length > 0 ? (
               <p className="text-[15px] font-extrabold text-ink">
                 <span className="bg-butter px-1 underline decoration-butter-dark decoration-2">
                   {decidedNames.join(', ')}
@@ -121,17 +125,18 @@ export function BoxViewer({
 
         {/* 선택지 목록 */}
         <section className="space-y-3">
-          <h2 className="text-[13px] font-extrabold text-ink-soft">선택지 {view.options.length}개</h2>
+          <h2 className="text-[13px] font-extrabold text-ink-soft">{isChecklist ? '항목' : '선택지'} {view.options.length}개</h2>
 
           {view.options.length === 0 && (
             <p className="rounded-card border border-dashed border-line py-8 text-center text-[13px] text-ink-faint">
-              아직 선택지가 없어요.
+              {isChecklist ? '아직 항목이 없어요.' : '아직 선택지가 없어요.'}
             </p>
           )}
 
           {view.options.map(option => {
             const blocks = parseBlocks(option.content)
             const isDecided = !!option.decided_at
+            const isChecked = !!option.checked_at
             const isLeader = !isDone && showLikes && maxLikes > 0 && option.like_count === maxLikes
 
             return (
@@ -141,16 +146,35 @@ export function BoxViewer({
                   isDecided ? 'border-butter-dark/40 bg-butter-tint' : 'border-[#ECEADC] bg-paper'
                 }`}
               >
+                {isChecklist && option.group_label && (
+                  <span className="inline-flex w-fit items-center rounded-full border border-line bg-cream px-2 py-0.5 text-[10.5px] font-bold text-ink-soft">
+                    {option.group_label}
+                  </span>
+                )}
                 <div className="flex items-start justify-between gap-2">
-                  <h3 className="min-w-0 text-[16px] font-extrabold leading-snug text-ink">{option.name}</h3>
+                  <div className="flex min-w-0 items-start gap-2">
+                    {isChecklist && (
+                      <span
+                        aria-hidden
+                        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-[7px] border-[1.5px] ${
+                          isChecked ? 'border-ink bg-ink text-cream' : 'border-line bg-paper'
+                        }`}
+                      >
+                        {isChecked && <Icon name="check" size={12} strokeWidth={3} />}
+                      </span>
+                    )}
+                    <h3 className={`min-w-0 text-[16px] font-extrabold leading-snug ${isChecked ? 'text-ink-faint line-through' : 'text-ink'}`}>
+                      {option.name}
+                    </h3>
+                  </div>
                   <div className="flex shrink-0 items-center gap-1.5">
-                    {isDecided && (
+                    {!isChecklist && isDecided && (
                       <span className="flex items-center gap-1 rounded-full bg-ink px-2 py-0.5 text-[10.5px] font-bold text-cream">
                         <Icon name="check" size={11} />
                         결정
                       </span>
                     )}
-                    {isLeader && (
+                    {!isChecklist && isLeader && (
                       <span className="rounded-full bg-butter px-2 py-0.5 text-[10.5px] font-bold text-ink">
                         1위
                       </span>
@@ -192,11 +216,7 @@ export function BoxViewer({
 /** 선택지 본문 블록(글·사진·링크·유튜브)을 읽기 전용으로 렌더 — option-detail과 동일 마크업. */
 function renderBlock(block: ReturnType<typeof parseBlocks>[number]) {
   if (block.type === 'text') {
-    return (
-      <p key={block.id} className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-ink">
-        {block.text}
-      </p>
-    )
+    return <RichText key={block.id} text={block.text} className="space-y-1.5 text-[13.5px] leading-relaxed text-ink" />
   }
   if (block.type === 'image') {
     return (

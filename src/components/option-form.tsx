@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { uploadOptionImage } from '@/lib/api/options'
 import { fetchLinkPreview, proxiedImageUrl } from '@/lib/api/unfurl'
 import { peekClipboardIfAllowed } from '@/lib/clipboard/native-clipboard'
+import { RichTextEditor } from '@/components/rich-text-editor'
 import {
   cleanBlocks,
   linkBlocksOf,
@@ -20,11 +21,16 @@ interface OptionFormProps {
   initialName?: string
   initialContent?: OptionBlock[]
   isPending?: boolean
-  onSubmit: (data: { name: string; content: OptionBlock[] }) => void
+  onSubmit: (data: { name: string; content: OptionBlock[]; group_label?: string | null }) => void
   onCancel?: () => void
   submitLabel?: string
   /** 상단에 '📋 복사한 링크 넣기' 칩 노출(선택지 추가 화면용). 탭하면 클립보드를 읽어 링크를 담는다. */
   offerClipboardLink?: boolean
+  /** 체크형 상자(§033) — 그룹(선택적 카테고리) 입력을 보여준다. */
+  checklist?: boolean
+  /** 이 상자에서 이미 쓰인 그룹 라벨(자동완성 칩용, 중복 없이). */
+  existingGroups?: string[]
+  initialGroupLabel?: string | null
 }
 
 const MAX_IMAGES = 6
@@ -44,9 +50,13 @@ export function OptionForm({
   onCancel,
   submitLabel = '저장',
   offerClipboardLink = false,
+  checklist = false,
+  existingGroups = [],
+  initialGroupLabel = null,
 }: OptionFormProps) {
   const [name, setName] = useState(initialName)
   const [blocks, setBlocks] = useState<OptionBlock[]>(initialContent)
+  const [groupLabel, setGroupLabel] = useState(initialGroupLabel ?? '')
   const [uploading, setUploading] = useState(false)
   const [imageError, setImageError] = useState<string | null>(null)
   const [linkLoading, setLinkLoading] = useState<Record<string, boolean>>({})
@@ -250,7 +260,11 @@ export function OptionForm({
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!name.trim()) return
-    onSubmit({ name: name.trim(), content: cleanBlocks(blocks) })
+    onSubmit({
+      name: name.trim(),
+      content: cleanBlocks(blocks),
+      ...(checklist && { group_label: groupLabel.trim() || null }),
+    })
   }
 
   return (
@@ -340,6 +354,37 @@ export function OptionForm({
         )}
       </div>
 
+      {/* 그룹(선택적 카테고리) — 체크형 상자 전용. 강제 아님, 비워두면 flat 목록. */}
+      {checklist && (
+        <div>
+          <label className="mb-1.5 block text-[13px] font-semibold text-ink-soft">그룹 (선택)</label>
+          <input
+            type="text"
+            value={groupLabel}
+            onChange={e => setGroupLabel(e.target.value)}
+            placeholder="예) 면세점"
+            maxLength={30}
+            className="w-full rounded-field border-[1.5px] border-line bg-paper px-4 py-3 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none focus:ring-[3px] focus:ring-butter-tint"
+          />
+          {existingGroups.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {existingGroups.map(g => (
+                <button
+                  key={g}
+                  type="button"
+                  onClick={() => setGroupLabel(g)}
+                  className={`rounded-full border-[1.5px] px-3 py-1 text-[12px] font-bold active:bg-cream ${
+                    groupLabel === g ? 'border-butter-dark bg-butter-tint text-ink' : 'border-line bg-paper text-ink-soft'
+                  }`}
+                >
+                  {g}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* 본문 블록 */}
       <div>
         <label className="mb-1.5 block text-[13px] font-semibold text-ink-soft">본문</label>
@@ -392,15 +437,12 @@ export function OptionForm({
                   </div>
                 </div>
 
-                {/* 블록 본체 */}
+                {/* 블록 본체 — 타이핑하는 즉시 서식이 반영되는 실시간 에디터(contentEditable, 애플 메모장 방식) */}
                 {block.type === 'text' && (
-                  <textarea
+                  <RichTextEditor
                     value={block.text}
-                    onChange={e => updateBlock(block.id, { text: e.target.value })}
-                    rows={3}
-                    maxLength={1000}
+                    onChange={text => updateBlock(block.id, { text })}
                     placeholder="내용을 입력하세요"
-                    className="w-full resize-none rounded-field border-[1.5px] border-line bg-paper px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none"
                   />
                 )}
 

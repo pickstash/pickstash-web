@@ -12,11 +12,13 @@ export interface CreateOptionInput {
   box_id: string
   name: string
   content?: OptionBlock[]
+  group_label?: string | null   // 체크형 상자 전용 — 선택적 카테고리 라벨(§033)
 }
 
 export interface UpdateOptionInput {
   name?: string
   content?: OptionBlock[]
+  group_label?: string | null
 }
 
 /** 선택지 이미지 업로드 → 공개 URL 반환 (option-images 버킷) */
@@ -72,6 +74,7 @@ export async function createOption(input: CreateOptionInput): Promise<Option> {
       box_id: input.box_id,
       name: input.name,
       content: (input.content ?? []) as unknown as Database['public']['Tables']['options']['Insert']['content'],
+      group_label: input.group_label ?? null,
       created_by: user.id,
     })
     .select()
@@ -100,7 +103,21 @@ export async function updateOption(id: string, input: UpdateOptionInput): Promis
     .update({
       ...(input.name !== undefined && { name: input.name }),
       ...(input.content !== undefined && { content: input.content as unknown as Database['public']['Tables']['options']['Update']['content'] }),
+      ...(input.group_label !== undefined && { group_label: input.group_label }),
     })
+    .eq('id', id)
+  if (error) throw error
+}
+
+/**
+ * 체크형 상자의 아이템(=선택지) 체크 토글. 아이템마다 별도 행이라 두 사람이 서로 다른
+ * 아이템을 동시에 체크해도 경합이 없다 — 별도 잠금 RPC 없이 단순 update로 충분(§033).
+ */
+export async function toggleOptionChecked(id: string, checked: boolean): Promise<void> {
+  const supabase = createClient()
+  const { error } = await supabase
+    .from('options')
+    .update({ checked_at: checked ? new Date().toISOString() : null })
     .eq('id', id)
   if (error) throw error
 }
