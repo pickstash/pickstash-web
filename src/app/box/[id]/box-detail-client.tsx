@@ -839,10 +839,11 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
       </div>
 
       {/* 하단 고정 2단: ＋선택지 추가하기 · 최종 결정하기. 목록 안 내려도 상시 추가(스크롤 불편 해소).
-          결정 없을 때(마감투표·정리완료)는 추가가 풀폭. 0개면 목록 빈상태 CTA가 대체. */}
+          정리완료면 결정 버튼 없이 추가가 풀폭. 0개면 목록 빈상태 CTA가 대체. */}
       {options.length > 0 && (
         <div className="fixed inset-x-0 bottom-[var(--app-nav-h,0px)] z-20 grid grid-cols-2 gap-2.5 bg-cream px-5 pt-3 pb-[calc(var(--app-cta-safe,env(safe-area-inset-bottom))+0.75rem)] xl:inset-x-auto xl:bottom-10 xl:left-1/2 xl:w-[430px] xl:-translate-x-1/2 xl:rounded-b-[30px]">
-          {!isDone && !isAuto && (
+          {/* 마감일(마감투표)이 있어도 최종 결정하기로 즉시 마감 가능 — 마감 전 수동 확정(승자 직접 선택). */}
+          {!isDone && (
             <button
               onClick={openDecide}
               className="rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80"
@@ -852,7 +853,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
           )}
           <AppLink
             href={`/box/${box.id}/option/new`}
-            className={`flex items-center justify-center gap-1.5 rounded-field border border-dashed border-[#D9D6C2] bg-paper/50 py-4 text-[13px] font-bold text-ink-soft active:bg-cream ${!isDone && !isAuto ? '' : 'col-span-2'}`}
+            className={`flex items-center justify-center gap-1.5 rounded-field border border-dashed border-[#D9D6C2] bg-paper/50 py-4 text-[13px] font-bold text-ink-soft active:bg-cream ${!isDone ? '' : 'col-span-2'}`}
           >
             <Icon name="plus" size={16} />
             선택지 추가하기
