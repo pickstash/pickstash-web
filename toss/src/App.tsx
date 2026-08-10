@@ -2,6 +2,7 @@ import { Suspense, useEffect, useState, type CSSProperties } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Session } from "@supabase/supabase-js";
+import { setIosSwipeGestureEnabled } from "@apps-in-toss/web-framework";
 import { supabase } from "./lib/supabase";
 import { requestPushAgreementOnce } from "./lib/push-agreement";
 import { useRealtimeAlerts } from "@/hooks/use-realtime-alerts";
@@ -54,6 +55,11 @@ function App() {
   }, [queryClient]);
 
   const { pathname } = useLocation();
+  // 화면 전환 시 스크롤 맨 위로 — MemoryRouter는 스크롤 복원이 없어, 이전 화면의 스크롤 위치가
+  // 새 화면(홈·상자 등)으로 새는 것을 막는다. (스크롤러는 document/body.)
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
   // 뒤로가기 통제(iOS 스와이프 OFF + 홈 종료 확인)는 BackHandler가 담당 — main.tsx에서 App 형제로 항상 마운트.
   // 초대 뷰어(공유 링크)는 비로그인도 열람 가능 — 로그인 게이트 예외. 참여 시 인라인 로그인(nav.login).
   const isInviteRoute = pathname.startsWith("/invite/") || pathname.startsWith("/folder-invite/");
@@ -61,6 +67,18 @@ function App() {
   const showTabBar = !isFormRoute(pathname) && !isInviteRoute;
   // 배너는 홈·알림에서(탭바 위 고정). 그 높이를 --app-nav-h에 더해 콘텐츠가 배너 위로 밀리게 한다.
   const showBanner = (pathname === "/" || pathname === "/alerts") && showTabBar;
+
+  // iOS 엣지 스와이프 뒤로가기는 홈·로그인에서만 OFF(실수로 앱이 종료되는 것 방지) — 나머지 화면은 ON(편의).
+  //   홈 = 로그인 상태의 '/'. 로그인 = 세션 없음(초대 뷰어 제외, LoginScreen이 뜨는 조건). 둘 다 '/'에 있어도 안전.
+  //   backEvent는 useHardwareBack(BackHandler)이 항상 처리 → 하위 화면 스와이프=navigate(-1), 홈=종료 확인.
+  const blockSwipeBack = (!session && !isInviteRoute) || pathname === "/";
+  useEffect(() => {
+    try {
+      void setIosSwipeGestureEnabled({ isEnabled: !blockSwipeBack });
+    } catch {
+      /* 브라우저·미지원 환경 → noop */
+    }
+  }, [blockSwipeBack, pathname]);
 
   if (!ready) return null;
   if (!session && !isInviteRoute) return <LoginScreen />;
