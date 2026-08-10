@@ -105,20 +105,22 @@ export interface OptionPreview {
 
 /** 카드 미리보기: 첫 사진(없으면 링크 썸네일/영상 썸네일) + 첫 글(없으면 링크 제목 + 메모). */
 export function getOptionPreview(blocks: OptionBlock[], maxLen = 60): OptionPreview {
-  let image: string | undefined
+  // 카드 썸네일은 '직접 올린 사진'을 우선한다 — 링크 OG 이미지(지도 아이콘 등 대체 이미지 포함)보다
+  // 사용자가 붙인 사진이 더 나은 대표 이미지. 순서를 바꾸지 않아도 사진이 썸네일로 잡힌다.
+  // 사진이 없을 때만 링크 OG 이미지 / 유튜브 썸네일로 폴백(블록 순서상 첫 번째).
+  let image = blocks.find((b): b is Extract<OptionBlock, { type: 'image' }> => b.type === 'image')?.url
+  if (!image) {
+    for (const b of blocks) {
+      if (b.type !== 'link') continue
+      if (b.image) { image = b.image; break }
+      const id = parseYouTubeId(b.url)
+      if (id) { image = youTubeThumb(id); break }
+    }
+  }
+
   let snippet: string | undefined
   let memo: string | undefined
   for (const b of blocks) {
-    if (!image) {
-      if (b.type === 'image') image = b.url
-      else if (b.type === 'link') {
-        if (b.image) image = b.image
-        else {
-          const id = parseYouTubeId(b.url)
-          if (id) image = youTubeThumb(id)
-        }
-      }
-    }
     if (!snippet) {
       if (b.type === 'text' && b.text.trim()) {
         snippet = truncate(b.text, maxLen)
@@ -129,7 +131,7 @@ export function getOptionPreview(blocks: OptionBlock[], maxLen = 60): OptionPrev
         if (label && label !== b.title.trim()) memo = truncate(label, maxLen)
       }
     }
-    if (image && snippet) break
+    if (snippet) break
   }
   return { image, snippet, memo }
 }
