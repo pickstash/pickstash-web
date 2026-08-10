@@ -3,6 +3,7 @@ export type BoxActivityType =
   | 'vote_cast'
   | 'comment_added'
   | 'box_closed'
+  | 'box_closed_auto'
   | 'box_reopened'
   | 'rematch_started'
   | 'deadline_changed'
@@ -32,6 +33,8 @@ export function formatActivity({ type, actorNickname, meta }: ActivityInfo): str
       return `${who} 댓글을 남겼어요`
     case 'box_closed':
       return `${who} 결정을 확정했어요`
+    case 'box_closed_auto':
+      return `마감돼 정리됐어요` // 자동마감 = 시스템 이벤트(사람 이름 없음)
     case 'box_reopened':
       return `${who} 상자를 다시 열었어요`
     case 'rematch_started':

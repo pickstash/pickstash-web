@@ -38,7 +38,9 @@ export async function getAlerts(limit = 100): Promise<AlertItem[]> {
     .from('box_activities')
     .select('id, box_id, type, meta, created_at, target_user_id, profiles:actor_id(nickname)')
     .in('box_id', boxIds)
-    .neq('actor_id', user.id)
+    // 내 활동은 제외 — 단 자동마감(box_closed_auto)은 시스템 이벤트라 actor(첫 참여자=보통 만든이)
+    // 무관하게 전원에게 노출한다(안 그러면 만든 사람이 자기 상자 자동정리를 못 봄).
+    .or(`type.eq.box_closed_auto,actor_id.neq.${user.id}`)
     // 타겟 알림(초대 등)은 대상 본인만, 공용 활동(target 없음)은 참여자 전부.
     .or(`target_user_id.is.null,target_user_id.eq.${user.id}`)
     .order('created_at', { ascending: false })
