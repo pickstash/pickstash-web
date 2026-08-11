@@ -69,13 +69,16 @@ returns jsonb language sql security definer set search_path = public stable as $
   );
 $$;
 
--- 2) 공개 피드 (최근순)
+-- 2) 공개 피드 (최근순) — 서브쿼리로 먼저 정렬·limit 후 집계(집계엔 바깥 order by/limit 불가)
 create or replace function get_public_feed(p_limit int default 20, p_offset int default 0)
 returns jsonb language sql security definer set search_path = public stable as $$
-  select coalesce(jsonb_agg(public_box_card(b) order by b.published_at desc), '[]'::jsonb)
-  from boxes b where b.visibility = 'public'
-  order by b.published_at desc
-  limit p_limit offset p_offset;
+  select coalesce(jsonb_agg(card order by pub desc), '[]'::jsonb)
+  from (
+    select public_box_card(b) as card, b.published_at as pub
+    from boxes b where b.visibility = 'public'
+    order by b.published_at desc
+    limit p_limit offset p_offset
+  ) t;
 $$;
 
 -- 3) 프로필 피드 (핸들의 공개 상자 + 헤더)
@@ -103,21 +106,26 @@ create or replace function search_public(p_q text, p_limit int default 20)
 returns jsonb language sql security definer set search_path = public stable as $$
   select jsonb_build_object(
     'boxes', coalesce((
-      select jsonb_agg(public_box_card(b) order by b.published_at desc)
-      from boxes b
-      where b.visibility = 'public'
-        and (b.title ilike '%' || p_q || '%' or exists (select 1 from unnest(b.tags) t where t ilike '%' || p_q || '%'))
-      limit p_limit
+      select jsonb_agg(card order by pub desc) from (
+        select public_box_card(b) as card, b.published_at as pub
+        from boxes b
+        where b.visibility = 'public'
+          and (b.title ilike '%' || p_q || '%' or exists (select 1 from unnest(b.tags) t where t ilike '%' || p_q || '%'))
+        order by b.published_at desc
+        limit p_limit
+      ) t
     ), '[]'::jsonb),
     'people', coalesce((
-      select jsonb_agg(jsonb_build_object(
-               'id', pr.id, 'handle', pr.handle, 'nickname', pr.nickname, 'avatar_url', pr.avatar_url, 'bio', pr.bio,
-               'followers', (select count(*) from follows where followee_id = pr.id),
-               'public_count', (select count(*) from boxes b where b.published_by = pr.id and b.visibility = 'public')
-             ))
-      from profiles pr
-      where pr.handle is not null and (pr.handle ilike '%' || p_q || '%' or pr.nickname ilike '%' || p_q || '%')
-      limit p_limit
+      select jsonb_agg(person) from (
+        select jsonb_build_object(
+                 'id', pr.id, 'handle', pr.handle, 'nickname', pr.nickname, 'avatar_url', pr.avatar_url, 'bio', pr.bio,
+                 'followers', (select count(*) from follows where followee_id = pr.id),
+                 'public_count', (select count(*) from boxes b where b.published_by = pr.id and b.visibility = 'public')
+               ) as person
+        from profiles pr
+        where pr.handle is not null and (pr.handle ilike '%' || p_q || '%' or pr.nickname ilike '%' || p_q || '%')
+        limit p_limit
+      ) t
     ), '[]'::jsonb)
   );
 $$;
