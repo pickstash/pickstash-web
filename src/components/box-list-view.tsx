@@ -49,6 +49,13 @@ export const BOX_LIST_META: Record<
     emptyTitle: '즐겨찾는 상자가 없어요',
     emptyDesc: '상자 상세에서 별 아이콘을 눌러 담아두세요!',
   },
+  all: {
+    title: '상자',
+    description: '내 상자 전체예요.',
+    emptyTitle: '상자가 없어요',
+    emptyDesc: '새 상자를 만들어보세요!',
+    showCreateCta: true,
+  },
 }
 
 export function BoxListView({ title, description, nickname, items, emptyTitle, emptyDesc, showCreateCta }: BoxListViewProps) {

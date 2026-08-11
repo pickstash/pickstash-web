@@ -3,8 +3,9 @@ import type { Database } from '@/lib/supabase/types'
 import type { Box } from '@/lib/api/boxes'
 import { getBoxStatus, isDoneStatus } from '@/lib/domain/box-status'
 
-// 창고 목록(어질러진/정리된/즐겨찾는) 데이터 로더 — 웹·토스 공유. 뷰는 BoxListView가 그린다.
-export type BoxListKind = 'messy' | 'done' | 'favorites'
+// 상자 목록 데이터 로더 — 웹·토스 공유. 뷰는 BoxListView/BoxesScreen이 그린다.
+// 'all' = 개편 '상자' 탭용: 진행/정리 안 나눈 전체 단일 스트림(최근 활동순).
+export type BoxListKind = 'messy' | 'done' | 'favorites' | 'all'
 
 type CardParticipant = { user_id: string; profiles: { avatar_url: string | null; nickname: string } | null }
 
@@ -48,7 +49,14 @@ export async function loadBoxList(
 
   const byCreatedDesc = (a: RawBox, b: RawBox) => b.created_at.localeCompare(a.created_at)
 
-  if (kind === 'messy') {
+  if (kind === 'all') {
+    // 전체: 진행/정리 통합, 최근 활동순(updated_at desc). RLS로 내 참여 상자만.
+    const { data } = await supabase
+      .from('boxes')
+      .select('*, box_participants(user_id, profiles(avatar_url, nickname)), options(id, name, decided_at)')
+      .order('updated_at', { ascending: false })
+    boxes = (data ?? []) as unknown as RawBox[]
+  } else if (kind === 'messy') {
     // 진행중: 생성일 최신순
     const { data } = await supabase
       .from('boxes')
@@ -77,7 +85,7 @@ export async function loadBoxList(
 
   const items: BoxListItem[] = boxes.map(box => {
     // done은 전부 정리완료라 승자 표시. favorites는 정리완료 상자만 승자 표시. messy는 없음.
-    const showWinner = kind === 'done' || (kind === 'favorites' && isDoneStatus(getBoxStatus(box)))
+    const showWinner = kind === 'done' || ((kind === 'favorites' || kind === 'all') && isDoneStatus(getBoxStatus(box)))
     return {
       box,
       participants: box.box_participants,

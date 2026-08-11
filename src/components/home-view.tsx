@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react'
 import { AppLink } from '@/lib/nav/nav'
+import { Icon } from '@/components/icon'
 import { CreateFab } from '@/components/create-fab'
 import { AppDrawer } from '@/components/app-drawer'
 import { DecisionHero } from '@/components/decision-hero'
@@ -58,13 +59,19 @@ export function HomeView({
               <FolderGroupCards />
             </div>
 
-            {/* ③ 내 상자 단일 스트림 — 진행/정리 통합(최근 활동순), 정리됨은 배지 */}
+            {/* ③ 내 상자 — 최근 활동 요약(최대 5). 전체는 '상자' 탭에서(차별화). */}
             <section className="space-y-2.5">
-              <h2 className="text-[13px] font-extrabold text-ink">내 상자</h2>
-              {openCards.map(b => (
+              <div className="flex items-center justify-between">
+                <h2 className="text-[13px] font-extrabold text-ink">내 상자</h2>
+                <AppLink href="/boxes" className="flex items-center gap-0.5 text-[12px] font-semibold text-ink-faint active:opacity-70">
+                  전체 보기
+                  <Icon name="chevronRight" size={13} strokeWidth={2.5} />
+                </AppLink>
+              </div>
+              {openCards.slice(0, 5).map(b => (
                 <HomeStreamCard key={b.id} box={b} />
               ))}
-              {doneRecap.map(b => (
+              {openCards.length < 5 && doneRecap.slice(0, 5 - openCards.length).map(b => (
                 <DoneCard key={b.id} box={b} />
               ))}
             </section>
