@@ -19,11 +19,9 @@ export function MyProfileView() {
 
   return (
     <main className="mx-auto min-h-dvh max-w-[430px] bg-cream pb-28">
-      <header className="flex items-center justify-between px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-1">
+      {/* 우상단은 토스 시스템 버튼 자리라 비워둔다 — 액션은 본문 안으로. */}
+      <header className="px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-1">
         <h1 className="text-[17px] font-extrabold tracking-tight text-ink">프로필</h1>
-        <AppLink href="/profile/settings" aria-label="설정" className="p-1 text-ink-soft active:text-ink">
-          <Icon name="edit" size={20} />
-        </AppLink>
       </header>
 
       <div className="px-5 pt-3">
@@ -46,14 +44,23 @@ export function MyProfileView() {
           </div>
         </div>
 
-        <div className="mt-3">
-          <p className="text-[14px] font-extrabold text-ink">{profile.nickname}</p>
-          {profile.handle ? (
-            <p className="text-[12px] text-ink-faint">@{profile.handle}</p>
-          ) : (
-            <AppLink href="/profile/settings" className="text-[12px] font-bold text-tangerine">아이디를 설정하면 프로필을 공유할 수 있어요 →</AppLink>
-          )}
-          {profile.bio && <p className="mt-1 text-[12.5px] text-ink-soft">{profile.bio}</p>}
+        <div className="mt-3 flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-[14px] font-extrabold text-ink">{profile.nickname}</p>
+            {profile.handle ? (
+              <p className="text-[12px] text-ink-faint">@{profile.handle}</p>
+            ) : (
+              <AppLink href="/profile/settings" className="text-[12px] font-bold text-tangerine">아이디를 설정하면 프로필을 공유할 수 있어요 →</AppLink>
+            )}
+            {profile.bio && <p className="mt-1 text-[12.5px] text-ink-soft">{profile.bio}</p>}
+          </div>
+          <AppLink
+            href="/profile/settings"
+            className="flex shrink-0 items-center gap-1 rounded-full border border-line bg-paper px-3 py-1.5 text-[12px] font-bold text-ink-soft active:bg-cream"
+          >
+            <Icon name="edit" size={13} />
+            설정
+          </AppLink>
         </div>
       </div>
 

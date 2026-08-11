@@ -57,12 +57,10 @@ export function PublicBoxView({ boxId }: { boxId: string }) {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col bg-cream">
+      {/* 우상단은 토스 시스템 버튼 자리라 비워둔다 — 저장은 하단 바로. */}
       <header className="sticky top-0 z-20 flex items-center gap-2 bg-cream/95 px-4 pt-[calc(env(safe-area-inset-top)+0.75rem)] pb-3 backdrop-blur-sm">
         <button onClick={() => nav.back()} aria-label="뒤로" className="p-1 text-ink"><Icon name="back" size={22} /></button>
         <span className="text-[13px] font-bold text-ink-faint">구경 중 · 읽기 전용</span>
-        <button onClick={toggleSave} aria-label="저장" className="ml-auto p-1 text-ink">
-          <Icon name="bookmark" size={20} style={saved ? { fill: 'var(--color-ink)' } : undefined} />
-        </button>
       </header>
 
       <div className="flex-1 space-y-4 px-5 pb-32 pt-2">
@@ -109,12 +107,19 @@ export function PublicBoxView({ boxId }: { boxId: string }) {
         </section>
       </div>
 
-      {/* 참여 신청 CTA */}
-      <div className="fixed inset-x-0 bottom-0 z-20 mx-auto max-w-[430px] bg-cream px-5 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3">
+      {/* 하단 바 — 저장(북마크) + 참여 신청 */}
+      <div className="fixed inset-x-0 bottom-0 z-20 mx-auto flex max-w-[430px] items-center gap-2.5 bg-cream px-5 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3">
+        <button
+          onClick={toggleSave}
+          aria-label="저장"
+          className={`flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-field border-[1.5px] ${saved ? 'border-ink bg-ink text-cream' : 'border-line bg-paper text-ink'}`}
+        >
+          <Icon name="bookmark" size={20} style={saved ? { fill: 'currentColor' } : undefined} />
+        </button>
         <button
           onClick={join}
           disabled={busy || requested}
-          className="w-full rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80 disabled:opacity-50"
+          className="flex-1 rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80 disabled:opacity-50"
         >
           {requested ? '참여 신청됨 · 승인 대기' : '함께하기 신청'}
         </button>
