@@ -26,6 +26,7 @@ import { shareInviteLink, hasNativeShare } from '@/lib/share/native-share'
 import { getBoxStatus, isDoneStatus, BOX_STATUS_LABEL, type BoxStatus } from '@/lib/domain/box-status'
 import { parseBlocks, linkBlocksOf } from '@/lib/domain/option-content'
 import { getLeaderKey } from '@/lib/domain/winner'
+import { setBoxVisibility } from '@/lib/api/social'
 import { formatDeadlineCompact, defaultDeadline } from '@/lib/utils'
 import type { BoxWithParticipants, BoxParticipant, DecisionMode } from '@/lib/api/boxes'
 import type { Option } from '@/lib/api/options'
@@ -129,6 +130,27 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
   const [confirmReopen, setConfirmReopen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [folderModal, setFolderModal] = useState(false)
+  // 공개 설정(개편) — 타입 미생성이라 캐스팅. box.visibility/tags는 037 이후 존재.
+  const [publishOpen, setPublishOpen] = useState(false)
+  const [publicOn, setPublicOn] = useState(((box as unknown as { visibility?: string }).visibility) === 'public')
+  const [tagInput, setTagInput] = useState(((box as unknown as { tags?: string[] }).tags ?? []).join(', '))
+  const [publishBusy, setPublishBusy] = useState(false)
+  const isPublic = ((box as unknown as { visibility?: string }).visibility) === 'public'
+
+  async function savePublish() {
+    if (publishBusy) return
+    setPublishBusy(true)
+    const tags = tagInput.split(',').map(t => t.trim().replace(/^#/, '')).filter(Boolean).slice(0, 8)
+    try {
+      await setBoxVisibility(box.id, publicOn, tags)
+      setBox(prev => ({ ...prev, visibility: publicOn ? 'public' : 'private', tags } as unknown as typeof prev))
+      setPublishOpen(false)
+    } catch {
+      /* 실패 시 시트 유지 */
+    } finally {
+      setPublishBusy(false)
+    }
+  }
   const [folderNameInput, setFolderNameInput] = useState('')
   const [confirmShareFolder, setConfirmShareFolder] = useState<{ id: string; name: string; count: number } | null>(null)
   const [inviteOpen, setInviteOpen] = useState(false)
@@ -137,7 +159,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
   const [deciding, setDeciding] = useState(false)
   useBodyScrollLock(
     membersOpen || inviteOpen || folderModal || modeModal || deadlineSheet || deciding ||
-    confirmLeave || confirmReopen || confirmShareFolder != null,
+    confirmLeave || confirmReopen || confirmShareFolder != null || publishOpen,
   )
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
@@ -515,6 +537,51 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
         </div>
       )}
 
+      {/* 공개 설정 — 프로필/탐색에 노출. 여럿 상자는 공개 시 남 신원이 가려져 보인다(익명화). */}
+      {publishOpen && (
+        <div className="fixed inset-0 z-[60] flex flex-col justify-end">
+          <div className="absolute inset-0 bg-ink/45" onClick={() => setPublishOpen(false)} />
+          <div className="relative mx-auto w-full max-w-[430px] rounded-t-sheet bg-paper px-5 pb-10 pt-3">
+            <div className="mx-auto mb-4 h-1 w-9 rounded-full bg-line" />
+            <h3 className="mb-1 text-base font-extrabold tracking-tight text-ink">공개 설정</h3>
+            <p className="mb-4 text-[12px] leading-relaxed text-ink-soft">
+              공개하면 내 프로필과 둘러보기에 노출돼요. {!isSolo && '여럿이 참여한 상자는 다른 참여자 이름·프로필이 가려진 채 보여요.'}
+            </p>
+
+            <button
+              type="button"
+              onClick={() => setPublicOn(v => !v)}
+              className="flex w-full items-center justify-between rounded-field border-[1.5px] border-line bg-paper px-4 py-3"
+            >
+              <span className="text-[14px] font-bold text-ink">{publicOn ? '공개' : '비공개'}</span>
+              <span className={`relative h-6 w-10 rounded-full transition-colors ${publicOn ? 'bg-ink' : 'bg-line'}`}>
+                <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-paper transition-all ${publicOn ? 'left-[18px]' : 'left-0.5'}`} />
+              </span>
+            </button>
+
+            {publicOn && (
+              <div className="mt-3">
+                <label className="mb-1.5 block text-[12px] font-semibold text-ink-soft">태그 (쉼표로 구분, 최대 8개)</label>
+                <input
+                  value={tagInput}
+                  onChange={e => setTagInput(e.target.value)}
+                  placeholder="예: 맛집, 여행, 쇼핑"
+                  className="w-full rounded-field border-[1.5px] border-line bg-paper px-4 py-3 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none"
+                />
+              </div>
+            )}
+
+            <button
+              onClick={savePublish}
+              disabled={publishBusy}
+              className="mt-5 w-full rounded-field bg-ink py-3.5 text-sm font-bold text-cream active:opacity-80 disabled:opacity-50"
+            >
+              {publishBusy ? '저장 중...' : '저장'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 폴더 지정 (개인별 — 참여자 누구나 자기 폴더에) — 주제별 상자 묶음 §3-7 */}
       {folderModal && (
         <div className="fixed inset-0 z-50 flex flex-col justify-end">
@@ -714,6 +781,12 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
                           className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-ink active:bg-cream"
                         >
                           서랍에 담기
+                        </button>
+                        <button
+                          onClick={() => { setMenuOpen(false); setPublishOpen(true) }}
+                          className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-ink active:bg-cream"
+                        >
+                          {isPublic ? '공개 설정 · 공개중' : '공개 설정'}
                         </button>
                         <button
                           onClick={() => { setMenuOpen(false); setConfirmLeave(true) }}
