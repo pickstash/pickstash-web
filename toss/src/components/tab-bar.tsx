@@ -5,23 +5,22 @@ import { Icon, type IconName } from "@/components/icon";
 import { getAlerts } from "@/lib/api/alerts";
 
 // 토스 하단 탭바 — 상단 드로어(햄버거) 대체. 토스 시스템 버튼(···/X)과 겹치던 문제 해결.
+// 개편(인스타식) 4탭 — 상자·서랍 탭은 홈에 흡수, 돋보기(탐색) 신설.
 const TABS: { href: string; icon: IconName; label: string }[] = [
   { href: "/", icon: "home", label: "홈" },
-  { href: "/boxes", icon: "box", label: "상자" },
-  { href: "/folders", icon: "folder", label: "서랍" },
+  { href: "/explore", icon: "search", label: "돋보기" },
   { href: "/alerts", icon: "bell", label: "알림" },
   { href: "/profile", icon: "user", label: "프로필" },
 ];
 
-// 하위 화면(상세·목록)에서도 소속 탭을 액티브로 — 탭바만 뜨고 아무것도 안 켜지는 상태 방지.
-// 박스 상세(/box/*)는 어디서 열든 '상자' 탭 소속으로 고정(진입 출처 추적 안 함).
+// 하위 화면(상세·목록·서랍·상자)에서도 소속 탭을 액티브로. 상자·서랍은 홈 소속으로 흡수.
 function tabOf(p: string): string {
-  if (p === "/") return "/";
-  if (p === "/boxes" || p.startsWith("/box/") || p === "/messy" || p === "/done" || p === "/favorites") return "/boxes";
-  if (p === "/folders" || p.startsWith("/folder/")) return "/folders";
+  if (p === "/" || p === "/boxes" || p.startsWith("/box/") || p === "/messy" || p === "/done" ||
+      p === "/favorites" || p === "/folders" || p.startsWith("/folder/")) return "/";
+  if (p.startsWith("/explore") || p.startsWith("/p/") || p.startsWith("/u/")) return "/explore";
   if (p.startsWith("/alerts")) return "/alerts";
   if (p.startsWith("/profile")) return "/profile";
-  return ""; // 그 외 → 아무 탭도 안 켜짐
+  return "";
 }
 
 export function TabBar() {

@@ -20,6 +20,9 @@ import { BoxInviteScreen } from "./screens/box-invite-screen";
 import { FolderInviteScreen } from "./screens/folder-invite-screen";
 import { ProfileScreen } from "./screens/profile-screen";
 import { AlertsScreen } from "./screens/alerts-screen";
+import { ExploreScreen } from "./screens/explore-screen";
+import { PublicBoxScreen } from "./screens/public-box-screen";
+import { ProfileViewScreen } from "./screens/profile-view-screen";
 import { BoxLinksScreen, OptionNewScreen, OptionEditScreen } from "./screens/reused-pages";
 import { TabBar } from "./components/tab-bar";
 // 파라미터 없는 A형 페이지는 웹 페이지 컴포넌트를 그대로 라우팅(그대로 재사용).
@@ -151,6 +154,11 @@ function App() {
       <Route path="/invite/:code" element={<BoxInviteScreen />} />
       <Route path="/folder-invite/:code" element={<FolderInviteScreen />} />
 
+      {/* 소셜(개편) — 탐색 / 공개 상자 뷰어 / 남의 공개 프로필 */}
+      <Route path="/explore" element={<ExploreScreen />} />
+      <Route path="/p/:id" element={<PublicBoxScreen />} />
+      <Route path="/u/:handle" element={<ProfileViewScreen />} />
+
       {/* 알림함 — 푸시(intoss://pickstash/alerts 고정) 목적지 */}
       <Route path="/alerts" element={<AlertsScreen />} />
 
@@ -179,6 +187,7 @@ function isFormRoute(p: string): boolean {
     p === "/box/new" ||
     p === "/profile/withdraw" ||
     p.startsWith("/settings") ||
+    p.startsWith("/p/") || // 공개 상자 뷰어 — 자체 하단 '함께하기 신청' CTA
     p.endsWith("/option/new") ||
     p.endsWith("/edit")
   );
