@@ -14,6 +14,9 @@ export type RawOpenBox = Box & { box_participants: HeroParticipant[] }
 export interface OpenBoxCard {
   id: string
   title: string
+  mode: 'decide' | 'checklist' // 체크형은 좋아요/1위 대신 진행률(checked/total) 표시
+  checked: number // 체크형: 체크된 항목 수 (checked_at not null)
+  total: number // 체크형: 전체 항목 수
   isNew: boolean
   isFavorite: boolean
   isSolo: boolean
@@ -52,7 +55,7 @@ export function buildHomeCards(
   ctx: {
     lastSeen: Map<string, string | null>
     favorites: Set<string>
-    options: { id: string; box_id: string; name: string }[]
+    options: { id: string; box_id: string; name: string; checked_at?: string | null }[]
     votes: { option_id: string; vote_type: string }[]
     comments: { option_id: string }[]
   },
@@ -74,6 +77,15 @@ export function buildHomeCards(
     likeByBox.set(boxId, { total, leaders: r.winner ? [r.winner] : r.coLeaders })
   }
 
+  // 박스별 체크형 진행률(checked/total) — options.checked_at 기준.
+  const progressByBox = new Map<string, { checked: number; total: number }>()
+  for (const o of ctx.options) {
+    const p = progressByBox.get(o.box_id) ?? { checked: 0, total: 0 }
+    p.total++
+    if (o.checked_at) p.checked++
+    progressByBox.set(o.box_id, p)
+  }
+
   // 박스별 댓글 수 — 댓글은 option_id 기준이라 박스의 선택지들에 달린 댓글을 합산.
   const optionToBox = new Map(ctx.options.map(o => [o.id, o.box_id]))
   const commentsByBox = new Map<string, number>()
@@ -84,9 +96,13 @@ export function buildHomeCards(
 
   const toCard = (box: RawOpenBox): OpenBoxCard => {
     const like = likeByBox.get(box.id)
+    const prog = progressByBox.get(box.id)
     return {
       id: box.id,
       title: box.title,
+      mode: box.mode === 'checklist' ? 'checklist' : 'decide',
+      checked: prog?.checked ?? 0,
+      total: prog?.total ?? 0,
       isNew: isNewOf(box, ctx.lastSeen),
       isFavorite: ctx.favorites.has(box.id),
       isSolo: box.box_participants.length <= 1,

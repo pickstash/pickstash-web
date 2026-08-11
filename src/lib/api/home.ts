@@ -55,11 +55,11 @@ export async function loadHomeView(
 
   // 표시 대상 상자들의 선택지·투표만 조회해 좋아요 집계
   const ids = displayed.map(b => b.id)
-  let options: { id: string; box_id: string; name: string }[] = []
+  let options: { id: string; box_id: string; name: string; checked_at?: string | null }[] = []
   let votes: { option_id: string; vote_type: string }[] = []
   let comments: { option_id: string }[] = []
   if (ids.length > 0) {
-    const { data: opts } = await supabase.from('options').select('id, box_id, name').in('box_id', ids)
+    const { data: opts } = await supabase.from('options').select('id, box_id, name, checked_at').in('box_id', ids)
     options = opts ?? []
     const optIds = options.map(o => o.id)
     if (optIds.length > 0) {

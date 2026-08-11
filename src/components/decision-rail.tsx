@@ -79,7 +79,12 @@ export function DecisionRail({ boxes, totalOpen }: { boxes: OpenBoxCard[]; total
                   {box.title}
                 </h4>
 
-                {box.isSolo ? (
+                {box.mode === 'checklist' ? (
+                  <span className="mt-auto inline-flex items-center gap-1 text-[11.5px] font-bold text-ink">
+                    <Icon name="check" size={12} strokeWidth={2.5} />
+                    {box.checked}/{box.total} 체크
+                  </span>
+                ) : box.isSolo ? (
                   <span className="mt-auto inline-flex items-center gap-1 text-[11px] font-semibold text-ink-faint">
                     <Icon name="box" size={11} />
                     혼자 쓰는 상자

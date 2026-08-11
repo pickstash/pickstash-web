@@ -76,31 +76,41 @@ export function DecisionHero({ box }: { box: OpenBoxCard }) {
           </div>
 
           <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
-            {!box.isSolo && box.leaders.length > 0 && (
-              <span className="flex min-w-0 max-w-full items-start gap-1.5 text-[12.5px] font-extrabold text-ink">
-                <span className="shrink-0 whitespace-nowrap rounded-full bg-butter px-[7px] py-0.5 text-[10.5px] font-extrabold">
-                  인기
-                </span>
-                <span className="min-w-0 break-words">{leadersLabel(box.leaders)}</span>
+            {box.mode === 'checklist' ? (
+              /* 체크형: 좋아요/1위 대신 진행률 */
+              <span className="flex items-center gap-1.5 text-[12.5px] font-extrabold text-ink">
+                <Icon name="check" size={13} strokeWidth={2.5} />
+                {box.checked}/{box.total} 체크
               </span>
-            )}
-            {!box.isSolo && box.totalLikes > 0 && (
-              <span className="flex items-center gap-1 text-[12.5px] font-extrabold text-ink-soft tabular-nums">
-                <Icon name="heart" size={13} />
-                {box.totalLikes}
-              </span>
-            )}
-            {!box.isSolo && box.totalComments > 0 && (
-              <span className="flex items-center gap-1 text-[12.5px] font-extrabold text-ink-soft tabular-nums">
-                <Icon name="comment" size={13} />
-                {box.totalComments}
-              </span>
-            )}
-            {box.isSolo && (
-              <span className="flex items-center gap-1 text-[12px] font-semibold text-ink-soft">
-                <Icon name="box" size={12} />
-                혼자 쓰는 상자
-              </span>
+            ) : (
+              <>
+                {!box.isSolo && box.leaders.length > 0 && (
+                  <span className="flex min-w-0 max-w-full items-start gap-1.5 text-[12.5px] font-extrabold text-ink">
+                    <span className="shrink-0 whitespace-nowrap rounded-full bg-butter px-[7px] py-0.5 text-[10.5px] font-extrabold">
+                      인기
+                    </span>
+                    <span className="min-w-0 break-words">{leadersLabel(box.leaders)}</span>
+                  </span>
+                )}
+                {!box.isSolo && box.totalLikes > 0 && (
+                  <span className="flex items-center gap-1 text-[12.5px] font-extrabold text-ink-soft tabular-nums">
+                    <Icon name="heart" size={13} />
+                    {box.totalLikes}
+                  </span>
+                )}
+                {!box.isSolo && box.totalComments > 0 && (
+                  <span className="flex items-center gap-1 text-[12.5px] font-extrabold text-ink-soft tabular-nums">
+                    <Icon name="comment" size={13} />
+                    {box.totalComments}
+                  </span>
+                )}
+                {box.isSolo && (
+                  <span className="flex items-center gap-1 text-[12px] font-semibold text-ink-soft">
+                    <Icon name="box" size={12} />
+                    혼자 쓰는 상자
+                  </span>
+                )}
+              </>
             )}
           </div>
 
