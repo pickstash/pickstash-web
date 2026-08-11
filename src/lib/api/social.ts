@@ -54,6 +54,20 @@ export async function getProfileFeed(supabase: SB, handle: string): Promise<Prof
   return (data ?? null) as ProfileFeed | null
 }
 
+// 내 프로필(인스타식) — handle 없어도 동작. 클라 액션이라 createClient.
+export async function getMyProfile(): Promise<ProfileFeed | null> {
+  const supabase = createClient()
+  const { data } = await (supabase.rpc as any)('get_my_profile')
+  return (data ?? null) as ProfileFeed | null
+}
+
+// 저장함 — 내가 북마크한 공개 상자.
+export async function getMyBookmarks(): Promise<PublicBoxCard[]> {
+  const supabase = createClient()
+  const { data } = await (supabase.rpc as any)('get_my_bookmarks')
+  return (data ?? []) as PublicBoxCard[]
+}
+
 export async function getPublicBoxView(supabase: SB, boxId: string): Promise<unknown | null> {
   const { data } = await (supabase.rpc as any)('get_public_box_view', { p_box_id: boxId })
   return data ?? null

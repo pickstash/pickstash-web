@@ -19,6 +19,7 @@ import { FoldersScreen } from "./screens/folders-screen";
 import { BoxInviteScreen } from "./screens/box-invite-screen";
 import { FolderInviteScreen } from "./screens/folder-invite-screen";
 import { ProfileScreen } from "./screens/profile-screen";
+import { MyProfileScreen } from "./screens/my-profile-screen";
 import { AlertsScreen } from "./screens/alerts-screen";
 import { ExploreScreen } from "./screens/explore-screen";
 import { PublicBoxScreen } from "./screens/public-box-screen";
@@ -162,8 +163,9 @@ function App() {
       {/* 알림함 — 푸시(intoss://pickstash/alerts 고정) 목적지 */}
       <Route path="/alerts" element={<AlertsScreen />} />
 
-      {/* 마이페이지 */}
-      <Route path="/profile" element={<ProfileScreen />} />
+      {/* 마이페이지 — 프로필(인스타식) / 설정 / 탈퇴 */}
+      <Route path="/profile" element={<MyProfileScreen />} />
+      <Route path="/profile/settings" element={<ProfileScreen />} />
       <Route path="/profile/withdraw" element={<WithdrawPage />} />
 
       {/* 알림 설정 */}
