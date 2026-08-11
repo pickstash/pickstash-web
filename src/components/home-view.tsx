@@ -7,7 +7,7 @@ import { AppDrawer } from '@/components/app-drawer'
 import { DecisionHero } from '@/components/decision-hero'
 import { HomeStreamCard } from '@/components/home-stream-card'
 import { HomeEmpty } from '@/components/home-empty'
-import { FolderChips } from '@/components/folder-chips'
+import { FolderGroupCards } from '@/components/folder-group-cards'
 import type { HomeViewData, RecapCard } from '@/lib/api/home'
 
 // 홈 화면 프리젠테이션 — 웹·토스 공유. 데이터는 loadHomeView가 계산해 props로 넘긴다.
@@ -17,7 +17,6 @@ export function HomeView({
   nickname,
   hero,
   railCards,
-  folders,
   doneRecap,
   banner,
   bottomBanner,
@@ -54,9 +53,9 @@ export function HomeView({
               </div>
             )}
 
-            {/* ② 서랍 — FolderChips는 자체 pt/px 포함 */}
+            {/* ② 서랍 — 그룹 카드(멤버·상자수). 자체 px-5 포함이라 음수 마진으로 상쇄 */}
             <div className="-mx-5">
-              <FolderChips initialFolders={folders} />
+              <FolderGroupCards />
             </div>
 
             {/* ③ 내 상자 단일 스트림 — 진행/정리 통합(최근 활동순), 정리됨은 배지 */}
