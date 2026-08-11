@@ -10,6 +10,8 @@ export type BoxActivityType =
   | 'participant_joined'
   | 'invited'
   | 'mentioned'
+  | 'join_requested'
+  | 'join_approved'
 
 export interface ActivityInfo {
   type: BoxActivityType
@@ -47,5 +49,9 @@ export function formatActivity({ type, actorNickname, meta }: ActivityInfo): str
       return `${who} 초대했어요`
     case 'mentioned':
       return `${who} 나를 언급했어요`
+    case 'join_requested':
+      return `${who} 함께하기를 신청했어요`
+    case 'join_approved':
+      return `참여 신청이 수락됐어요` // 신청자에게 가는 타겟 알림
   }
 }
