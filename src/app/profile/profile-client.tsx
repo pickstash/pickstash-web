@@ -5,8 +5,10 @@ import { createPortal } from 'react-dom'
 import { useBodyScrollLock } from '@/hooks/use-body-scroll-lock'
 import { useNav, AppLink } from '@/lib/nav/nav'
 import { requestAppReview } from '@/lib/review/native-review'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { updateNickname, updateAvatarUrl, uploadAvatar } from '@/lib/api/profile'
+import { claimHandle } from '@/lib/api/social'
+import { createClient } from '@/lib/supabase/client'
 import { signOut } from '@/lib/api/auth'
 import { PageHeader } from '@/components/page-header'
 import { AppDrawer } from '@/components/app-drawer'
@@ -28,6 +30,28 @@ export function ProfileClient({ userId, nickname, avatarUrl, kakaoAvatarUrl }: P
   useBodyScrollLock(confirmLogout)
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState(avatarUrl)
   const [avatarError, setAvatarError] = useState<string | null>(null)
+
+  // @handle — 부모 로더를 안 건드리고 내부에서 조회. 최초 1회 설정 후 변경 가능.
+  const { data: myHandle } = useQuery({
+    queryKey: ['my-handle', userId],
+    queryFn: async () => {
+      const supabase = createClient()
+      const { data } = await supabase.from('profiles').select('handle').eq('id', userId).single()
+      return ((data as unknown as { handle?: string | null })?.handle) ?? null
+    },
+  })
+  const [editingHandle, setEditingHandle] = useState(false)
+  const [handleValue, setHandleValue] = useState('')
+  const [handleError, setHandleError] = useState<string | null>(null)
+  const claimHandleMutation = useMutation({
+    mutationFn: (h: string) => claimHandle(h),
+    onSuccess: () => {
+      setHandleError(null)
+      setEditingHandle(false)
+      queryClient.invalidateQueries({ queryKey: ['my-handle', userId] })
+    },
+    onError: (e: unknown) => setHandleError(e instanceof Error ? e.message : '설정에 실패했어요'),
+  })
 
   const updateNicknameMutation = useMutation({
     mutationFn: (newNickname: string) => updateNickname(newNickname),
@@ -213,6 +237,57 @@ export function ProfileClient({ userId, nickname, avatarUrl, kakaoAvatarUrl }: P
           )}
           {updateNicknameMutation.isError && (
             <p className="text-xs text-tomato">닉네임 변경에 실패했어요.</p>
+          )}
+        </div>
+
+        {/* 아이디(@handle) — 프로필 주소·검색·멘션용. 소문자·숫자·밑줄 3~20자. */}
+        <div className="space-y-3 rounded-card border border-[#ECEADC] bg-paper p-5">
+          <div className="flex items-center gap-1.5">
+            <h2 className="text-[13.5px] font-extrabold text-ink">아이디</h2>
+            <span className="text-[11px] text-ink-faint">공개 프로필 주소</span>
+          </div>
+          {editingHandle ? (
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <div className="flex min-w-0 flex-1 items-center rounded-field border-[1.5px] border-line bg-paper pl-3.5 focus-within:border-butter-dark">
+                  <span className="text-sm text-ink-faint">@</span>
+                  <input
+                    type="text"
+                    value={handleValue}
+                    onChange={e => setHandleValue(e.target.value.toLowerCase())}
+                    placeholder="myid"
+                    maxLength={20}
+                    autoFocus
+                    className="min-w-0 flex-1 bg-transparent px-1 py-2.5 text-sm text-ink focus:outline-none"
+                  />
+                </div>
+                <button
+                  onClick={() => claimHandleMutation.mutate(handleValue.trim())}
+                  disabled={claimHandleMutation.isPending || handleValue.trim().length < 3}
+                  className="shrink-0 rounded-field bg-ink px-4 py-2.5 text-sm font-bold text-cream disabled:opacity-50"
+                >
+                  저장
+                </button>
+                <button
+                  onClick={() => { setEditingHandle(false); setHandleError(null) }}
+                  className="shrink-0 rounded-field border border-line px-4 py-2.5 text-sm font-bold text-ink-soft"
+                >
+                  취소
+                </button>
+              </div>
+              <p className="text-[11px] text-ink-faint">소문자·숫자·밑줄 3~20자</p>
+              {handleError && <p className="text-xs text-tomato">{handleError}</p>}
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-ink">{myHandle ? `@${myHandle}` : '아직 없어요'}</span>
+              <button
+                onClick={() => { setHandleValue(myHandle ?? ''); setEditingHandle(true) }}
+                className="text-sm font-semibold text-ink"
+              >
+                {myHandle ? '변경' : '설정'}
+              </button>
+            </div>
           )}
         </div>
 
