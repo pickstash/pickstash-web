@@ -90,6 +90,28 @@ export async function requestToJoin(boxId: string): Promise<void> {
   if (error) throw error
 }
 
+export interface JoinRequestItem {
+  user_id: string
+  nickname: string
+  avatar_url: string | null
+  created_at: string
+}
+
+// 상자의 대기중 참여 신청 목록 (참여자만 RLS 허용). user_id FK로 신청자 프로필 임베드.
+export async function listJoinRequests(supabase: SB, boxId: string): Promise<JoinRequestItem[]> {
+  const { data } = await (supabase.from('join_requests' as any) as any)
+    .select('user_id, created_at, profiles!join_requests_user_id_fkey(nickname, avatar_url)')
+    .eq('box_id', boxId)
+    .eq('status', 'pending')
+    .order('created_at')
+  return ((data ?? []) as any[]).map(r => ({
+    user_id: r.user_id,
+    created_at: r.created_at,
+    nickname: r.profiles?.nickname ?? '누군가',
+    avatar_url: r.profiles?.avatar_url ?? null,
+  }))
+}
+
 export async function respondJoinRequest(boxId: string, userId: string, approve: boolean): Promise<void> {
   const supabase = createClient()
   const { error } = await (supabase.rpc as any)('respond_join_request', {

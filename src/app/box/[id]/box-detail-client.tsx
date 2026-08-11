@@ -19,6 +19,7 @@ import { useCoParticipants, useInviteUsersToBox } from '@/hooks/use-invites'
 import { useBodyScrollLock } from '@/hooks/use-body-scroll-lock'
 import { DeadlineBottomSheet } from '@/components/deadline-bottom-sheet'
 import { OptionsSection } from '@/components/options-section'
+import { JoinRequests } from '@/components/join-requests'
 import { Icon } from '@/components/icon'
 import { AppDrawer } from '@/components/app-drawer'
 import { PageHeader } from '@/components/page-header'
@@ -905,6 +906,9 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
             )}
           </div>
         )}
+
+        {/* 참여 신청 대기 — 참여자에게만(공개 상자). 신청 없으면 미렌더. */}
+        <JoinRequests boxId={box.id} />
 
         {/* 인기 (진행 중 · 여럿·결정형 상자) — 좋아요 최다 단독+2개↑일 때만. 체크형은 제외. */}
         {!isChecklist && !isDone && showLikes && displayLeaderName && (
