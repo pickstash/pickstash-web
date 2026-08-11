@@ -11,7 +11,8 @@ import { ScreenLoading } from "./screens/screen-state";
 import { HomeScreen } from "./screens/home-screen";
 import { NotificationSettingsScreen } from "./screens/notification-settings-screen";
 import { BoxListScreen } from "./screens/box-list-screen";
-import { BoxesScreen } from "./screens/boxes-screen";
+// import { BoxesScreen } from "./screens/boxes-screen"; // TEMP 목업 동안 미사용 — 결정 후 복구
+import MockupPage from "@/app/mockup/page"; // TEMP 리디자인 목업 — 결정 후 이 import·아래 /boxes 스왑 원복 + src/app/mockup 삭제
 import { BoxDetailScreen } from "./screens/box-detail-screen";
 import { OptionDetailScreen } from "./screens/option-detail-screen";
 import { FolderScreen } from "./screens/folder-screen";
@@ -132,7 +133,7 @@ function App() {
       <Route path="/" element={<HomeScreen />} />
 
       {/* 상자 탭 — 진행중/정리됨/즐겨찾기 필터 통합 */}
-      <Route path="/boxes" element={<BoxesScreen />} />
+      <Route path="/boxes" element={<MockupPage />} />{/* TEMP 리디자인 목업 — 원래 <BoxesScreen /> */}
 
       {/* 옛 창고 목록 경로 (탭에서 필터로 흡수됨, 딥링크 호환 위해 유지) */}
       <Route path="/messy" element={<BoxListScreen kind="messy" />} />

@@ -7,7 +7,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 //   /api/toss/send: 푸시 발송(엣지 프록시가 x-internal-secret으로 자체 검증),
 //   /api/unfurl: 링크 미리보기(라우트가 Bearer/쿠키 자체 검증). 각 라우트가 스스로 인증하므로 공개해도 안전.
 // /terms·/privacy: 이용약관·개인정보처리방침. 토스 콘솔·비로그인 이용자가 열람 → 공개.
-const PUBLIC_ROUTES = ['/login', '/auth/callback', '/invite', '/group-invite', '/folder-invite', '/explore', '/p/', '/u/', '/api/toss/login', '/api/toss/unlink', '/api/toss/send', '/api/unfurl', '/terms', '/privacy']
+const PUBLIC_ROUTES = ['/login', '/auth/callback', '/invite', '/group-invite', '/folder-invite', '/explore', '/p/', '/u/', '/mockup', '/api/toss/login', '/api/toss/unlink', '/api/toss/send', '/api/unfurl', '/terms', '/privacy']
 
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
