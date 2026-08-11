@@ -20,11 +20,13 @@ export interface BoxWithParticipants extends Box {
 }
 
 export type DecisionMode = 'manual' | 'auto_deadline'
+export type BoxMode = 'decide' | 'checklist'   // 상자 목적: 결정형 / 체크형(§033)
 
 export interface CreateBoxInput {
   title: string
   memo?: string
-  decision_mode: DecisionMode          // 직접 정하기 / 마감 투표
+  mode: BoxMode                        // 목적: 결정형 / 체크형 — 생성 시 고정, 이후 변경 불가
+  decision_mode: DecisionMode          // 직접 정하기 / 마감 투표 (mode==='decide'일 때만 의미 있음)
   deadline_at: string | null           // auto_deadline일 때만 값, manual이면 null
 }
 
@@ -39,6 +41,7 @@ export async function createBox(input: CreateBoxInput): Promise<Box> {
     p_memo: input.memo ?? null,
     p_decision_mode: input.decision_mode,
     p_deadline_at: input.decision_mode === 'auto_deadline' ? input.deadline_at : null,
+    p_mode: input.mode,
   })
 
   if (error) throw error

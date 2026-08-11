@@ -13,6 +13,7 @@ export type OptionDetailData =
       creator: { nickname: string; avatar_url: string | null } | null
       round: number
       canVote: boolean
+      checklist: boolean
       myNickname: string
       participants: Participant[]
     }
@@ -61,6 +62,7 @@ export async function loadOptionDetail(
     creator,
     round: box.current_round,
     canVote: getBoxStatus(box) === 'OPEN',
+    checklist: box.mode === 'checklist',
     myNickname: me?.nickname ?? '',
     participants,
   }

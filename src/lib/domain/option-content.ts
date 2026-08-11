@@ -1,5 +1,7 @@
 // 선택지 본문 "블록-라이트" 모델 + 파생 — 프레임워크·API 의존성 없는 순수 로직.
 // 블록: 글 / 사진 / 링크(OG 미리보기 포함) / 유튜브 영상. spec 7-5/7-6.
+// 글 블록 내부는 실시간 서식(굵게·기울임·글머리·체크박스)을 지원 — 편집기는 Tiptap(contentEditable),
+// 원문은 ProseMirror 문서(JSON)를 그대로 문자열로 직렬화해 저장한다(§7-6 019).
 
 export type LinkKind = 'link' | 'map' | 'youtube'
 
@@ -24,6 +26,132 @@ export type OptionBlock =
     }
 
 export type LinkBlock = Extract<OptionBlock, { type: 'link' }>
+
+// ── 글 블록 서식 — ProseMirror 문서(Tiptap 편집기 산출물)를 그대로 다룬다 ──────────────────────
+export interface RichTextMark {
+  type: 'bold' | 'italic'
+}
+
+export interface RichTextNode {
+  type: 'text'
+  text: string
+  marks?: RichTextMark[]
+}
+
+export interface RichParagraph {
+  type: 'paragraph'
+  content?: RichTextNode[]
+}
+
+export interface RichListItem {
+  type: 'listItem'
+  content?: RichParagraph[]
+}
+
+export interface RichBulletList {
+  type: 'bulletList'
+  content: RichListItem[]
+}
+
+export interface RichTaskItem {
+  type: 'taskItem'
+  attrs: { checked: boolean }
+  content?: RichParagraph[]
+}
+
+export interface RichTaskList {
+  type: 'taskList'
+  content: RichTaskItem[]
+}
+
+export type RichBlockNode = RichParagraph | RichBulletList | RichTaskList
+
+export interface RichDoc {
+  type: 'doc'
+  content: RichBlockNode[]
+}
+
+function isRichDoc(v: unknown): v is RichDoc {
+  return !!v && typeof v === 'object' && (v as { type?: unknown }).type === 'doc' && Array.isArray((v as { content?: unknown }).content)
+}
+
+/**
+ * 글 블록 원문을 ProseMirror 문서로 파싱한다. 형식이 아니면(레거시 평문 데이터·손상 데이터)
+ * 줄바꿈 기준 문단들로 감싸 안전하게 폴백한다 — 예전에 저장된 순수 텍스트도 그대로 보인다.
+ */
+export function parseRichDoc(raw: string): RichDoc {
+  if (raw.trim()) {
+    try {
+      const parsed = JSON.parse(raw)
+      if (isRichDoc(parsed)) return parsed
+    } catch {
+      // 레거시 평문 — 아래 폴백으로
+    }
+  }
+  return {
+    type: 'doc',
+    content: raw.split('\n').map(line => ({
+      type: 'paragraph' as const,
+      content: line ? [{ type: 'text' as const, text: line }] : [],
+    })),
+  }
+}
+
+function textOf(nodes: RichTextNode[] | undefined): string {
+  return (nodes ?? []).map(n => n.text).join('')
+}
+
+function nodeHasText(node: RichBlockNode): boolean {
+  if (node.type === 'paragraph') return textOf(node.content).trim().length > 0
+  if (node.type === 'bulletList') return node.content.some(item => (item.content ?? []).some(p => textOf(p.content).trim().length > 0))
+  return node.content.some(item => (item.content ?? []).some(p => textOf(p.content).trim().length > 0))
+}
+
+/** 글 블록이 실질적으로 비었는지(공백뿐) 판정 — 저장 전 빈 블록 제거용. */
+export function isRichDocEmpty(raw: string): boolean {
+  return !parseRichDoc(raw).content.some(nodeHasText)
+}
+
+/** 카드 미리보기·검색 스니펫용: 서식을 제거하고 글머리/체크박스는 기호로 대체한 평문. */
+export function stripTextFormatting(raw: string): string {
+  const parts: string[] = []
+  for (const block of parseRichDoc(raw).content) {
+    if (block.type === 'paragraph') {
+      const t = textOf(block.content).trim()
+      if (t) parts.push(t)
+    } else if (block.type === 'bulletList') {
+      for (const item of block.content) {
+        for (const p of item.content ?? []) {
+          const t = textOf(p.content).trim()
+          if (t) parts.push(`· ${t}`)
+        }
+      }
+    } else {
+      for (const item of block.content) {
+        for (const p of item.content ?? []) {
+          const t = textOf(p.content).trim()
+          if (t) parts.push(`${item.attrs?.checked ? '☑' : '☐'} ${t}`)
+        }
+      }
+    }
+  }
+  // 줄바꿈으로 이어 붙인다 — 체크박스·글머리 항목이 미리보기에서도 한 줄씩 구분돼 보이게(줄바꿈 유지는 truncate()에서 처리).
+  return parts.join('\n')
+}
+
+/** 문서 전체에서 체크박스 항목만 순서대로 셀 때의 인덱스로 특정 항목의 체크 상태를 토글한다. */
+export function toggleCheckedAtIndex(raw: string, targetIndex: number): string {
+  const doc = parseRichDoc(raw)
+  let i = 0
+  for (const block of doc.content) {
+    if (block.type !== 'taskList') continue
+    for (const item of block.content) {
+      if (i === targetIndex) item.attrs = { checked: !item.attrs?.checked }
+      i++
+    }
+  }
+  return JSON.stringify(doc)
+}
 
 function readString(obj: Record<string, unknown>, key: string): string | undefined {
   const v = obj[key]
@@ -77,19 +205,23 @@ export function parseBlocks(raw: unknown): OptionBlock[] {
 export function cleanBlocks(blocks: OptionBlock[]): OptionBlock[] {
   return blocks
     .map(b => {
-      if (b.type === 'text') return { ...b, text: b.text.trim() }
       if (b.type === 'link') return { ...b, label: b.label.trim(), url: b.url.trim() }
       return b
     })
     .filter(b => {
-      if (b.type === 'text') return b.text.length > 0
+      if (b.type === 'text') return !isRichDocEmpty(b.text)
       if (b.type === 'link') return b.url.length > 0
       return true // image
     })
 }
 
 function truncate(s: string, maxLen: number): string {
-  const t = s.trim().replace(/\s+/g, ' ')
+  // 줄바꿈은 보존하고(체크박스·글머리 미리보기용), 그 외 공백만 한 칸으로 정리한다.
+  const t = s
+    .trim()
+    .split('\n')
+    .map(line => line.replace(/\s+/g, ' ').trim())
+    .join('\n')
   return t.length > maxLen ? `${t.slice(0, maxLen)}…` : t
 }
 
@@ -123,7 +255,7 @@ export function getOptionPreview(blocks: OptionBlock[], maxLen = 60): OptionPrev
   for (const b of blocks) {
     if (!snippet) {
       if (b.type === 'text' && b.text.trim()) {
-        snippet = truncate(b.text, maxLen)
+        snippet = truncate(stripTextFormatting(b.text), maxLen)
       } else if (b.type === 'link' && b.title) {
         snippet = truncate(b.title, maxLen)
         // 링크에서 스니펫이 왔을 때만 그 링크의 메모(라벨)를 함께 노출. 제목과 같으면 중복이라 생략.

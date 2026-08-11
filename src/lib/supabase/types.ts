@@ -39,6 +39,7 @@ export interface Database {
           closed_at: string | null
           current_round: number
           decision_mode: string
+          mode: string
           invite_code: string
           created_at: string
           updated_at: string
@@ -51,6 +52,7 @@ export interface Database {
           closed_at?: string | null
           current_round?: number
           decision_mode?: string
+          mode?: string
           invite_code?: string
           created_at?: string
           updated_at?: string
@@ -63,6 +65,7 @@ export interface Database {
           closed_at?: string | null
           current_round?: number
           decision_mode?: string
+          mode?: string
           invite_code?: string
           created_at?: string
           updated_at?: string
@@ -80,6 +83,8 @@ export interface Database {
           content: Json
           memo: string | null
           decided_at: string | null
+          checked_at: string | null
+          group_label: string | null
           created_by: string
           created_at: string
         }
@@ -93,6 +98,8 @@ export interface Database {
           content?: Json
           memo?: string | null
           decided_at?: string | null
+          checked_at?: string | null
+          group_label?: string | null
           created_by: string
           created_at?: string
         }
@@ -106,6 +113,8 @@ export interface Database {
           content?: Json
           memo?: string | null
           decided_at?: string | null
+          checked_at?: string | null
+          group_label?: string | null
           created_by?: string
           created_at?: string
         }
@@ -421,6 +430,7 @@ export interface Database {
           p_memo?: string | null
           p_decision_mode?: string
           p_deadline_at?: string | null
+          p_mode?: string
         }
         Returns: Database['public']['Tables']['boxes']['Row']
       }

@@ -197,8 +197,12 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
   const status = getBoxStatus(box)
   const isDone = isDoneStatus(status)
   const isSolo = box.box_participants.length === 1
-  const isAuto = box.decision_mode === 'auto_deadline'
-  const showLikes = !isSolo                          // 혼자 상자는 좋아요 미표시
+  const isChecklist = box.mode === 'checklist'        // 체크형 상자(§033) — 좋아요·1위·마감·결정 UI 전부 숨김
+  const isAuto = !isChecklist && box.decision_mode === 'auto_deadline'
+  const showLikes = !isSolo && !isChecklist           // 혼자 상자·체크형 상자는 좋아요 미표시
+  // 하단 1차 액션(최종 결정하기/정리완료로 표시) 노출 여부 — 없으면 추가 버튼이 풀폭이 된다.
+  // 결정형은 마감투표(auto)여도 '최종 결정하기'로 즉시 수동 마감 가능(521efda) → 진행 중이면 항상 노출.
+  const showPrimaryAction = !isDone
 
   // 폴더 지정/해제 (018: 다중 선택 토글, 모달 유지). 무효화로 체크 갱신.
   function applyFolder(folderId: string) {
@@ -364,7 +368,8 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
       onSuccess: () => {
         setBox(prev => ({ ...prev, closed_at: null, deadline_at: null, decision_mode: 'manual' }))
         setConfirmReopen(false)
-        openModeModal('manual')
+        // 체크형 상자는 결정 방식 개념이 없어 모달을 안 띄운다.
+        if (!isChecklist) openModeModal('manual')
       },
     })
   }
@@ -696,7 +701,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
                         >
                           {box.memo ? '메모 수정' : '메모 추가'}
                         </button>
-                        {!isDone && (
+                        {!isDone && !isChecklist && (
                           <button
                             onClick={() => { setMenuOpen(false); openModeModal(box.decision_mode as DecisionMode) }}
                             className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-ink active:bg-cream"
@@ -785,7 +790,9 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
           <div className="space-y-4 rounded-card bg-butter-tint p-5">
             <div className="flex flex-col items-start gap-2.5 text-left">
               <PencilCircle>정리완료!</PencilCircle>
-              {decidedOptions.length > 0 ? (
+              {isChecklist ? (
+                <p className="text-[13.5px] text-ink-soft">체크리스트를 정리했어요</p>
+              ) : decidedOptions.length > 0 ? (
                 <p className="text-[18px] font-extrabold leading-snug text-ink">
                   <span className="[box-shadow:inset_0_-9px_0_#FFD84A]">{decidedOptions.map(o => o.name).join(', ')}</span>
                   (으)로 결정!
@@ -826,8 +833,8 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
           </div>
         )}
 
-        {/* 인기 (진행 중 · 여럿 상자) — 좋아요 최다 단독+2개↑일 때만 */}
-        {!isDone && showLikes && displayLeaderName && (
+        {/* 인기 (진행 중 · 여럿·결정형 상자) — 좋아요 최다 단독+2개↑일 때만. 체크형은 제외. */}
+        {!isChecklist && !isDone && showLikes && displayLeaderName && (
           <p className="text-[12.5px] font-bold text-ink-soft">
             인기 · <span className="text-ink">{displayLeaderName}</span>
           </p>
@@ -839,15 +846,16 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
           initialOptions={initialOptions}
           canVote={showLikes}
           showLikes={showLikes}
+          checklist={isChecklist}
         />
       </div>
 
-      {/* 하단 고정 2단: ＋선택지 추가하기 · 최종 결정하기. 목록 안 내려도 상시 추가(스크롤 불편 해소).
-          정리완료면 결정 버튼 없이 추가가 풀폭. 0개면 목록 빈상태 CTA가 대체. */}
+      {/* 하단 고정 2단: ＋항목/선택지 추가하기 · 최종 결정하기(결정형)/정리완료로 표시(체크형).
+          목록 안 내려도 상시 추가(스크롤 불편 해소). 액션 없을 때(정리완료)는 추가가 풀폭. 0개면 목록 빈상태 CTA가 대체.
+          결정형은 마감투표(마감일)여도 '최종 결정하기'로 즉시 수동 마감 가능(521efda). */}
       {options.length > 0 && (
         <div className="fixed inset-x-0 bottom-[var(--app-nav-h,0px)] z-20 grid grid-cols-2 gap-2.5 bg-cream px-5 pt-3 pb-[calc(var(--app-cta-safe,env(safe-area-inset-bottom))+0.75rem)] xl:inset-x-auto xl:bottom-10 xl:left-1/2 xl:w-[430px] xl:-translate-x-1/2 xl:rounded-b-[30px]">
-          {/* 마감일(마감투표)이 있어도 최종 결정하기로 즉시 마감 가능 — 마감 전 수동 확정(승자 직접 선택). */}
-          {!isDone && (
+          {showPrimaryAction && !isChecklist && (
             <button
               onClick={openDecide}
               className="rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80"
@@ -855,12 +863,21 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
               최종 결정하기
             </button>
           )}
+          {showPrimaryAction && isChecklist && (
+            <button
+              onClick={() => decideBox.mutate([], { onSuccess: () => setBox(prev => ({ ...prev, closed_at: new Date().toISOString() })) })}
+              disabled={decideBox.isPending}
+              className="rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80 disabled:opacity-50"
+            >
+              정리완료로 표시
+            </button>
+          )}
           <AppLink
             href={`/box/${box.id}/option/new`}
-            className={`flex items-center justify-center gap-1.5 rounded-field border border-dashed border-[#D9D6C2] bg-paper/50 py-4 text-[13px] font-bold text-ink-soft active:bg-cream ${!isDone ? '' : 'col-span-2'}`}
+            className={`flex items-center justify-center gap-1.5 rounded-field border border-dashed border-[#D9D6C2] bg-paper/50 py-4 text-[13px] font-bold text-ink-soft active:bg-cream ${showPrimaryAction ? '' : 'col-span-2'}`}
           >
             <Icon name="plus" size={16} />
-            선택지 추가하기
+            {isChecklist ? '항목 추가하기' : '선택지 추가하기'}
           </AppLink>
         </div>
       )}

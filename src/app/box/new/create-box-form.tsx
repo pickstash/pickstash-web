@@ -6,9 +6,14 @@ import { DeadlineBottomSheet } from '@/components/deadline-bottom-sheet'
 import { Icon } from '@/components/icon'
 import { takePendingBoxFolder } from '@/lib/nav/pending-box-folder'
 import { defaultDeadline, formatKoreanDateTime } from '@/lib/utils'
-import type { DecisionMode } from '@/lib/api/boxes'
+import type { DecisionMode, BoxMode } from '@/lib/api/boxes'
 
-const MODES: { value: DecisionMode; label: string; sub: string }[] = [
+const PURPOSES: { value: BoxMode; label: string; sub: string }[] = [
+  { value: 'decide', label: '결정하기', sub: '후보를 모아 투표하거나 골라서 정해요' },
+  { value: 'checklist', label: '체크하기', sub: '항목을 적고 같이 체크만 해요. 투표 없음' },
+]
+
+const DECISION_MODES: { value: DecisionMode; label: string; sub: string }[] = [
   { value: 'manual', label: '직접 정하기', sub: '원할 때 직접 골라 정해요 (안 정하고 모아두기만 해도 돼요)' },
   { value: 'auto_deadline', label: '마감 투표', sub: '마감 때 좋아요 최다가 자동으로 정해져요' },
 ]
@@ -16,7 +21,8 @@ const MODES: { value: DecisionMode; label: string; sub: string }[] = [
 export function CreateBoxForm() {
   const [title, setTitle] = useState('')
   const [memo, setMemo] = useState('')
-  const [mode, setMode] = useState<DecisionMode>('manual')
+  const [purpose, setPurpose] = useState<BoxMode>('decide')
+  const [decisionMode, setDecisionMode] = useState<DecisionMode>('manual')
   const [deadline, setDeadline] = useState<Date | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
   // 서랍 상세에서 넘어왔으면 그 서랍에 바로 담아 만든다(1회성 소비).
@@ -24,11 +30,11 @@ export function CreateBoxForm() {
 
   const createBox = useCreateBox()
 
-  const needsDeadline = mode === 'auto_deadline'
+  const needsDeadline = purpose === 'decide' && decisionMode === 'auto_deadline'
   const canSubmit = !!title.trim() && (!needsDeadline || !!deadline)
 
-  function handleSelectMode(next: DecisionMode) {
-    setMode(next)
+  function handleSelectDecisionMode(next: DecisionMode) {
+    setDecisionMode(next)
     if (next === 'auto_deadline' && !deadline) setDeadline(defaultDeadline())
   }
 
@@ -39,7 +45,8 @@ export function CreateBoxForm() {
       input: {
         title: title.trim(),
         memo: memo.trim() || undefined,
-        decision_mode: mode,
+        mode: purpose,
+        decision_mode: decisionMode,
         deadline_at: needsDeadline && deadline ? deadline.toISOString() : null,
       },
       folderId: pendingFolder?.id,
@@ -78,43 +85,68 @@ export function CreateBoxForm() {
         />
       </div>
 
-      {/* 결정 방식 */}
+      {/* 목적: 결정형 / 체크형 — 생성 후 변경 불가 */}
       <div>
-        <label className="mb-2 block text-[13px] font-semibold text-ink-soft">결정 방식</label>
-        <div className="space-y-2">
-          {MODES.map(m => {
-            const active = mode === m.value
+        <label className="mb-2 block text-[13px] font-semibold text-ink-soft">이 상자는 무엇을 위한 건가요?</label>
+        <div className="grid grid-cols-2 gap-2">
+          {PURPOSES.map(p => {
+            const active = purpose === p.value
             return (
               <button
-                key={m.value}
+                key={p.value}
                 type="button"
-                onClick={() => handleSelectMode(m.value)}
-                className={`flex w-full items-start gap-2.5 rounded-field border-[1.5px] px-4 py-3 text-left transition-colors ${
+                onClick={() => setPurpose(p.value)}
+                className={`rounded-field border-[1.5px] px-3.5 py-3 text-left transition-colors ${
                   active ? 'border-butter-dark bg-butter-tint' : 'border-line bg-paper'
                 }`}
               >
-                <span className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-[1.5px] ${active ? 'border-butter-dark bg-butter' : 'border-[#C9C7B6]'}`}>
-                  {active && <span className="h-1.5 w-1.5 rounded-full bg-ink" />}
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-sm font-bold text-ink">{m.label}</span>
-                  <span className="block text-[12px] text-ink-soft">{m.sub}</span>
-                </span>
+                <span className="block text-sm font-bold text-ink">{p.label}</span>
+                <span className="mt-0.5 block text-[11.5px] leading-snug text-ink-soft">{p.sub}</span>
               </button>
             )
           })}
         </div>
-
-        {needsDeadline && (
-          <button
-            type="button"
-            onClick={() => setSheetOpen(true)}
-            className="mt-2 w-full rounded-field border-[1.5px] border-line bg-paper px-4 py-3 text-left text-sm text-ink"
-          >
-            {deadline ? `${formatKoreanDateTime(deadline.toISOString())}까지` : '마감일시 선택'}
-          </button>
-        )}
       </div>
+
+      {/* 결정 방식 — 목적을 '결정하기'로 골랐을 때만 노출 */}
+      {purpose === 'decide' && (
+        <div>
+          <label className="mb-2 block text-[13px] font-semibold text-ink-soft">결정 방식</label>
+          <div className="space-y-2">
+            {DECISION_MODES.map(m => {
+              const active = decisionMode === m.value
+              return (
+                <button
+                  key={m.value}
+                  type="button"
+                  onClick={() => handleSelectDecisionMode(m.value)}
+                  className={`flex w-full items-start gap-2.5 rounded-field border-[1.5px] px-4 py-3 text-left transition-colors ${
+                    active ? 'border-butter-dark bg-butter-tint' : 'border-line bg-paper'
+                  }`}
+                >
+                  <span className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-[1.5px] ${active ? 'border-butter-dark bg-butter' : 'border-[#C9C7B6]'}`}>
+                    {active && <span className="h-1.5 w-1.5 rounded-full bg-ink" />}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-bold text-ink">{m.label}</span>
+                    <span className="block text-[12px] text-ink-soft">{m.sub}</span>
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+
+          {needsDeadline && (
+            <button
+              type="button"
+              onClick={() => setSheetOpen(true)}
+              className="mt-2 w-full rounded-field border-[1.5px] border-line bg-paper px-4 py-3 text-left text-sm text-ink"
+            >
+              {deadline ? `${formatKoreanDateTime(deadline.toISOString())}까지` : '마감일시 선택'}
+            </button>
+          )}
+        </div>
+      )}
 
       {createBox.isError && (
         <p className="text-sm text-tomato">상자 생성에 실패했어요. 다시 시도해주세요.</p>

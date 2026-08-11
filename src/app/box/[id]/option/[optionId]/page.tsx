@@ -25,6 +25,7 @@ export default async function OptionDetailPage({
       boxId={boxId}
       round={r.round}
       canVote={r.canVote}
+      checklist={r.checklist}
       currentUserId={user.id}
       myNickname={r.myNickname}
       participants={r.participants}

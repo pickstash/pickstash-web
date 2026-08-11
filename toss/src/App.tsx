@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useState, type CSSProperties } from "react";
+import { Suspense, useEffect, useRef, useState, type CSSProperties } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Session } from "@supabase/supabase-js";
@@ -36,22 +36,42 @@ function App() {
   // 있는 동안 탭바 배지가 안 갱신된다(왔다갔다 해야 뜨는 것처럼 보이던 원인).
   useRealtimeAlerts();
 
+  // Supabase는 실제 로그인 때뿐 아니라 웹뷰가 백그라운드 갔다 포커스를 되찾을 때도(예: 토스
+  // 푸시알림 배너가 잠깐 화면을 덮었다 사라질 때) 세션을 재검증하며 같은 유저로 SIGNED_IN을 다시
+  // 쏜다. 이걸 실제 로그인과 구분 못 하면 댓글 입력 중 캐시가 통째로 날아가 화면이 리마운트되고
+  // 입력하던 내용이 사라진다 — user id가 실제로 바뀐 경우에만 로그인 부수효과를 실행한다.
+  const prevUserIdRef = useRef<string | null>(null);
+
   useEffect(() => {
+    // 알림 동의 바텀시트는 미니앱 접속 직후 바로 뜨면 안 된다(심사 반려 사유) — 첫 화면을
+    // 어느 정도 보고 난 뒤에 자연스럽게 뜨도록 지연시킨다. 언마운트 시 취소.
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    function requestPushAgreementDelayed() {
+      timers.push(setTimeout(requestPushAgreementOnce, 3000));
+    }
+
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setReady(true);
+      prevUserIdRef.current = data.session?.user.id ?? null;
       // 이미 로그인된 채 재실행 → 아직 동의 안 받았으면 이때 요청(내부에서 1회 가드).
-      if (data.session) requestPushAgreementOnce();
+      if (data.session) requestPushAgreementDelayed();
     });
     const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
+      const nextUserId = s?.user.id ?? null;
+      const isActualSignIn = event === "SIGNED_IN" && nextUserId !== prevUserIdRef.current;
+      prevUserIdRef.current = nextUserId;
       // 로그인 직후엔 서버가 닉네임(실제 이름) 백필을 막 끝낸 상태 → 이전 세션의 캐시(예: '토스 사용자')를
       // 버리고 새로 불러온다. 로그아웃 시에도 남의 데이터가 남지 않게 정리.
-      if (event === "SIGNED_IN" || event === "SIGNED_OUT") queryClient.clear();
+      if (isActualSignIn || event === "SIGNED_OUT") queryClient.clear();
       // 로그인 시 푸시 알림 동의 요청(미동의 유저는 스마트발송에서 제외됨). 내부에서 1회만.
-      if (event === "SIGNED_IN") requestPushAgreementOnce();
+      if (isActualSignIn) requestPushAgreementDelayed();
     });
-    return () => sub.subscription.unsubscribe();
+    return () => {
+      sub.subscription.unsubscribe();
+      timers.forEach(clearTimeout);
+    };
   }, [queryClient]);
 
   const { pathname } = useLocation();
@@ -84,7 +104,11 @@ function App() {
   if (!session && !isInviteRoute) return <LoginScreen />;
 
   return (
-    // --app-nav-h: 탭바 있는 라우트에서만 탭바 실제 높이(3.5rem + iOS 홈 인디케이터 인셋)로 올린다(하위 main·CTA가 상속).
+    // --app-tabbar-h: TabBar 자신이 useLayoutEffect + ResizeObserver로 실측해 :root에 세팅한다
+    //   (tab-bar.tsx 참고) — 아이콘·라벨·패딩이 정하는 내용 기반 높이라 여기서 rem 상수로 흉내내면
+    //   AdBanner가 탭바 실제 높이보다 낮게 자리잡아 가려지는 사고가 났었다(재발 금지).
+    // --app-nav-h: 탭바 있는 라우트에서만 탭바 실제 높이로 올린다(하위 main·CTA가 상속). 실측된
+    //   --app-tabbar-h에 배너 높이를 더한 값(배너가 탭바 위에 얹히므로 콘텐츠는 그만큼 더 밀려야 한다).
     // --app-cta-safe: 하단 CTA가 먹을 인셋. 탭바 화면은 CTA가 이미 --app-nav-h만큼 탭바 위로 떠서
     //   탭바가 홈 인디케이터를 전담 → 0(여기서 또 더하면 이중 계산으로 버튼이 붕 뜬다).
     //   폼 화면(탭바 없음)은 CTA가 bottom-0라 직접 인셋(safe-bottom)이 필요하다.
@@ -92,7 +116,7 @@ function App() {
       style={{
         "--app-banner-h": showBanner ? "56px" : "0px", // 배너 높이(권장 96px보다 낮춤 — 너무 높아 보여서)
         "--app-nav-h": showTabBar
-          ? "calc(3.5rem + var(--app-safe-bottom, 0px) + var(--app-banner-h, 0px))"
+          ? "calc(var(--app-tabbar-h, 0px) + var(--app-banner-h, 0px))"
           : "0px",
         "--app-cta-safe": showTabBar ? "0px" : "var(--app-safe-bottom, 0px)",
       } as CSSProperties}
