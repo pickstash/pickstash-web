@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/supabase/types'
 import type { Box } from '@/lib/api/boxes'
 import { getBoxStatus, isDoneStatus } from '@/lib/domain/box-status'
+import { buildBoxCards, type BoxCard, type RawOpenBox } from '@/lib/domain/home'
 
 // 상자 목록 데이터 로더 — 웹·토스 공유. 뷰는 BoxListView/BoxesScreen이 그린다.
 // 'all' = 개편 '상자' 탭용: 진행/정리 안 나눈 전체 단일 스트림(최근 활동순).
@@ -96,4 +97,36 @@ export async function loadBoxList(
   })
 
   return { nickname: profile?.nickname ?? '', items }
+}
+
+// '상자' 탭 전용 — 홈 서랍 레일과 완전히 같은 카드(BoxSummaryCard)를 쓰기 위해 BoxCard[]로 반환.
+// loadBoxList와 달리 checked_at·votes까지 조회해 buildBoxCards(홈·서랍과 동일 계산)를 그대로 태운다.
+export async function loadAllBoxCards(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+): Promise<BoxCard[]> {
+  type RawBoxWithOptions = RawOpenBox & {
+    options: { id: string; box_id: string; name: string; checked_at: string | null; decided_at: string | null }[]
+  }
+  const [{ data: rawBoxes }, { data: participations }, { data: favs }] = await Promise.all([
+    supabase
+      .from('boxes')
+      .select('*, box_participants(user_id, profiles(avatar_url, nickname)), options(id, box_id, name, checked_at, decided_at)')
+      .order('updated_at', { ascending: false }),
+    supabase.from('box_participants').select('box_id, last_seen_at').eq('user_id', userId),
+    supabase.from('favorites').select('box_id').eq('user_id', userId),
+  ])
+
+  const boxes = (rawBoxes ?? []) as unknown as RawBoxWithOptions[]
+  const options = boxes.flatMap(b => b.options ?? [])
+  const optIds = options.map(o => o.id)
+  let votes: { option_id: string; vote_type: string }[] = []
+  if (optIds.length > 0) {
+    const { data: v } = await supabase.from('votes').select('option_id, vote_type').in('option_id', optIds)
+    votes = v ?? []
+  }
+
+  const lastSeen = new Map((participations ?? []).map(p => [p.box_id, p.last_seen_at]))
+  const favorites = new Set((favs ?? []).map(f => f.box_id))
+  return buildBoxCards(boxes, { lastSeen, favorites, options, votes })
 }

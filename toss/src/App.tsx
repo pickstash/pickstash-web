@@ -11,8 +11,7 @@ import { ScreenLoading } from "./screens/screen-state";
 import { HomeScreen } from "./screens/home-screen";
 import { NotificationSettingsScreen } from "./screens/notification-settings-screen";
 import { BoxListScreen } from "./screens/box-list-screen";
-// import { BoxesScreen } from "./screens/boxes-screen"; // TEMP 목업 동안 미사용 — 결정 후 복구
-import MockupPage from "@/app/mockup/page"; // TEMP 리디자인 목업 — 결정 후 이 import·아래 /boxes 스왑 원복 + src/app/mockup 삭제
+import { BoxesScreen } from "./screens/boxes-screen";
 import { BoxDetailScreen } from "./screens/box-detail-screen";
 import { OptionDetailScreen } from "./screens/option-detail-screen";
 import { FolderScreen } from "./screens/folder-screen";
@@ -90,8 +89,9 @@ function App() {
   const isInviteRoute = pathname.startsWith("/invite/") || pathname.startsWith("/folder-invite/");
   // 탭바는 폼(집중)·초대 뷰어를 제외한 모든 화면. 초대 뷰어는 자체 '참여하기' CTA만 둔다.
   const showTabBar = !isFormRoute(pathname) && !isInviteRoute;
-  // 배너는 홈·알림에서(탭바 위 고정). 그 높이를 --app-nav-h에 더해 콘텐츠가 배너 위로 밀리게 한다.
-  const showBanner = (pathname === "/" || pathname === "/alerts") && showTabBar;
+  // 하단 고정 배너는 알림에서만(탭바 위 고정, 그 높이를 --app-nav-h에 더해 콘텐츠가 배너 위로 밀리게 한다).
+  // 홈은 인라인 배너(히어로 아래, HomeView의 midBanner)라 하단 고정 자리가 필요 없다.
+  const showBanner = pathname === "/alerts" && showTabBar;
 
   // iOS 엣지 스와이프 뒤로가기는 홈·로그인에서만 OFF(실수로 앱이 종료되는 것 방지) — 나머지 화면은 ON(편의).
   //   홈 = 로그인 상태의 '/'. 로그인 = 세션 없음(초대 뷰어 제외, LoginScreen이 뜨는 조건). 둘 다 '/'에 있어도 안전.
@@ -133,7 +133,7 @@ function App() {
       <Route path="/" element={<HomeScreen />} />
 
       {/* 상자 탭 — 진행중/정리됨/즐겨찾기 필터 통합 */}
-      <Route path="/boxes" element={<MockupPage />} />{/* TEMP 리디자인 목업 — 원래 <BoxesScreen /> */}
+      <Route path="/boxes" element={<BoxesScreen />} />
 
       {/* 옛 창고 목록 경로 (탭에서 필터로 흡수됨, 딥링크 호환 위해 유지) */}
       <Route path="/messy" element={<BoxListScreen kind="messy" />} />

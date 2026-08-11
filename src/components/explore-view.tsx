@@ -88,23 +88,30 @@ function Empty({ text }: { text: string }) {
   )
 }
 
+// 홈의 BoxSummaryCard(box-summary-card.tsx)와 시각 언어 통일 — 모드 칩 없음, 제목 크게,
+// 결정 문구는 형광펜+얇은 접미사, 리더 없으면 "선택지 N개". PublicBoxCard는 participants/leaders/
+// deadline이 없는 대신 author·save_count가 있어 하단 줄만 그 데이터로 채운다.
 function PublicBoxRow({ box }: { box: PublicBoxCard }) {
+  const done = !!box.closed_at
   return (
     <AppLink href={`/p/${box.id}`} className="block">
-      <div className="rounded-card border border-[#ECEADC] bg-paper p-4 shadow-[0_2px_10px_rgba(42,42,39,0.05)] active:bg-butter-tint/40">
-        <div className="flex items-center gap-1.5">
-          <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-extrabold ${box.mode === 'checklist' ? 'bg-leaf-tint text-[#37714A]' : 'bg-butter-tint text-ink'}`}>
-            {box.mode === 'checklist' ? '체크' : '결정'}
-          </span>
-          <h3 className="truncate text-[15px] font-extrabold text-ink">{box.title}</h3>
-        </div>
+      <div className={`rounded-card border border-[#ECEADC] p-4 active:bg-butter-tint/40 ${done ? 'bg-paper/70' : 'bg-paper shadow-[0_2px_10px_rgba(42,42,39,0.05)]'}`}>
+        <h3 className={`truncate text-[17px] font-extrabold leading-snug tracking-tight ${done ? 'text-ink-soft' : 'text-ink'}`}>{box.title}</h3>
+
         {box.mode === 'checklist' ? (
-          <p className="mt-1.5 text-[12.5px] font-bold text-ink-soft">체크 {box.checked}/{box.total}</p>
-        ) : box.winner ? (
-          <p className="mt-1.5 text-[13px] font-extrabold text-ink">
-            <span className="[box-shadow:inset_0_-8px_0_#FFD84A]">{box.winner}</span>(으)로 결정!
+          <p className="mt-2 flex items-center gap-1 text-[12.5px] font-bold text-ink-soft">
+            <Icon name="check" size={13} strokeWidth={2.5} />
+            {box.checked}/{box.total} 체크
           </p>
-        ) : null}
+        ) : box.winner ? (
+          <p className="mt-1.5 text-[13.5px] text-ink">
+            <span className="font-extrabold [box-shadow:inset_0_-8px_0_#FFD84A]">{box.winner}</span>
+            <span className="font-normal">(으)로 결정!</span>
+          </p>
+        ) : (
+          <p className="mt-2 text-[12.5px] font-bold text-ink-soft">선택지 {box.total}개</p>
+        )}
+
         <div className="mt-2 flex items-center justify-between text-[11.5px] text-ink-faint">
           <span>by {box.author?.handle ? `@${box.author.handle}` : box.author?.nickname ?? '누군가'}</span>
           {box.save_count > 0 && (

@@ -24,9 +24,13 @@
 ### 2-1. 상태 모델 ✅
 - `closed_at` 파생 정리완료는 유지하되 **진행/정리로 화면을 나누지 않음**. 단일 스트림 + 정리됨은 카드 배지.
 
-### 2-2. 홈 (내 작업공간) ✅
-순서: ① 마감 임박 히어로(마감투표 임박 시에만) → ② **서랍 = 그룹 카드**(멤버·상자수 보이게) → ③ **내 상자 스트림**(최근 활동순, 정리됨 배지) → 하단 **새 상자 FAB**.
-- 체크형 카드: 좋아요/1위/마감 대신 **진행률(N/M + 바)**.
+### 2-2. 홈 (내 작업공간) ✅ (2026-08 서랍 레일로 재개편)
+순서: ① 마감 임박 히어로(D-3 이내 마감투표만) → ② **서랍 레일**(가로 스크롤 칩, "전체" 고정 첫 자리 + 서랍별 칩
++ "+새 서랍", 칩 선택 시 레일 바로 아래에 그 서랍의 상자가 스태거 애니메이션으로 등장 — 별도 배경·제목 없음) →
+하단 **새 상자 FAB**. 그룹 카드 그리드(③ 내 상자 스트림 별도 섹션)는 레일의 "전체" 선택 상태로 흡수됨.
+- 체크형 카드: 좋아요/1위/마감 대신 **진행률 텍스트(N/M 체크)** — 진행바는 없음(전체 확정, 목업 단계 실험 결과).
+- 결정형: 인기 리더 있으면 인기 배지, 없으면 **"선택지 N개"**(허전함 방지).
+- 상세는 spec.md §7-1·§3-6.
 
 ### 2-3. 탭바 ✅
 - 홈 / 돋보기 / 알림 / 프로필 (돋보기·프로필 = 소셜, 동시 출시).
@@ -54,9 +58,15 @@
 
 ## 4. 현재 코드 매핑
 - 탭바 `toss/src/components/tab-bar.tsx`, 라우트 `toss/src/App.tsx`.
-- 홈 `src/components/home-view.tsx`·`decision-hero.tsx`·`decision-rail.tsx`·`recap-rail.tsx`·`home-empty.tsx`, `src/lib/api/home.ts`, `src/lib/domain/home.ts`(체크형 mode-aware 필요).
+- 홈 `src/components/home-view.tsx`·`decision-hero.tsx`·`drawer-rail.tsx`(서랍 레일, 2026-08 신규)·
+  `box-summary-card.tsx`(레일 상자 카드, `home-stream-card.tsx` 대체)·`home-empty.tsx`,
+  `src/lib/api/home.ts`, `src/lib/domain/home.ts`(`BoxCard` 유니언·`buildBoxCards` — 열림/닫힘 공용 카드 계산,
+  홈 스트림·서랍 레일이 공유).
+  - `recap-rail.tsx`는 계속 사용 중(`home-empty.tsx`의 빈 상태 회고 레일). `decision-rail.tsx`·`folder-chips.tsx`·
+    `folder-group-cards.tsx`는 서랍 레일로 대체되며 죽은 코드가 됨(삭제는 별도 커밋에서 검토).
 - 상태 `src/lib/domain/box-status.ts`. 목록 `src/lib/api/box-list.ts`(스트림으로 단순화).
-- 서랍 `src/lib/api/folders*.ts`, `folder-chips.tsx`(홈 그룹 카드), `folder-view.tsx`.
+- 서랍 `src/lib/api/folders*.ts`, `folder-view.ts`(레일의 서랍별 카드 계산도 여기서 `buildBoxCards` 재사용),
+  `src/hooks/use-folders.ts`의 `useFolderBoxes`(레일 온디맨드 fetch, `/folder/[id]`와 쿼리 키 공유).
 - 소셜 신규: `supabase/migrations/*`(visibility·follows·bookmarks·join_requests·handle·RLS·RPC), 프로필/탐색 화면, 알림 타입.
 - 체크형 기존 처리(참고): `box-detail-client.tsx`(isChecklist), `options-section.tsx`, `option-form.tsx`, `create-box-form.tsx`, invite `box-viewer.tsx`.
 
@@ -67,9 +77,11 @@
 - **서랍(공유 그룹) vs 소셜(팔로우/공개)의 관계** — 개념 중복 여부·통합/재정의 검토.
 - 공개 시 참여자 알림(내 상자가 공개됐다는 고지) 필요 여부.
 
-## 6. 목업 참고 (버리는 스파이크)
-- `src/app/mockup/page.tsx`: 홈·대시 / 돋보기 / 프로필 / 상자안 등. 웹 `https://localhost:8888/mockup`(dev) 또는 토스 `/boxes` 임시 스왑으로 확인.
-- 결정 종료 후 제거: `src/app/mockup/` 삭제, `src/proxy.ts`의 `/mockup` 제거, `toss/src/App.tsx`의 `/boxes` 스왑·`BoxesScreen` import 원복.
+## 6. 목업 참고 (버리는 스파이크) — ✅ 완료, 정리됨
+- 서랍 레일 디자인은 `src/app/mockup/page.tsx`(더미 데이터)에서 여러 세션에 걸쳐 확정한 뒤 프로덕션(§2-2·§4)에
+  반영 완료.
+- 목업 파일·스왑은 전부 원복/삭제됨: `src/app/mockup/` 삭제, `src/proxy.ts`의 `/mockup` 제거,
+  `toss/src/App.tsx`의 `/boxes` 스왑 원복(`BoxesScreen` 복구).
 
 ## 7. 다음 액션
 1. 이 확정안 기준으로 **실행(구현) 계획** 별도 수립 — 프론트 개편 + 소셜 백엔드(마이그레이션·RLS·RPC) 한 릴리즈.

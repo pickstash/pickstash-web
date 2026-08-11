@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client"; // vite alias → 토스 shim
 import { loadHomeView } from "@/lib/api/home";
 import { HomeView } from "@/components/home-view";
-import { AdBanner } from "../components/ad-banner";
+import { InlineAdBanner } from "../components/inline-ad-banner";
 import { ScreenLoading } from "./screen-state";
 
 // 토스 홈 = 공유 로더로 데이터 fetch → 공유 HomeView 렌더. 웹과 동일 화면·로직.
@@ -30,11 +30,6 @@ export function HomeScreen() {
     );
   }
   // banner(웹 푸시 배너)는 토스에서 생략 — 토스 알림은 추후 별도 연동
-  // 배너는 탭바 위 고정(AdBanner 자체가 fixed) — 피드 슬롯 대신 형제로 렌더.
-  return (
-    <>
-      <HomeView {...data} />
-      <AdBanner />
-    </>
-  );
+  // 광고는 홈만 인라인(히어로 아래, HomeView의 midBanner 슬롯) — 다른 화면(알림 등)은 하단 고정 AdBanner 유지.
+  return <HomeView {...data} midBanner={<InlineAdBanner />} />;
 }

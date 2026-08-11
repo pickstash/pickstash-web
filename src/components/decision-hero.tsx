@@ -92,18 +92,6 @@ export function DecisionHero({ box }: { box: OpenBoxCard }) {
                     <span className="min-w-0 break-words">{leadersLabel(box.leaders)}</span>
                   </span>
                 )}
-                {!box.isSolo && box.totalLikes > 0 && (
-                  <span className="flex items-center gap-1 text-[12.5px] font-extrabold text-ink-soft tabular-nums">
-                    <Icon name="heart" size={13} />
-                    {box.totalLikes}
-                  </span>
-                )}
-                {!box.isSolo && box.totalComments > 0 && (
-                  <span className="flex items-center gap-1 text-[12.5px] font-extrabold text-ink-soft tabular-nums">
-                    <Icon name="comment" size={13} />
-                    {box.totalComments}
-                  </span>
-                )}
                 {box.isSolo && (
                   <span className="flex items-center gap-1 text-[12px] font-semibold text-ink-soft">
                     <Icon name="box" size={12} />

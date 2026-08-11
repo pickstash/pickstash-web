@@ -1,30 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { TossAds } from "@apps-in-toss/web-framework";
+import { AD_GROUP_ID, ensureAdsInitialized } from "../lib/toss-ads";
 
-const AD_GROUP_ID = import.meta.env.VITE_TOSS_AD_BANNER_GROUP_ID as string | undefined;
-
-// TossAds.initialize는 앱 전체에서 한 번만 불러야 한다(문서 권장). 화면을 오가며
-// AdBanner가 여러 번 마운트돼도 실제 초기화는 최초 1회만 나가도록 모듈 스코프에 캐싱.
-let initPromise: Promise<void> | null = null;
-function ensureInitialized(): Promise<void> {
-  if (!initPromise) {
-    initPromise = new Promise((resolve, reject) => {
-      if (!TossAds.initialize.isSupported()) {
-        reject(new Error("TossAds not supported in this environment"));
-        return;
-      }
-      TossAds.initialize({
-        callbacks: {
-          onInitialized: () => resolve(),
-          onInitializationFailed: (error) => reject(error),
-        },
-      });
-    });
-  }
-  return initPromise;
-}
-
-// 홈 화면 하단 배너 광고(토스 전용 — 웹 빌드에는 포함되지 않음).
+// 하단 고정 배너 광고(토스 전용 — 웹 빌드에는 포함되지 않음). 홈은 인라인 배너(inline-ad-banner.tsx)를
+// 대신 쓰고 이 컴포넌트를 렌더하지 않는다(화면에 광고 1개만) — 알림·프로필·돋보기는 계속 이 고정 배너.
 // 광고그룹 ID 미설정이거나 토스 앱 환경이 아니면(WebView 브라우저 미리보기 등) 아무것도 렌더하지 않는다.
 export function AdBanner() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -33,7 +12,7 @@ export function AdBanner() {
   useEffect(() => {
     if (!AD_GROUP_ID) return;
     let cancelled = false;
-    ensureInitialized()
+    ensureAdsInitialized()
       .then(() => {
         if (!cancelled) setInitialized(true);
       })
@@ -54,7 +33,7 @@ export function AdBanner() {
   // 탭바 바로 위(‘새 상자’ CTA 아래)에 고정. --app-tabbar-h는 TabBar가 자기 실제 렌더 높이를
   // ResizeObserver로 실측해 세팅한다(tab-bar.tsx) — 여기서 임의 기본값을 믿고 쓰면 탭바 치수가
   // 바뀔 때마다 광고배너가 플로팅 탭바에 가려지는 문제가 재발한다(과거 실패 원인).
-  // 높이는 --app-banner-h(App.tsx가 홈에서만 세팅, 기본 6rem).
+  // 높이는 --app-banner-h(App.tsx가 배너 있는 화면에서만 세팅, 기본 6rem).
   // 광고가 안 떠도(브라우저·ID 미설정·no-fill) 검정 영역 플레이스홀더로 자리를 항상 확보한다.
   return (
     <div className="fixed inset-x-0 bottom-[var(--app-tabbar-h,3.625rem)] z-30 h-[var(--app-banner-h,72px)] overflow-hidden border-t border-line bg-black">

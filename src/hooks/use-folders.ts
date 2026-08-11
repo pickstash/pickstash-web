@@ -1,6 +1,7 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
+import { createClient } from '@/lib/supabase/client'
 import {
   getMyFolders,
   createFolder,
@@ -13,6 +14,7 @@ import {
   getMyBoxesNotInFolder,
   addBoxesToFolder,
 } from '@/lib/api/folders'
+import { loadFolderView } from '@/lib/api/folder-view'
 import { getCoParticipantsForFolder, inviteUsersToFolder } from '@/lib/api/folder-invites'
 
 // 서랍을 보여주는 모든 화면 캐시 무효화 — 생성·삭제·이름변경이 뒤로가기 시 즉시 반영되게.
@@ -30,6 +32,21 @@ function invalidateFolderViews(qc: QueryClient) {
 
 export function useFolders() {
   return useQuery({ queryKey: ['folders'], queryFn: getMyFolders })
+}
+
+/** 서랍 레일에서 칩 선택 시 그 서랍의 상자를 온디맨드로 — /folder/[id] 페이지·토스 folder-screen과
+ * 쿼리 키를 공유(['folder-view', id])해 캐시도 같이 쓴다(무효화는 invalidateFolderViews가 이미 커버). */
+export function useFolderBoxes(folderId: string | undefined) {
+  return useQuery({
+    queryKey: ['folder-view', folderId],
+    queryFn: async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('세션이 없어요')
+      return loadFolderView(supabase, folderId!, user.id)
+    },
+    enabled: !!folderId,
+  })
 }
 
 export function useCreateFolder() {

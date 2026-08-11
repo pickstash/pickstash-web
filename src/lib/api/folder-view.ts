@@ -1,11 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/supabase/types'
-import type { Box } from '@/lib/api/boxes'
 import type { FolderBoxItem, FolderMember } from '@/app/folder/[id]/folder-view'
+import { buildBoxCards, type BoxCard, type RawOpenBox } from '@/lib/domain/home'
 
 // 폴더 뷰 데이터 로더 — 웹·토스 공유. 개인별: 이 폴더의 공유 상자를 box_folders.sort 순으로.
 export type FolderViewData =
-  | { status: 'ok'; folderName: string; inviteCode: string; nickname: string; members: FolderMember[]; items: FolderBoxItem[] }
+  | { status: 'ok'; folderName: string; inviteCode: string; nickname: string; members: FolderMember[]; items: FolderBoxItem[]; cards: BoxCard[] }
   | { status: 'not_found' }
 
 export async function loadFolderView(
@@ -37,14 +37,13 @@ export async function loadFolderView(
     supabase.from('favorites').select('box_id').eq('user_id', userId),
   ])
 
-  type RawBox = Box & { box_participants: { user_id: string; profiles: { avatar_url: string | null; nickname: string } | null }[] }
-  let rawBoxes: RawBox[] = []
+  let rawBoxes: RawOpenBox[] = []
   if (orderedIds.length > 0) {
     const { data } = await supabase
       .from('boxes')
       .select('*, box_participants(user_id, profiles(avatar_url, nickname))')
       .in('id', orderedIds)
-    rawBoxes = (data ?? []) as unknown as RawBox[]
+    rawBoxes = (data ?? []) as unknown as RawOpenBox[]
   }
 
   const lastSeenMap = new Map((participations ?? []).map(p => [p.box_id, p.last_seen_at]))
@@ -52,15 +51,29 @@ export async function loadFolderView(
   const boxMap = new Map(rawBoxes.map(b => [b.id, b]))
 
   // filings(sort) 순서 유지 — 삭제/누락된 상자는 건너뜀
-  const items: FolderBoxItem[] = orderedIds
-    .map(bid => boxMap.get(bid))
-    .filter((b): b is RawBox => !!b)
-    .map(b => ({
-      box: b,
-      participants: b.box_participants,
-      isNew: new Date(b.updated_at) > new Date(lastSeenMap.get(b.id) ?? 0),
-      isFavorite: favoriteSet.has(b.id),
-    }))
+  const orderedBoxes = orderedIds.map(bid => boxMap.get(bid)).filter((b): b is RawOpenBox => !!b)
 
-  return { status: 'ok', folderName: folder.name, inviteCode: folder.invite_code, nickname: profile?.nickname ?? '', members, items }
+  const items: FolderBoxItem[] = orderedBoxes.map(b => ({
+    box: b,
+    participants: b.box_participants,
+    isNew: new Date(b.updated_at) > new Date(lastSeenMap.get(b.id) ?? 0),
+    isFavorite: favoriteSet.has(b.id),
+  }))
+
+  // 홈 서랍 레일과 동일한 카드(체크진행률·인기리더·선택지N개·결정문구) — 선택지·투표 추가 조회.
+  const boxIds = orderedBoxes.map(b => b.id)
+  let options: { id: string; box_id: string; name: string; checked_at?: string | null; decided_at?: string | null }[] = []
+  let votes: { option_id: string; vote_type: string }[] = []
+  if (boxIds.length > 0) {
+    const { data: opts } = await supabase.from('options').select('id, box_id, name, checked_at, decided_at').in('box_id', boxIds)
+    options = opts ?? []
+    const optIds = options.map(o => o.id)
+    if (optIds.length > 0) {
+      const { data: v } = await supabase.from('votes').select('option_id, vote_type').in('option_id', optIds)
+      votes = v ?? []
+    }
+  }
+  const cards = buildBoxCards(orderedBoxes, { lastSeen: lastSeenMap, favorites: favoriteSet, options, votes })
+
+  return { status: 'ok', folderName: folder.name, inviteCode: folder.invite_code, nickname: profile?.nickname ?? '', members, items, cards }
 }
