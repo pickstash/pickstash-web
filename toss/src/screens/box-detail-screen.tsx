@@ -33,6 +33,8 @@ export function BoxDetailScreen() {
       initialOptions={data.r.options}
       initialIsFavorite={data.r.isFavorite}
       isParticipant={data.r.isParticipant}
+      canInstantJoin={data.r.canInstantJoin}
+      joinRequestStatus={data.r.joinRequestStatus}
     />
   );
 }

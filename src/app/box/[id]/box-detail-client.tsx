@@ -26,22 +26,28 @@ import { Icon } from '@/components/icon'
 import { ModeChip } from '@/components/mode-chip'
 import { AppDrawer } from '@/components/app-drawer'
 import { PageHeader } from '@/components/page-header'
+import { PencilCircle } from '@/components/pencil-circle'
 import { shareInviteLink, hasNativeShare } from '@/lib/share/native-share'
 import { getBoxStatus, isDoneStatus } from '@/lib/domain/box-status'
 import { parseBlocks, linkBlocksOf } from '@/lib/domain/option-content'
 import { getLeaderKey } from '@/lib/domain/winner'
-import { setBoxVisibility } from '@/lib/api/social'
+import { setBoxVisibility, requestToJoin } from '@/lib/api/social'
 import { formatDeadlineCompact, defaultDeadline, formatKoreanDate } from '@/lib/utils'
 import type { BoxWithParticipants, BoxParticipant, DecisionMode } from '@/lib/api/boxes'
 import type { Option } from '@/lib/api/options'
+import type { JoinRequestStatus } from '@/lib/api/box-detail'
 
 interface BoxDetailClientProps {
   box: BoxWithParticipants
   currentUserId: string
   initialOptions: Option[]
   initialIsFavorite: boolean
-  /** 048: 서랍 접근으로 읽기 전용 조회 중이면 false — 편집·투표는 숨기고 '함께하기' CTA를 보여준다. */
+  /** 048: 서랍 접근·049: 공개 상자 열람으로 읽기 전용 조회 중이면 false — 편집·투표는 숨기고 하단에 참여 CTA를 보여준다. */
   isParticipant: boolean
+  /** 049: true면 서랍 접근이라 '함께하기'(즉시 참여). false면 공개 상자 열람이라 '함께하기 신청'(승인제, 041)만 가능. */
+  canInstantJoin: boolean
+  /** 049: 비참여자가 이미 참여 신청을 넣었는지(승인제) */
+  joinRequestStatus: JoinRequestStatus
 }
 
 const DECISION_MODES: { value: DecisionMode; label: string; sub: string }[] = [
@@ -77,40 +83,20 @@ function ParticipantAvatars({ participants, max = 5, trailing }: { participants:
   )
 }
 
-/** 색연필로 슥슥 그린 듯한 손그림 동그라미 스탬프 (정리완료!) */
-function PencilCircle({ children }: { children: ReactNode }) {
-  return (
-    <span className="relative inline-flex -rotate-3 items-center justify-center px-4 py-1.5">
-      <svg
-        className="pointer-events-none absolute inset-0 h-full w-full overflow-visible"
-        viewBox="0 0 120 48"
-        preserveAspectRatio="none"
-        fill="none"
-        aria-hidden="true"
-      >
-        <path
-          d="M62 6C34 4 12 11 8 22C5 33 30 43 60 43C90 43 116 34 112 21C109 10 84 4 52 8"
-          stroke="var(--color-tangerine)"
-          strokeWidth="2.4"
-          strokeLinecap="round"
-          vectorEffect="non-scaling-stroke"
-        />
-        <path
-          d="M56 10C36 10 17 15 14 22C12 30 33 39 59 39C85 39 108 32 107 23"
-          stroke="var(--color-tangerine)"
-          strokeWidth="1.3"
-          strokeLinecap="round"
-          strokeOpacity="0.5"
-          vectorEffect="non-scaling-stroke"
-        />
-      </svg>
-      <span className="relative text-[12.5px] font-extrabold tracking-wide text-tangerine">{children}</span>
-    </span>
-  )
-}
-
-export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions, initialIsFavorite, isParticipant }: BoxDetailClientProps) {
+export function BoxDetailClient({
+  box: initialBox,
+  currentUserId,
+  initialOptions,
+  initialIsFavorite,
+  isParticipant,
+  canInstantJoin,
+  joinRequestStatus,
+}: BoxDetailClientProps) {
   const nav = useNav()
+  const isLoggedIn = !!currentUserId
+  const [requested, setRequested] = useState(joinRequestStatus === 'pending')
+  const [requestBusy, setRequestBusy] = useState(false)
+
   const queryClient = useQueryClient()
   const [box, setBox] = useState(initialBox)
   // 재진입/refetch로 참여자가 바뀌면(다른 사람이 나감/들어옴) 로컬 box에 반영.
@@ -249,10 +235,11 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
   }
 
   // 공유 서랍(2명+)에 '새로 담기'면 유출 방지 확인창을 먼저 띄운다. 빼기·개인 서랍은 즉시.
+  // 049: 이미 여럿이 함께 쓰는(참여자 2명+) 상자는 나만보기가 의미 없다 — 항상 공유로, 확인창도 생략.
   function toggleFolder(folderId: string) {
     const adding = !myFolderIds.includes(folderId)
     const f = folders.find(x => x.id === folderId)
-    if (adding && f && f.member_count > 1) {
+    if (adding && f && f.member_count > 1 && isSolo) {
       setShareFolderOn(true) // 기본 공개
       setConfirmShareFolder({ id: folderId, name: f.name, count: f.member_count })
       return
@@ -435,18 +422,37 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
     })
   }
 
+  // 049: 비로그인 방문자가 참여·신청·북마크처럼 실제 상호작용을 시도하면 그때 로그인으로 유도.
+  function requireLogin(): boolean {
+    if (isLoggedIn) return true
+    if (nav.platform === 'toss' && nav.login) { nav.login() } else { nav.push(`/login?next=/box/${box.id}`) }
+    return false
+  }
+
   function handleToggleFavorite() {
+    if (!requireLogin()) return
     setIsFavorite(prev => !prev)
     toggleFavorite.mutate(isFavorite, {
       onError: () => setIsFavorite(prev => !prev),
     })
   }
 
+  function handleJoinOrRequest() {
+    if (!requireLogin()) return
+    if (canInstantJoin) { joinBox.mutate(); return }
+    if (requestBusy || requested) return
+    setRequestBusy(true)
+    requestToJoin(box.id)
+      .then(() => setRequested(true))
+      .catch(() => setRequested(true)) // 이미 신청/참여 등도 사용자에게는 '신청됨'으로 보여준다
+      .finally(() => setRequestBusy(false))
+  }
+
   return (
     <main className="flex min-h-dvh flex-col">
       <PageHeader
         fallbackHref={isDone ? '/done' : '/messy'}
-        right={<AppDrawer nickname={myNickname} />}
+        right={<AppDrawer nickname={myNickname} isLoggedIn={isLoggedIn} />}
       />
 
       {/* 상자 나가기 확인 — 혼자인 상자는 나가면 삭제됨 */}
@@ -740,14 +746,6 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
       )}
 
       <div className={`flex-1 space-y-4 px-5 pt-1 ${options.length > 0 ? 'pb-28' : 'pb-5'}`}>
-        {/* 048: 읽기 전용 조회 배너 — 뱃지 줄에 끼워 넣으면 붐벼서 전체 폭 배너로 분리. */}
-        {!isParticipant && (
-          <div className="-mx-5 flex items-center gap-1.5 border-b border-line bg-cream px-5 py-2.5 text-[12.5px] font-bold text-ink-soft">
-            <Icon name="eye" size={15} />
-            구경 중이에요 · 읽기 전용
-          </div>
-        )}
-
         {/* 히어로: 상태 · 질문 · 메모 · 메타 · 참여 */}
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-2">
@@ -999,15 +997,19 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
         />
       </div>
 
-      {/* 048: 읽기 전용 조회자는 편집 대신 '함께하기' CTA. 승인 없이 즉시 참여자가 된다. */}
+      {/* 048/049: 읽기 전용 조회자는 편집 대신 참여 CTA. 서랍 접근이면 즉시 참여, 공개 상자면 승인제 신청. */}
       {!isParticipant ? (
         <div className="fixed inset-x-0 bottom-[var(--app-nav-h,0px)] z-20 bg-cream px-5 pt-3 pb-[calc(var(--app-cta-safe,env(safe-area-inset-bottom))+0.75rem)] xl:inset-x-auto xl:bottom-10 xl:left-1/2 xl:w-[430px] xl:-translate-x-1/2 xl:rounded-b-[30px]">
           <button
-            onClick={() => joinBox.mutate()}
-            disabled={joinBox.isPending}
+            onClick={handleJoinOrRequest}
+            disabled={joinBox.isPending || requestBusy || (!canInstantJoin && requested)}
             className="w-full rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80 disabled:opacity-50"
           >
-            {joinBox.isPending ? '참여하는 중…' : '함께하기'}
+            {canInstantJoin
+              ? (joinBox.isPending ? '참여하는 중…' : '함께하기')
+              : requested
+                ? '신청됨 · 승인 대기'
+                : (requestBusy ? '신청하는 중…' : '함께하기 신청')}
           </button>
         </div>
       ) : options.length > 0 && (

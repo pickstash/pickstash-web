@@ -195,7 +195,7 @@ function isFormRoute(p: string): boolean {
     p === "/box/new" ||
     p === "/profile/withdraw" ||
     p.startsWith("/settings") ||
-    p.startsWith("/p/") || // 공개 상자 뷰어 — 자체 하단 '함께하기 신청' CTA
+    // 049: /p/:id는 /box/:id로 즉시 리다이렉트되므로 더 이상 별도 처리 불필요.
     p.endsWith("/option/new") ||
     p.endsWith("/edit")
   );

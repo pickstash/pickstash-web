@@ -29,6 +29,14 @@ export function OptionComments({ comments }: { comments: BoxViewerComment[] }) {
   )
 }
 
+/** 선택지 상세 페이지용 — 접힘 없이 항상 펼친 댓글 전체(049). */
+export function OptionCommentsExpanded({ comments }: { comments: BoxViewerComment[] }) {
+  if (comments.length === 0) {
+    return <p className="py-2 text-center text-[13px] text-ink-faint">아직 댓글이 없어요.</p>
+  }
+  return renderComments(comments)
+}
+
 /** 멘션 토큰을 강조 렌더 */
 function renderCommentBody(body: string) {
   return parseMentionBody(body).map((seg, i) =>

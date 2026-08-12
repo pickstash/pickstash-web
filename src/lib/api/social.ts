@@ -19,8 +19,6 @@ export interface PublicBoxCard {
   total: number
   save_count: number
   author: { id: string; handle: string | null; nickname: string; avatar_url: string | null } | null
-  // 저장함(get_my_bookmarks)에서만 채워짐 — 내가 참여 중인 상자면 true(→ /box/:id), 아니면 공개 상자(→ /p/:id).
-  is_member?: boolean
 }
 
 export interface ProfileFeed {
@@ -70,11 +68,6 @@ export async function getMyBookmarks(): Promise<PublicBoxCard[]> {
   const supabase = createClient()
   const { data } = await (supabase.rpc as any)('get_my_bookmarks')
   return (data ?? []) as PublicBoxCard[]
-}
-
-export async function getPublicBoxView(supabase: SB, boxId: string): Promise<unknown | null> {
-  const { data } = await (supabase.rpc as any)('get_public_box_view', { p_box_id: boxId })
-  return data ?? null
 }
 
 export async function searchPublic(
@@ -174,20 +167,3 @@ export async function getFollowList(userId: string, kind: 'followers' | 'followi
   return (data ?? []) as PersonResult[]
 }
 
-// 북마크(저장함) — bookmarks 테이블 직접(RLS: 본인만)
-export async function addBookmark(boxId: string): Promise<void> {
-  const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('로그인이 필요해요')
-  const { error } = await (supabase.from('bookmarks' as any) as any).insert({ user_id: user.id, box_id: boxId })
-  if (error) throw error
-}
-
-export async function removeBookmark(boxId: string): Promise<void> {
-  const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('로그인이 필요해요')
-  const { error } = await (supabase.from('bookmarks' as any) as any)
-    .delete().eq('user_id', user.id).eq('box_id', boxId)
-  if (error) throw error
-}

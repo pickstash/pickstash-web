@@ -15,7 +15,8 @@ export function FolderScreen() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) throw new Error("세션이 없어요");
-      return loadFolderView(supabase, id!, user.id);
+      const view = await loadFolderView(supabase, id!, user.id);
+      return { ...view, currentUserId: user.id };
     },
   });
 
@@ -29,8 +30,10 @@ export function FolderScreen() {
       folderName={data.folderName}
       inviteCode={data.inviteCode}
       nickname={data.nickname}
+      currentUserId={data.currentUserId}
       members={data.members}
       initialBoxes={data.items}
+      cards={data.cards}
     />
   );
 }

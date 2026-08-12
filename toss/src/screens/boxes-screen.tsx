@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { loadAllBoxCards } from "@/lib/api/box-list";
@@ -77,7 +78,13 @@ function FolderGridCard({ folder }: { folder: FolderCard }) {
 }
 
 export function BoxesScreen() {
-  const [view, setView] = useState<View>("box");
+  // 상자/서랍 상위 토글은 URL 쿼리로 — 서랍 목록에서 폴더 상세로 들어갔다 뒤로가면 이 화면이
+  // 리마운트되면서 useState라면 "상자"로 리셋된다. history에 실린 URL로 복원해야 토글이 유지된다.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const view: View = searchParams.get("view") === "folder" ? "folder" : "box";
+  function setView(next: View) {
+    setSearchParams(next === "box" ? {} : { view: next }, { replace: true });
+  }
   const [type, setType] = useState<TypeFilter>("all");
 
   // 쿼리 키는 원래 loadBoxList 시절 그대로(["box-list","all"]) 유지 — use-boxes.ts/use-favorites.ts의

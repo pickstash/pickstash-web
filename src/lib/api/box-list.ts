@@ -45,16 +45,22 @@ export async function loadBoxList(
   ])
   const lastSeenMap = new Map((participations ?? []).map(p => [p.box_id, p.last_seen_at]))
   const favoriteSet = new Set((favs ?? []).map(f => f.box_id))
+  // 048/049: boxes RLS가 참여자 외(서랍 공유·공개 상자)도 읽기 허용하도록 넓어져, '내 상자만'
+  // 보여줘야 하는 목록은 더 이상 RLS에만 기대면 안 되고 참여자 필터를 명시해야 한다.
+  const myBoxIds = (participations ?? []).map(p => p.box_id)
 
   let boxes: RawBox[] = []
 
   const byCreatedDesc = (a: RawBox, b: RawBox) => b.created_at.localeCompare(a.created_at)
 
-  if (kind === 'all') {
-    // 전체: 진행/정리 통합, 최근 활동순(updated_at desc). RLS로 내 참여 상자만.
+  if (kind !== 'favorites' && myBoxIds.length === 0) {
+    boxes = []
+  } else if (kind === 'all') {
+    // 전체: 진행/정리 통합, 최근 활동순(updated_at desc). 참여 상자만(.in) — RLS는 더 넓어졌다.
     const { data } = await supabase
       .from('boxes')
       .select('*, box_participants(user_id, profiles(avatar_url, nickname)), options(id, name, decided_at)')
+      .in('id', myBoxIds)
       .order('updated_at', { ascending: false })
     boxes = (data ?? []) as unknown as RawBox[]
   } else if (kind === 'messy') {
@@ -62,6 +68,7 @@ export async function loadBoxList(
     const { data } = await supabase
       .from('boxes')
       .select('*, box_participants(user_id, profiles(avatar_url, nickname))')
+      .in('id', myBoxIds)
       .is('closed_at', null)
       .order('created_at', { ascending: false })
     boxes = (data ?? []) as unknown as RawBox[]
@@ -70,6 +77,7 @@ export async function loadBoxList(
     const { data } = await supabase
       .from('boxes')
       .select('*, box_participants(user_id, profiles(avatar_url, nickname)), options(id, name, decided_at)')
+      .in('id', myBoxIds)
       .not('closed_at', 'is', null)
       .order('closed_at', { ascending: false })
       .order('created_at', { ascending: false })
@@ -108,14 +116,21 @@ export async function loadAllBoxCards(
   type RawBoxWithOptions = RawOpenBox & {
     options: { id: string; box_id: string; name: string; checked_at: string | null; decided_at: string | null }[]
   }
-  const [{ data: rawBoxes }, { data: participations }, { data: favs }] = await Promise.all([
-    supabase
-      .from('boxes')
-      .select('*, box_participants(user_id, profiles(avatar_url, nickname)), options(id, box_id, name, checked_at, decided_at)')
-      .order('updated_at', { ascending: false }),
+  const [{ data: participations }, { data: favs }] = await Promise.all([
     supabase.from('box_participants').select('box_id, last_seen_at').eq('user_id', userId),
     supabase.from('bookmarks').select('box_id').eq('user_id', userId),
   ])
+  // 048/049: boxes RLS가 참여자 외(서랍 공유·공개 상자)도 읽기 허용하도록 넓어져, 참여자 필터를 명시해야 한다.
+  const myBoxIds = (participations ?? []).map(p => p.box_id)
+  let rawBoxes: unknown[] = []
+  if (myBoxIds.length > 0) {
+    const { data } = await supabase
+      .from('boxes')
+      .select('*, box_participants(user_id, profiles(avatar_url, nickname)), options(id, box_id, name, checked_at, decided_at)')
+      .in('id', myBoxIds)
+      .order('updated_at', { ascending: false })
+    rawBoxes = data ?? []
+  }
 
   const boxes = (rawBoxes ?? []) as unknown as RawBoxWithOptions[]
   const options = boxes.flatMap(b => b.options ?? [])

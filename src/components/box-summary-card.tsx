@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { AppLink } from '@/lib/nav/nav'
 import { Icon } from '@/components/icon'
 import { formatDday } from '@/lib/utils'
@@ -31,16 +32,21 @@ function CardAvatars({ participants, max = 4 }: { participants: HeroParticipant[
   )
 }
 
-/** 혼자 쓰는 상자 / 참여자 아바타+"N명 참여 중" — box-card.tsx(상자 탭)와 동일 문구·스타일. */
-function ParticipantsRow({ participants }: { participants: HeroParticipant[] }) {
+/** 혼자 쓰는 상자(=내 것)면 '혼자 쓰는 상자', 서랍 공유로 보이는 남의 솔로 상자면 '{닉네임}의 상자'(049).
+ * currentUserId가 없으면(대부분의 호출부 — 항상 내 상자만 보이는 화면) 그냥 내 것으로 간주한다. */
+function ParticipantsRow({ participants, currentUserId }: { participants: HeroParticipant[]; currentUserId?: string }) {
   if (participants.length === 0) return null
-  return participants.length === 1 ? (
-    <p className="mt-2 flex items-center gap-1 text-[11.5px] text-ink-faint">
-      <Icon name="box" size={13} strokeWidth={2.5} />
-      혼자 쓰는 상자
-    </p>
-  ) : (
-    <div className="mt-2 flex items-center gap-1.5">
+  if (participants.length === 1) {
+    const isMine = !currentUserId || participants[0].user_id === currentUserId
+    return (
+      <p className="flex items-center gap-1 text-[11.5px] text-ink-faint">
+        <Icon name="box" size={13} strokeWidth={2.5} />
+        {isMine ? '혼자 쓰는 상자' : `${participants[0].profiles?.nickname ?? '알 수 없음'}의 상자`}
+      </p>
+    )
+  }
+  return (
+    <div className="flex items-center gap-1.5">
       <CardAvatars participants={participants} />
       <span className="text-[11.5px] text-ink-faint">{participants.length}명 참여 중</span>
     </div>
@@ -52,7 +58,18 @@ function ParticipantsRow({ participants }: { participants: HeroParticipant[] }) 
  * home-stream-card.tsx(열림 전용) + 인라인 DoneCard(home-view.tsx)를 대체·흡수.
  * 모드 칩·즐겨찾기 별·좋아요·댓글·정리됨 배지는 의도적으로 없음(리디자인 확정 사항).
  */
-export function BoxSummaryCard({ card, note }: { card: BoxCard; note?: string }) {
+export function BoxSummaryCard({
+  card,
+  note,
+  currentUserId,
+  trailing,
+}: {
+  card: BoxCard
+  note?: string
+  currentUserId?: string
+  /** 카드 안쪽 하단 줄(참여자 정보 옆)에 얹을 부가 컨트롤 — 예: 폴더의 나만보기 스위치(049). absolute 대신 플로우에 포함. */
+  trailing?: ReactNode
+}) {
   if (card.status === 'done') {
     return (
       <AppLink href={`/box/${card.id}`} className="block">
@@ -67,7 +84,12 @@ export function BoxSummaryCard({ card, note }: { card: BoxCard; note?: string })
             // 마감 투표가 신호 없이 닫힌 경우(§3-3) — 배지 대신 옅은 텍스트로만(정리됨 배지 제거 결정 유지).
             <p className="mt-1.5 text-[12.5px] font-semibold text-ink-faint">결정 없이 마감</p>
           )}
-          <ParticipantsRow participants={card.participants} />
+          {(card.participants.length > 0 || trailing) && (
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <ParticipantsRow participants={card.participants} currentUserId={currentUserId} />
+              {trailing}
+            </div>
+          )}
         </div>
       </AppLink>
     )
@@ -100,7 +122,12 @@ export function BoxSummaryCard({ card, note }: { card: BoxCard; note?: string })
           <p className="mt-2 text-[12.5px] font-bold text-ink-soft">선택지 {box.total}개</p>
         )}
 
-        <ParticipantsRow participants={box.participants} />
+        {(box.participants.length > 0 || trailing) && (
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <ParticipantsRow participants={box.participants} currentUserId={currentUserId} />
+            {trailing}
+          </div>
+        )}
 
         {/* 들썩이는 상자 — 최근 활동 한 줄(무슨 일이 있었는지) */}
         {note && (

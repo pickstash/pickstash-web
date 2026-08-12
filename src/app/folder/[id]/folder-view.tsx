@@ -6,7 +6,7 @@ import { useBodyScrollLock } from '@/hooks/use-body-scroll-lock'
 import { useNav } from '@/lib/nav/nav'
 import { setPendingBoxFolder } from '@/lib/nav/pending-box-folder'
 import { PageHeader } from '@/components/page-header'
-import { BoxCard } from '@/components/box-card'
+import { BoxSummaryCard } from '@/components/box-summary-card'
 import { Icon } from '@/components/icon'
 import { ModeChip } from '@/components/mode-chip'
 import { ShareFolderLinkButton } from './share-folder-link-button'
@@ -22,6 +22,7 @@ import {
   useInviteUsersToFolder,
 } from '@/hooks/use-folders'
 import type { Box } from '@/lib/api/boxes'
+import type { BoxCard as BoxCardData } from '@/lib/domain/home'
 
 type CardParticipant = { user_id: string; profiles: { avatar_url: string | null; nickname: string } | null }
 
@@ -41,8 +42,11 @@ interface FolderViewProps {
   folderName: string
   inviteCode: string
   nickname: string
+  currentUserId: string
   members: FolderMember[]
   initialBoxes: FolderBoxItem[]
+  /** 상자 탭·홈 서랍 레일과 동일한 카드(BoxSummaryCard)로 그리기 위한 데이터 — items와 동일 순서/집합. */
+  cards: BoxCardData[]
 }
 
 /** 폴더 멤버 아바타 스택 (공유 폴더 = 누가 들어와 있는지). */
@@ -70,7 +74,9 @@ function MemberAvatars({ members, max = 6 }: { members: FolderMember[]; max?: nu
   )
 }
 
-export function FolderView({ folderId, folderName, inviteCode, members, initialBoxes }: FolderViewProps) {
+export function FolderView({ folderId, folderName, inviteCode, currentUserId, members, initialBoxes, cards }: FolderViewProps) {
+  // box.id로 매칭 — 편집 중 로컬 순서 변경(items)과 서버 cards가 refresh 전까지 순서가 어긋날 수 있어 인덱스 매칭은 위험.
+  const cardById = new Map(cards.map(c => [c.id, c]))
   const nav = useNav()
   const [title, setTitle] = useState(folderName)
   const [items, setItems] = useState(initialBoxes)
@@ -281,30 +287,39 @@ export function FolderView({ folderId, folderName, inviteCode, members, initialB
             </div>
           ))
         ) : (
-          items.map(item => (
-            <div key={item.box.id} className="relative">
-              <BoxCard
-                box={item.box}
-                participants={item.participants}
-                isNew={item.isNew}
-                isFavorite={item.isFavorite}
+          items.map(item => {
+            const card = cardById.get(item.box.id)
+            if (!card) return null
+            // 049: 공유 폴더에서 상자별 공유/나만 토글 — 나 혼자 쓰는 상자에서만. 참여자 2명+인 상자는
+            // 이미 여럿이 함께 쓰는 거라 folder-view.ts에서 항상 공유로 강제되므로 토글 자체가 무의미.
+            // 라벨이 상태에 따라 '공유'↔'나만'으로 바뀌면 눌렀을 때 뭐가 된 건지 헷갈려서, 라벨은
+            // '나만보기'로 고정하고 스위치만 상태를 보여준다(켜짐=나만). absolute로 얹으면 카드마다
+            // 다른 내용 높이와 겹쳐서, BoxSummaryCard의 trailing으로 넘겨 카드 안쪽 패딩·플로우를 탄다.
+            const showShareToggle = isShared && item.participants.length <= 1 && item.addedByMe
+            return (
+              <BoxSummaryCard
+                key={item.box.id}
+                card={card}
+                currentUserId={currentUserId}
+                trailing={
+                  showShareToggle ? (
+                    <button
+                      type="button"
+                      onClick={e => { e.preventDefault(); e.stopPropagation(); toggleShared(item.box.id, item.shared) }}
+                      disabled={setShared.isPending}
+                      aria-pressed={!item.shared}
+                      className="flex shrink-0 items-center gap-1.5 text-[10.5px] font-extrabold text-ink-soft"
+                    >
+                      나만보기
+                      <span className={`relative h-4 w-7 shrink-0 rounded-full transition-colors ${!item.shared ? 'bg-ink' : 'bg-[#D9D6C2]'}`}>
+                        <span className={`absolute top-0.5 h-3 w-3 rounded-full bg-paper shadow-sm transition-all ${!item.shared ? 'left-[14px]' : 'left-0.5'}`} />
+                      </span>
+                    </button>
+                  ) : undefined
+                }
               />
-              {/* 공유 폴더 + 내가 담은 링크에서만 상자별 공유/나만 토글(048). 남이 담은 링크는 내 소관이 아님. */}
-              {isShared && item.addedByMe && (
-                <button
-                  type="button"
-                  onClick={e => { e.preventDefault(); e.stopPropagation(); toggleShared(item.box.id, item.shared) }}
-                  disabled={setShared.isPending}
-                  className={`absolute bottom-2.5 right-2.5 z-10 flex items-center gap-1 rounded-full px-2 py-1 text-[10.5px] font-extrabold shadow-sm ${
-                    item.shared ? 'bg-cream text-ink-soft' : 'bg-ink text-cream'
-                  }`}
-                >
-                  <Icon name={item.shared ? 'user' : 'lock'} size={11} strokeWidth={2.4} />
-                  {item.shared ? '공유' : '나만'}
-                </button>
-              )}
-            </div>
-          ))
+            )
+          })
         )}
       </div>
 

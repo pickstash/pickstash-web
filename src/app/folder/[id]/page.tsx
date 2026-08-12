@@ -19,8 +19,10 @@ export default async function FolderPage({ params }: { params: Promise<{ id: str
       folderName={r.folderName}
       inviteCode={r.inviteCode}
       nickname={r.nickname}
+      currentUserId={user.id}
       members={r.members}
       initialBoxes={r.items}
+      cards={r.cards}
     />
   )
 }

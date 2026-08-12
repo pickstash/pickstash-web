@@ -21,24 +21,31 @@ export async function loadHomeView(
   const now = Date.now()
   const sinceIso = new Date(now - BRIEF_WINDOW_MS).toISOString()
 
-  const [
-    { data: profile },
-    { data: rawOpenBoxes },
-    { data: favs },
-    { count: doneCount },
-  ] = await Promise.all([
+  const [{ data: profile }, { data: favs }, { data: participations }] = await Promise.all([
     supabase.from('profiles').select('nickname').eq('id', userId).single(),
-    supabase
-      .from('boxes')
-      .select('*, box_participants(user_id, profiles(avatar_url, nickname))')
-      .is('closed_at', null)
-      .order('updated_at', { ascending: false }),
     supabase.from('bookmarks').select('box_id').eq('user_id', userId),
-    supabase.from('boxes').select('*', { count: 'exact', head: true }).not('closed_at', 'is', null),
+    supabase.from('box_participants').select('box_id').eq('user_id', userId),
   ])
-
   const favorites = new Set((favs ?? []).map(f => f.box_id))
-  const openBoxes = (rawOpenBoxes ?? []) as unknown as RawOpenBox[]
+  // 048/049: boxes RLS가 참여자 외(서랍 공유·공개 상자)도 읽기 허용하도록 넓어져, 홈은 '내 참여 상자'만
+  // 보여줘야 하므로 더 이상 RLS에만 기대지 않고 참여자 필터를 명시한다.
+  const myBoxIds = (participations ?? []).map(p => p.box_id)
+
+  let openBoxes: RawOpenBox[] = []
+  let doneCount = 0
+  if (myBoxIds.length > 0) {
+    const [{ data: rawOpenBoxes }, { count }] = await Promise.all([
+      supabase
+        .from('boxes')
+        .select('*, box_participants(user_id, profiles(avatar_url, nickname))')
+        .in('id', myBoxIds)
+        .is('closed_at', null)
+        .order('updated_at', { ascending: false }),
+      supabase.from('boxes').select('*', { count: 'exact', head: true }).in('id', myBoxIds).not('closed_at', 'is', null),
+    ])
+    openBoxes = (rawOpenBoxes ?? []) as unknown as RawOpenBox[]
+    doneCount = count ?? 0
+  }
 
   // ② 들썩이는 상자 — 내가 참여한 '열림' 상자 중 최근 7일 내 '다른 사람' 활동이 있는 것.
   //    last_seen 무관(열어봐도 7일간 유지). 각 상자의 최신 활동 한 줄 함께.
@@ -104,10 +111,11 @@ export async function loadHomeView(
 
   // ① 최근에 이렇게 정했어요 — 최근 7일 이내 정리완료, 최대 5개. buildBoxCards로 참여자·결과까지 동일 계산.
   let recentDone: BoxCard[] = []
-  if ((doneCount ?? 0) > 0) {
+  if (doneCount > 0) {
     const { data: recent } = await supabase
       .from('boxes')
       .select('*, box_participants(user_id, profiles(avatar_url, nickname)), options(id, box_id, name, checked_at, decided_at)')
+      .in('id', myBoxIds)
       .not('closed_at', 'is', null)
       .gte('closed_at', sinceIso)
       .order('closed_at', { ascending: false })
@@ -123,6 +131,6 @@ export async function loadHomeView(
     nickname: profile?.nickname ?? '',
     brief: { recentDone, shaking },
     openCount: openBoxes.length,
-    doneCount: doneCount ?? 0,
+    doneCount,
   }
 }

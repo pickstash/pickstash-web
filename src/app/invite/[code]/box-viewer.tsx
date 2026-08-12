@@ -1,25 +1,20 @@
 import Image from 'next/image'
 import { Icon } from '@/components/icon'
-import { YouTubeEmbed } from '@/components/youtube-embed'
-import { RichText } from '@/components/rich-text'
-import {
-  parseBlocks,
-  linkFallbackTitle,
-  linkHref,
-  linkKindOf,
-  linkKindEmoji,
-  parseYouTubeId,
-} from '@/lib/domain/option-content'
-import { getBoxStatus, BOX_STATUS_LABEL } from '@/lib/domain/box-status'
+import { ModeChip } from '@/components/mode-chip'
+import { PencilCircle } from '@/components/pencil-circle'
+import { parseBlocks, getOptionPreview } from '@/lib/domain/option-content'
+import { getBoxStatus } from '@/lib/domain/box-status'
+import { getLeaderKey } from '@/lib/domain/winner'
 import { proxiedImageUrl } from '@/lib/api/unfurl'
 import { formatKoreanDate, formatDeadline } from '@/lib/utils'
 import type { BoxViewerData } from '@/lib/api/invites'
 import { JoinClient } from './join-client'
-import { OptionComments } from './option-comments'
 
 /**
- * 로그인 안 한 사용자도 초대 링크로 상자 전체를 '읽기 전용'으로 보는 뷰어(노션식).
- * 서버 컴포넌트 — 순수 렌더만. 참여·좋아요·댓글 등 쓰기 액션은 없고 하단 로그인 CTA로 유도.
+ * 로그인 안 한 사용자도 초대 링크로 상자를 '읽기 전용'으로 보는 뷰어.
+ * 049: 참여자 화면(BoxDetailClient)과 같은 라벨·카드 스타일을 쓰고, 선택지는 미리보기 카드만 보여준 뒤
+ * 탭하면 `/invite/[code]/option/[optionId]`(전체 본문 + 댓글 전체)로 페이지 이동한다 — 한 페이지에
+ * 다 욱여넣지 않는다. 서버 컴포넌트 — 순수 렌더만. 참여·좋아요·댓글 등 쓰기 액션은 없고 하단 CTA로 유도.
  */
 export function BoxViewer({
   view,
@@ -35,8 +30,10 @@ export function BoxViewer({
   const isChecklist = view.mode === 'checklist'
   const showLikes = !isChecklist && view.participant_count > 1 // 혼자 상자·체크형 상자는 좋아요 미표시 (앱과 동일)
 
-  const maxLikes = view.options.reduce((m, o) => Math.max(m, o.like_count), 0)
-  const decidedNames = view.options.filter(o => o.decided_at).map(o => o.name)
+  const decidedOptions = view.options.filter(o => o.decided_at)
+  // '인기' — 참여자 화면과 동일한 임계값 규칙(단독 + 2개 이상)을 domain 함수로 그대로 재사용.
+  const leaderKey = showLikes ? getLeaderKey(view.options.map(o => ({ key: o.id, like: o.like_count }))) : null
+  const leaderName = leaderKey ? view.options.find(o => o.id === leaderKey)?.name ?? null : null
 
   return (
     <main className="flex min-h-dvh flex-col bg-cream">
@@ -44,27 +41,21 @@ export function BoxViewer({
       <div className="sticky top-0 z-20 border-b border-line bg-paper/95 px-5 pb-2.5 pt-[calc(env(safe-area-inset-top)+0.625rem)] backdrop-blur">
         <div className="mx-auto flex max-w-[430px] items-center gap-2">
           <Image src="/icons/icon-192.png" alt="" width={22} height={22} className="rounded-[7px]" />
-          <p className="text-[12px] font-bold text-ink-soft">
-            결정창고 · <span className="text-ink-faint">구경 중 (읽기 전용)</span>
+          <p className="flex items-center gap-1 text-[12px] font-bold text-ink-soft">
+            결정창고 · <span className="inline-flex items-center gap-1 text-ink-faint"><Icon name="eye" size={13} />구경 중 (읽기 전용)</span>
           </p>
         </div>
       </div>
 
       <div className="mx-auto w-full max-w-[430px] flex-1 space-y-4 px-5 pb-28 pt-4">
-        {/* 상자 헤더 */}
+        {/* 상자 헤더 — 참여자 화면과 동일하게 모드 칩을 앞세운다. */}
         <section className="space-y-3">
-          <div className="flex items-center gap-2">
-            <span
-              className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${
-                isDone ? 'bg-butter text-ink' : 'border border-line text-ink-soft'
-              }`}
-            >
-              {BOX_STATUS_LABEL[status]}
-            </span>
+          <div className="flex items-center gap-1.5">
+            <ModeChip mode={isChecklist ? 'checklist' : 'decide'} />
             <span className="text-[11.5px] text-ink-faint">{view.participant_count}명 참여 중</span>
           </div>
 
-          <h1 className="text-[23px] font-extrabold leading-tight tracking-tight text-ink">{view.title}</h1>
+          <h1 className="text-[22px] font-extrabold leading-tight tracking-tight text-ink">{view.title}</h1>
 
           {view.memo && (
             <p className="rounded-[14px] border border-dashed border-[#D9D6C2] px-3 py-2.5 text-[13px] text-ink-soft">
@@ -100,92 +91,124 @@ export function BoxViewer({
           )}
 
           <p className="text-[11.5px] text-ink-faint">
-            {formatKoreanDate(view.created_at)} 만듦
-            {view.decision_mode === 'auto_deadline' && ` · 마감 ${formatDeadline(view.deadline_at)}`}
+            만든 날 {formatKoreanDate(view.created_at)}
+            {view.decision_mode === 'auto_deadline' && !isDone && ` · 마감 ${formatDeadline(view.deadline_at)}`}
           </p>
         </section>
 
-        {/* 결정 결과 (정리완료) */}
+        {/* 결정 결과 (정리완료) — 참여자 화면과 동일한 PencilCircle 스탬프. */}
         {isDone && (
-          <section className="rounded-card border border-butter-dark/30 bg-butter-tint p-4">
-            {isChecklist ? (
-              <p className="text-[14px] font-bold text-ink-soft">목록을 정리했어요.</p>
-            ) : decidedNames.length > 0 ? (
-              <p className="text-[15px] font-extrabold text-ink">
-                <span className="bg-butter px-1 underline decoration-butter-dark decoration-2">
-                  {decidedNames.join(', ')}
-                </span>
-                (으)로 결정!
-              </p>
-            ) : (
-              <p className="text-[14px] font-bold text-ink-soft">결정 없이 마무리됐어요.</p>
-            )}
+          <section className="space-y-4 rounded-card bg-butter-tint p-5">
+            <div className="flex flex-col items-start gap-2.5 text-left">
+              <PencilCircle>정리완료!</PencilCircle>
+              {isChecklist ? (
+                <p className="text-[13.5px] text-ink-soft">목록을 정리했어요</p>
+              ) : decidedOptions.length > 0 ? (
+                <p className="text-[18px] font-extrabold leading-snug text-ink">
+                  <span className="[box-shadow:inset_0_-9px_0_#FFD84A]">{decidedOptions.map(o => o.name).join(', ')}</span>
+                  (으)로 결정!
+                </p>
+              ) : (
+                <p className="text-[13.5px] text-ink-soft">결정 없이 마무리됐어요</p>
+              )}
+            </div>
           </section>
         )}
 
-        {/* 선택지 목록 */}
-        <section className="space-y-3">
-          <h2 className="text-[13px] font-extrabold text-ink-soft">{isChecklist ? '항목' : '선택지'} {view.options.length}개</h2>
+        {/* 인기 (진행 중 · 여럿·결정형 상자) — 참여자 화면과 동일 문구·임계값. */}
+        {!isChecklist && !isDone && showLikes && leaderName && (
+          <p className="text-[12.5px] font-bold text-ink-soft">
+            인기 · <span className="text-ink">{leaderName}</span>
+          </p>
+        )}
 
-          {view.options.length === 0 && (
+        {/* 선택지 목록 — 참여자 화면(OptionsSection)과 같은 미리보기 카드. 탭하면 전체 본문·댓글 페이지로. */}
+        <section className="space-y-2.5">
+          <h2 className="px-0.5 text-[13.5px] font-extrabold text-ink">{isChecklist ? '항목' : '선택지'} {view.options.length}개</h2>
+
+          {view.options.length === 0 ? (
             <p className="rounded-card border border-dashed border-line py-8 text-center text-[13px] text-ink-faint">
               {isChecklist ? '아직 항목이 없어요.' : '아직 선택지가 없어요.'}
             </p>
+          ) : (
+            <div className="space-y-2.5">
+              {view.options.map(option => {
+                const preview = getOptionPreview(parseBlocks(option.content))
+                const isDecided = !!option.decided_at
+                const isLeader = !isDone && showLikes && leaderKey === option.id
+                return (
+                  <a
+                    key={option.id}
+                    href={`/invite/${code}/option/${option.id}`}
+                    className={`relative block rounded-[18px] border p-3.5 active:opacity-80 ${
+                      isDecided ? 'border-butter-dark bg-butter-tint' : 'border-[#ECEADC] bg-paper'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="min-w-0 flex-1 space-y-1.5">
+                        <div className="flex items-center gap-1.5">
+                          {!isChecklist && isDecided && (
+                            <span className="flex shrink-0 items-center gap-0.5 rounded-full bg-ink pl-1 pr-1.5 py-0.5 text-[10px] font-extrabold text-cream">
+                              <Icon name="check" size={10} strokeWidth={3} />
+                              결정
+                            </span>
+                          )}
+                          {!isChecklist && isLeader && (
+                            <span className="shrink-0 rounded-md bg-butter px-1.5 py-0.5 text-[10px] font-extrabold text-ink shadow-[0_1px_0_#E3B93A]">
+                              인기
+                            </span>
+                          )}
+                          <span className="min-w-0 truncate text-[14.5px] font-extrabold text-ink">{option.name}</span>
+                        </div>
+
+                        {isChecklist && option.group_label && (
+                          <span className="inline-flex w-fit items-center rounded-full border border-line bg-cream px-2 py-0.5 text-[10.5px] font-bold text-ink-soft">
+                            {option.group_label}
+                          </span>
+                        )}
+
+                        <p className="line-clamp-2 whitespace-pre-line text-xs leading-relaxed text-ink-soft">
+                          {preview.snippet || ' '}
+                        </p>
+
+                        <div className="flex items-center gap-3">
+                          {!isChecklist && showLikes && (
+                            <span className="flex items-center gap-1 text-[12px] font-bold text-ink-faint">
+                              <Icon name="heart" size={13} />
+                              <span className="tabular-nums">{option.like_count}</span>
+                            </span>
+                          )}
+                          {option.comments.length > 0 && (
+                            <span className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-ink-faint">
+                              <Icon name="comment" size={12} />
+                              {option.comments.length}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {preview.image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={proxiedImageUrl(preview.image)}
+                          alt=""
+                          className="h-14 w-14 shrink-0 rounded-[12px] border border-line object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[12px] border border-line bg-cream text-ink-faint" aria-hidden>
+                          <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24">
+                            <rect x="3" y="3" width="18" height="18" rx="3" />
+                            <circle cx="8.5" cy="8.5" r="1.5" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M21 15l-5-5L5 21" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                  </a>
+                )
+              })}
+            </div>
           )}
-
-          {view.options.map(option => {
-            const blocks = parseBlocks(option.content)
-            const isDecided = !!option.decided_at
-            const isLeader = !isDone && showLikes && maxLikes > 0 && option.like_count === maxLikes
-
-            return (
-              <article
-                key={option.id}
-                className={`space-y-3 rounded-card border p-4 ${
-                  isDecided ? 'border-butter-dark/40 bg-butter-tint' : 'border-[#ECEADC] bg-paper'
-                }`}
-              >
-                {isChecklist && option.group_label && (
-                  <span className="inline-flex w-fit items-center rounded-full border border-line bg-cream px-2 py-0.5 text-[10.5px] font-bold text-ink-soft">
-                    {option.group_label}
-                  </span>
-                )}
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex min-w-0 items-start gap-2">
-                    {/* 모아보기(체크형) 체크 상태는 개인 진행이라 공개 뷰엔 미표시 — 항목 리스트만 공유 */}
-                    <h3 className="min-w-0 text-[16px] font-extrabold leading-snug text-ink">
-                      {option.name}
-                    </h3>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-1.5">
-                    {!isChecklist && isDecided && (
-                      <span className="flex items-center gap-1 rounded-full bg-ink px-2 py-0.5 text-[10.5px] font-bold text-cream">
-                        <Icon name="check" size={11} />
-                        결정
-                      </span>
-                    )}
-                    {!isChecklist && isLeader && (
-                      <span className="rounded-full bg-butter px-2 py-0.5 text-[10.5px] font-bold text-ink">
-                        1위
-                      </span>
-                    )}
-                    {showLikes && (
-                      <span className="flex items-center gap-1 text-[12px] font-bold text-ink-faint">
-                        <Icon name="heart" size={13} />
-                        <span className="tabular-nums">{option.like_count}</span>
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* 본문 블록 */}
-                {blocks.length > 0 && <div className="space-y-3">{blocks.map(renderBlock)}</div>}
-
-                {/* 댓글 — 기본 접힘, '댓글 N개 보기' 토글(선택지별) */}
-                <OptionComments comments={option.comments} />
-              </article>
-            )
-          })}
         </section>
       </div>
 
@@ -200,68 +223,5 @@ export function BoxViewer({
         </div>
       </div>
     </main>
-  )
-}
-
-/** 선택지 본문 블록(글·사진·링크·유튜브)을 읽기 전용으로 렌더 — option-detail과 동일 마크업. */
-function renderBlock(block: ReturnType<typeof parseBlocks>[number]) {
-  if (block.type === 'text') {
-    return <RichText key={block.id} text={block.text} className="space-y-1.5 text-[13.5px] leading-relaxed text-ink" />
-  }
-  if (block.type === 'image') {
-    return (
-      <a key={block.id} href={linkHref(block.url)} target="_blank" rel="noopener noreferrer" className="block">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={block.url} alt="첨부 사진" className="h-auto w-full rounded-[14px] border border-line" />
-      </a>
-    )
-  }
-  // link — 유튜브면 인라인 플레이어, 아니면 미리보기 카드
-  const ytId = parseYouTubeId(block.url)
-  if (ytId) {
-    return (
-      <div key={block.id} className="space-y-1.5">
-        <YouTubeEmbed videoId={ytId} />
-        {block.label && (
-          <p className="border-t border-dashed border-line pt-2 text-[13px] text-ink-soft">📝 {block.label}</p>
-        )}
-      </div>
-    )
-  }
-  const emoji = linkKindEmoji(linkKindOf(block))
-  return (
-    <div key={block.id} className="rounded-[14px] border border-line bg-cream/40 p-3">
-      <a href={linkHref(block.url)} target="_blank" rel="noopener noreferrer" className="flex gap-3 active:opacity-80">
-        <div className="relative h-14 w-14 shrink-0">
-          {block.image ? (
-            <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={proxiedImageUrl(block.image)}
-                alt=""
-                className="h-14 w-14 rounded-[10px] border border-line object-cover"
-              />
-              <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full border border-line bg-paper text-[11px]">
-                {emoji}
-              </span>
-            </>
-          ) : (
-            <span className="flex h-14 w-14 items-center justify-center rounded-[10px] border border-line bg-paper text-2xl">
-              {emoji}
-            </span>
-          )}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="mt-0.5 truncate text-[13px] font-bold text-ink">
-            {block.title || linkFallbackTitle(block.url)}
-          </p>
-          {block.description && <p className="line-clamp-1 text-[11.5px] text-ink-soft">{block.description}</p>}
-          <p className="truncate text-[11px] text-ink-faint">{block.url}</p>
-        </div>
-      </a>
-      {block.label && (
-        <p className="mt-2 border-t border-dashed border-line pt-2 text-[13px] text-ink-soft">📝 {block.label}</p>
-      )}
-    </div>
   )
 }

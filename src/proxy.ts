@@ -9,6 +9,10 @@ import { NextResponse, type NextRequest } from 'next/server'
 // /terms·/privacy: 이용약관·개인정보처리방침. 토스 콘솔·비로그인 이용자가 열람 → 공개.
 const PUBLIC_ROUTES = ['/login', '/auth/callback', '/invite', '/group-invite', '/folder-invite', '/explore', '/p/', '/u/', '/api/toss/login', '/api/toss/unlink', '/api/toss/send', '/api/unfurl', '/terms', '/privacy']
 
+// 049: 상자/옵션 상세만 비로그인 허용(공개 상자 열람 — RLS의 can_read_box가 실제 접근을 가른다).
+// 같은 /box/ 아래라도 /option/new·/edit·/invite·/links 같은 쓰기 전용 하위 라우트는 로그인 필수 그대로.
+const PUBLIC_BOX_DETAIL = /^\/box\/[^/]+(\/option\/(?!new)[^/]+)?\/?$/
+
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
@@ -34,7 +38,7 @@ export async function proxy(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   const pathname = request.nextUrl.pathname
-  const isPublic = PUBLIC_ROUTES.some(route => pathname.startsWith(route))
+  const isPublic = PUBLIC_ROUTES.some(route => pathname.startsWith(route)) || PUBLIC_BOX_DETAIL.test(pathname)
 
   if (!user && !isPublic) {
     const loginUrl = new URL('/login', request.url)

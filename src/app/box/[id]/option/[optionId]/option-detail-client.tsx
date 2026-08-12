@@ -210,7 +210,7 @@ export function OptionDetailClient({
   return (
     <main className="flex min-h-dvh flex-col">
       {/* 헤더: 뒤로가기 + 햄버거 메뉴. 선택지 이름·액션은 아래 히어로로 이전 */}
-      <PageHeader fallbackHref={`/box/${boxId}`} right={<AppDrawer nickname={myNickname} />} />
+      <PageHeader fallbackHref={`/box/${boxId}`} right={<AppDrawer nickname={myNickname} isLoggedIn={!!currentUserId} />} />
 
       {/* 삭제 확인 모달 */}
       {confirmDelete && (

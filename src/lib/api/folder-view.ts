@@ -72,12 +72,14 @@ export async function loadFolderView(
   // filings(sort) 순서 유지 — 삭제/누락된 상자는 건너뜀
   const orderedBoxes = orderedIds.map(bid => boxMap.get(bid)).filter((b): b is RawOpenBox => !!b)
 
+  // 049: 참여자 2명+(함께 쓰는) 상자는 나만보기가 의미 없다 — 누군가의 링크가 shared=false로 남아있어도
+  // 항상 공유로 취급한다(다른 참여자가 이미 공유해둔 걸 한 명의 개인 설정으로 숨길 수 없게).
   const items: FolderBoxItem[] = orderedBoxes.map(b => ({
     box: b,
     participants: b.box_participants,
     isNew: new Date(b.updated_at) > new Date(lastSeenMap.get(b.id) ?? 0),
     isFavorite: favoriteSet.has(b.id),
-    shared: sharedMap.get(b.id) ?? true,
+    shared: b.box_participants.length > 1 ? true : (sharedMap.get(b.id) ?? true),
     addedByMe: addedByMeMap.get(b.id) ?? false,
   }))
 

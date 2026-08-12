@@ -71,18 +71,6 @@ export async function getBox(id: string): Promise<BoxWithParticipants | null> {
   return data as unknown as BoxWithParticipants
 }
 
-export async function getMessyBoxes(): Promise<Box[]> {
-  const supabase = createClient()
-  const { data, error } = await supabase
-    .from('boxes')
-    .select('*')
-    .is('closed_at', null)
-    .order('updated_at', { ascending: false })
-
-  if (error) throw error
-  return data ?? []
-}
-
 export async function updateBoxTitle(id: string, title: string): Promise<void> {
   const supabase = createClient()
   const { error } = await supabase

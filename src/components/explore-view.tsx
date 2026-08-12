@@ -107,7 +107,7 @@ function Empty({ icon, title, subtitle }: { icon: IconName; title: string; subti
 function PublicBoxRow({ box }: { box: PublicBoxCard }) {
   const done = !!box.closed_at
   return (
-    <AppLink href={`/p/${box.id}`} className="block">
+    <AppLink href={`/box/${box.id}`} className="block">
       <div className={`rounded-card border border-[#ECEADC] p-4 active:bg-butter-tint/40 ${done ? 'bg-paper/70' : 'bg-paper shadow-[0_2px_10px_rgba(42,42,39,0.05)]'}`}>
         <h3 className={`truncate text-[17px] font-extrabold leading-snug tracking-tight ${done ? 'text-ink-soft' : 'text-ink'}`}>{box.title}</h3>
 

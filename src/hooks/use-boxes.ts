@@ -5,7 +5,6 @@ import { useNav } from '@/lib/nav/nav'
 import {
   createBox,
   getBox,
-  getMessyBoxes,
   updateBoxTitle,
   updateBoxMemo,
   updateBoxDeadline,
@@ -64,13 +63,6 @@ export function useBox(id: string) {
     queryKey: ['box', id],
     queryFn: () => getBox(id),
     enabled: !!id,
-  })
-}
-
-export function useMessyBoxes() {
-  return useQuery({
-    queryKey: ['boxes', 'messy'],
-    queryFn: getMessyBoxes,
   })
 }
 

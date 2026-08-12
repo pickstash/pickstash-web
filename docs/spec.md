@@ -219,6 +219,7 @@ function getBoxStatus(box: { closed_at: string | null }): BoxStatus {
 > - **019 폴더 라이브 동기화**: `box_folders` AFTER INSERT/DELETE 트리거 `sync_folder_box_to_subscribers`(security definer) — 소유자 원본 폴더의 상자 추가/제외를 구독 복사본(`source_folder_id`)에 전파(추가=참여+분류, 제외=분류 제거, 폴더 삭제는 전파 안 함). 순수 DB, 앱 코드 변경 없음. §3-7.
 > - **033 상자 목적**: `boxes.mode`(`'decide'`|`'checklist'`, 생성 시 고정) + `options.checked_at`(체크형 전용, `decided_at`과 같은 결의 파생 상태) + `options.group_label`(선택적 카테고리) 추가. `create_box`에 `p_mode` 인자 추가. `get_box_view_by_invite_code`(014)도 세 필드를 함께 반환하도록 재정의. §3-8.
 > - **048 서랍 담기≠초대**: `box_folders` PK를 `(folder_id, box_id, added_by)`로(담은 사람별 스코프) 재구성, 서랍 자동참여 트리거 2종 폐기, `public.can_read_box(box_id)` 도입해 `boxes`·`box_participants`·`options`·`votes`·`comments`·`comment_likes` SELECT RLS를 "참여자 또는 서랍으로 접근 가능"으로 확장(쓰기는 그대로 참여자 전용), `join_box(p_box_id)`("함께하기", 승인 없이 즉시 참여) 신설, `set_box_folder_shared` RPC 폐기(단순 UPDATE로 대체). §3-7.
+> - **049 공개 상자 비로그인 열람**: `can_read_box`에 `visibility='public'` 조건 추가(anon 포함 SELECT 허용) + `can_join_box_instantly`(드로어 접근 전용) 신설해 `join_box`가 이걸 쓰도록 좁힘(공개 상자 발견자가 승인 없이 즉시 참여하는 회귀 방지 — 공개 상자는 기존 `request_to_join` 승인제를 그대로 씀). 미들웨어(`src/proxy.ts`)가 `/box/[id]`·`/box/[id]/option/[optionId]`만 비로그인 접근 허용. `/p/[id]`(구 공개 상자 요약 뷰·`get_public_box_view` 프론트 사용)는 폐기하고 `/box/[id]`로 리다이렉트. §6-1.
 > - **휴면(드롭 안 함)**: `boxes.current_round`, `votes.round`(항상 1), `votes.vote_type='dislike'`, options의 레거시 4컬럼. 코드가 아직 일부를 읽어(예: `current_round` 전달) 물리 삭제하지 않음.
 
 ```sql
@@ -492,7 +493,7 @@ create or replace function auto_decide_box(p_box_id uuid) returns void ...;
 - **분기**: 비로그인/비참여자 → 뷰어. 이미 **참여자**면 편집 가능한 `/box/[id]`로 즉시 리다이렉트. 유효하지 않은 코드 → "유효하지 않은 초대 링크예요."
 - **lazy commit**: 로그인 사용자가 마감 지난 `auto_deadline` 상자를 뷰어로 열면 `auto_decide_box` 호출 후 재조회(비로그인 열람은 쓰기 유발 없이 저장된 상태 그대로).
 
-**서랍 접근 읽기 전용과는 별개(§3-7, 048)**: 이건 비로그인 포함 누구나 초대 코드로 보는 별도 뷰어 페이지다. 반면 서랍(폴더)에 담겨 보이는 상자는 **로그인한 서랍 멤버가 `/box/[id]`를 그대로 열되** `isParticipant=false`라 편집 UI 대신 "함께하기" CTA가 뜨는 방식 — 같은 컴포넌트(`BoxDetailClient`)를 재사용하고, 신원도 가려지지 않는다(이미 서로 아는 서랍 멤버라 익명화 불필요). 둘 다 읽기 전용이지만 접근 경로·구현이 다르다.
+**서랍/공개 상자 접근 읽기 전용과는 별개(§3-7, 048/049)**: 초대 링크는 비로그인 포함 누구나 **초대 코드를 아는 사람**만 보는 별도 뷰어(`/invite/[code]`, 선택지 상세는 `/invite/[code]/option/[optionId]`) — 코드가 비공개 상자의 유일한 접근키라 RLS로 표현이 안 돼 `get_box_view_by_invite_code` 스냅샷 RPC로 남는다. 반면 **서랍으로 공유된 상자**와 **`visibility='public'`인 공개 상자**(둘러보기·프로필)는 049부터 `can_read_box` RLS(비로그인 포함)로 **`/box/[id]`를 그대로** 연다 — `isParticipant=false`면 편집 UI 대신 하단 CTA가 뜨는데, `canInstantJoin`(서랍 접근)이면 "함께하기"(즉시 참여, `join_box`), 아니면 "함께하기 신청"(승인제, `request_to_join`)으로 갈린다. 셋 다 신원이 가려지지 않는다(구 `/p/[id]` 공개 뷰의 "여럿 상자는 댓글 작성자 익명" 처리는 049에서 폐기 — 이제 `/p/[id]`는 `/box/[id]`로 리다이렉트만 한다).
 
 ### 초대 플로우 (3가지 방식)
 1. **카카오톡 초대**: Kakao JS SDK `Share.sendDefault`로 초대 메시지 전송 (제목: 상자 이름, 버튼: 초대링크)

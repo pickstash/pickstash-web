@@ -121,7 +121,11 @@ export async function setBoxFolders(
   }
 }
 
-/** 내가 담은 링크의 공유/나만 토글(048) — 참여자 동기화 없음(가시성≠참여). RLS가 added_by=본인으로 제한. */
+/**
+ * 나(참여자)의 공유/나만 토글(048/049) — 최초로 담은 사람이 아니어도, 그 상자의 참여자면
+ * 자기 몫의 링크를 독립적으로 갖는다(없으면 upsert로 생성). RLS insert는 참여자만 허용
+ * (is_box_participant) — 참여자가 아니면 여기서 막힌다. 수정은 added_by=본인 것만.
+ */
 export async function setBoxFolderShared(folderId: string, boxId: string, shared: boolean): Promise<void> {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -129,10 +133,7 @@ export async function setBoxFolderShared(folderId: string, boxId: string, shared
   // added_by(048)는 types.ts 미갱신 컬럼 — 저장소 관례대로 캐스팅.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase.from('box_folders') as any)
-    .update({ shared })
-    .eq('folder_id', folderId)
-    .eq('box_id', boxId)
-    .eq('added_by', user.id)
+    .upsert({ folder_id: folderId, box_id: boxId, added_by: user.id, shared }, { onConflict: 'folder_id,box_id,added_by' })
   if (error) throw error
 }
 

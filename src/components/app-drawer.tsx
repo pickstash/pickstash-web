@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { usePathname } from 'next/navigation'
 import { useNav, AppLink } from '@/lib/nav/nav'
 import { signOut } from '@/lib/api/auth'
 import { Icon } from '@/components/icon'
@@ -27,6 +28,8 @@ function detectBrowser(): BrowserType {
 
 interface AppDrawerProps {
   nickname: string
+  /** 049: 비로그인 공개 상자 열람 등에서 게스트 상태로 그린다(로그아웃 대신 로그인 링크). 기본 true. */
+  isLoggedIn?: boolean
 }
 
 /** 드로어 폴더 진입 — 무한 목록 대신 '폴더 모아보기'(/folders) 한 줄. 폴더가 많아도 드로어가 안 길어진다. */
@@ -46,11 +49,12 @@ function DrawerFolders({ onNavigate }: { onNavigate: () => void }) {
   )
 }
 
-export function AppDrawer({ nickname }: AppDrawerProps) {
+export function AppDrawer({ nickname, isLoggedIn = true }: AppDrawerProps) {
   const [open, setOpen] = useState(false)
   const [browser, setBrowser] = useState<BrowserType | null>(null)
   const [pwaPrompt, setPwaPrompt] = useState<PwaPrompt | null>(null)
   const nav = useNav()
+  const pathname = usePathname()
   useBodyScrollLock(open)
 
   useEffect(() => {
@@ -98,8 +102,14 @@ export function AppDrawer({ nickname }: AppDrawerProps) {
           <div className="absolute inset-0 bg-ink/40" onClick={() => setOpen(false)} />
           <div className="absolute inset-y-0 right-0 flex w-72 flex-col rounded-l-sheet bg-paper shadow-[-8px_0_24px_rgba(42,42,39,0.1)]">
             <div className="border-b border-[#F1EFE0] px-5 pt-12 pb-5">
-              <p className="text-[13px] text-ink-faint">안녕하세요</p>
-              <p className="mt-0.5 text-[17px] font-extrabold tracking-tight text-ink">{nickname}님</p>
+              {isLoggedIn ? (
+                <>
+                  <p className="text-[13px] text-ink-faint">안녕하세요</p>
+                  <p className="mt-0.5 text-[17px] font-extrabold tracking-tight text-ink">{nickname}님</p>
+                </>
+              ) : (
+                <p className="mt-0.5 text-[17px] font-extrabold tracking-tight text-ink">구경 중이에요</p>
+              )}
             </div>
 
             <nav className="flex-1 space-y-1 px-2.5 py-4">
@@ -112,15 +122,17 @@ export function AppDrawer({ nickname }: AppDrawerProps) {
                 홈으로
               </AppLink>
 
-              <DrawerFolders onNavigate={() => setOpen(false)} />
+              {isLoggedIn && <DrawerFolders onNavigate={() => setOpen(false)} />}
 
-              <div className="pt-3">
-                <p className="px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.08em] text-ink-faint">마이페이지</p>
-                <AppLink href="/profile" onClick={() => setOpen(false)} className="flex items-center rounded-[14px] px-3 py-2.5 text-sm font-semibold text-ink hover:bg-cream active:bg-butter-tint">
-                  프로필 관리
-                </AppLink>
-                {/* 그룹 개념 정립 전까지 '그룹 관리' 숨김 */}
-              </div>
+              {isLoggedIn && (
+                <div className="pt-3">
+                  <p className="px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.08em] text-ink-faint">마이페이지</p>
+                  <AppLink href="/profile" onClick={() => setOpen(false)} className="flex items-center rounded-[14px] px-3 py-2.5 text-sm font-semibold text-ink hover:bg-cream active:bg-butter-tint">
+                    프로필 관리
+                  </AppLink>
+                  {/* 그룹 개념 정립 전까지 '그룹 관리' 숨김 */}
+                </div>
+              )}
             </nav>
 
             <div className="space-y-2 border-t border-[#F1EFE0] px-3.5 pb-10 pt-4">
@@ -180,12 +192,22 @@ export function AppDrawer({ nickname }: AppDrawerProps) {
                 </div>
               )}
 
-              <button
-                onClick={handleLogout}
-                className="w-full rounded-[14px] px-3 py-2.5 text-left text-sm font-semibold text-tomato hover:bg-tomato-tint"
-              >
-                로그아웃
-              </button>
+              {isLoggedIn ? (
+                <button
+                  onClick={handleLogout}
+                  className="w-full rounded-[14px] px-3 py-2.5 text-left text-sm font-semibold text-tomato hover:bg-tomato-tint"
+                >
+                  로그아웃
+                </button>
+              ) : (
+                <AppLink
+                  href={`/login?next=${encodeURIComponent(pathname)}`}
+                  onClick={() => setOpen(false)}
+                  className="block w-full rounded-[14px] bg-ink px-3 py-3 text-center text-sm font-bold text-cream active:opacity-80"
+                >
+                  로그인
+                </AppLink>
+              )}
             </div>
           </div>
         </div>,
