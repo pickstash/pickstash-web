@@ -13,7 +13,8 @@ export function CommentLikeButton({
 }: {
   count: number
   likedByMe: boolean
-  onToggle: () => void
+  /** 없으면(읽기 전용) 탭해도 토글되지 않고 롱프레스로 좋아요 명단만 볼 수 있다. */
+  onToggle?: () => void
   onShowLikers: () => void
 }) {
   const lp = useLongPress(() => {
@@ -24,7 +25,7 @@ export function CommentLikeButton({
     <button
       onClick={() => {
         if (lp.suppressClick()) return
-        onToggle()
+        onToggle?.()
       }}
       {...lp.handlers}
       className={`flex select-none items-center gap-1 text-[11px] font-bold ${likedByMe ? 'text-butter-dark' : 'text-ink-faint'}`}

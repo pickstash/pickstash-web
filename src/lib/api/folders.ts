@@ -76,20 +76,23 @@ export async function leaveFolder(folderId: string, leaveBoxes = false): Promise
   if (error) throw error
 }
 
-/** 이 상자가 들어 있는, 내가 멤버인 폴더 id 목록 (RLS가 내 폴더로 스코프). */
+/** 이 상자가 들어 있는, 내가 멤버인 폴더 id 목록 (내가 담은 링크만 — 048 added_by 스코프). */
 export async function getMyBoxFolderIds(boxId: string): Promise<string[]> {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
-  const { data } = await supabase.from('box_folders').select('folder_id').eq('box_id', boxId)
-  return (data ?? []).map(r => r.folder_id)
+  // added_by(048)는 types.ts 미갱신 컬럼 — 저장소 관례대로 캐스팅.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data } = await (supabase.from('box_folders') as any).select('folder_id').eq('box_id', boxId).eq('added_by', user.id)
+  return ((data ?? []) as { folder_id: string }[]).map(r => r.folder_id)
 }
 
 /**
- * 이 상자가 속할 폴더 집합을 folderIds로 맞춘다 (공유 목록 — 폴더 스코프).
- * 공유 폴더에 넣으면 트리거가 폴더 멤버 전원을 그 상자에 참여시킨다(초대).
+ * 이 상자가 속할 (내가 담은) 폴더 집합을 folderIds로 맞춘다.
+ * 048: 담기는 더 이상 초대가 아니다 — 서랍 멤버는 읽기 전용으로만 보고, 편집하려면 join_box로 직접 참여해야 한다.
+ * box_folders는 담은 사람(added_by)별로 스코프되어, 같은 상자를 여러 멤버가 각자 담고 각자 공개 여부를 정할 수 있다.
  */
-// sharedByFolder: 새로 담는 링크의 공유 여부(045). 기본 true(멤버 전원 공유). false=나만 보기.
+// sharedByFolder: 새로 담는 링크의 공유 여부(045). 기본 true(서랍 멤버 전원 조회 가능). false=나만 보기.
 // 이미 있는 링크는 ignoreDuplicates라 shared가 안 바뀐다(토글은 setBoxFolderShared로).
 export async function setBoxFolders(
   boxId: string,
@@ -97,29 +100,39 @@ export async function setBoxFolders(
   sharedByFolder: Record<string, boolean> = {},
 ): Promise<void> {
   const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
 
-  // 1) 더 이상 선택 안 된 폴더에서 제외 (RLS가 내가 멤버인 폴더로 스코프)
-  let del = supabase.from('box_folders').delete().eq('box_id', boxId)
+  // added_by(048)는 types.ts 미갱신 컬럼 — 저장소 관례대로 캐스팅.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const boxFolders = supabase.from('box_folders') as any
+
+  // 1) 더 이상 선택 안 된 폴더에서 내 링크만 제외 (남이 담은 링크는 내 소관이 아님)
+  let del = boxFolders.delete().eq('box_id', boxId).eq('added_by', user.id)
   if (folderIds.length > 0) del = del.not('folder_id', 'in', `(${folderIds.join(',')})`)
   const { error: delErr } = await del
   if (delErr) throw delErr
 
-  // 2) 새로 선택된 폴더에 추가 (이미 있으면 무시). 나만 담기는 shared=false로 INSERT → 트리거가 자동참여 스킵.
+  // 2) 새로 선택된 폴더에 내 링크로 추가 (이미 있으면 무시)
   if (folderIds.length > 0) {
-    const rows = folderIds.map(folderId => ({ folder_id: folderId, box_id: boxId, shared: sharedByFolder[folderId] ?? true }))
-    const { error } = await supabase
-      .from('box_folders')
-      .upsert(rows, { onConflict: 'folder_id,box_id', ignoreDuplicates: true })
+    const rows = folderIds.map(folderId => ({ folder_id: folderId, box_id: boxId, added_by: user.id, shared: sharedByFolder[folderId] ?? true }))
+    const { error } = await boxFolders.upsert(rows, { onConflict: 'folder_id,box_id,added_by', ignoreDuplicates: true })
     if (error) throw error
   }
 }
 
-// 폴더 링크 공유/나만 토글(045 RPC) — 공유↔나만 시 다른 멤버 참여자 추가/제거까지 서버가 동기화.
+/** 내가 담은 링크의 공유/나만 토글(048) — 참여자 동기화 없음(가시성≠참여). RLS가 added_by=본인으로 제한. */
 export async function setBoxFolderShared(folderId: string, boxId: string, shared: boolean): Promise<void> {
   const supabase = createClient()
-  // types.ts 미갱신 RPC(045) — 저장소 관례대로 캐스팅.
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  // added_by(048)는 types.ts 미갱신 컬럼 — 저장소 관례대로 캐스팅.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase.rpc as any)('set_box_folder_shared', { p_folder_id: folderId, p_box_id: boxId, p_shared: shared })
+  const { error } = await (supabase.from('box_folders') as any)
+    .update({ shared })
+    .eq('folder_id', folderId)
+    .eq('box_id', boxId)
+    .eq('added_by', user.id)
   if (error) throw error
 }
 
@@ -153,30 +166,40 @@ export async function getMyBoxesNotInFolder(folderId: string): Promise<BoxPicker
     .map(b => ({ id: b.id, title: b.title, isDone: !!b.closed_at, mode: b.mode === 'checklist' ? 'checklist' : 'decide' }))
 }
 
-/** 기존 상자(들)를 이 폴더에 담는다 (트리거가 폴더 멤버 전원을 그 상자에 참여시킴). 이미 있으면 무시. */
-// shared: 담는 링크의 공유 여부(045). 기본 true. false=나만 보기(트리거가 자동참여 스킵).
+/** 기존 상자(들)를 이 폴더에 내 링크로 담는다(048 — 초대 아님, 읽기 가시성만). 이미 있으면 무시. */
+// shared: 담는 링크의 공유 여부(045). 기본 true(서랍 멤버 전원 조회 가능). false=나만 보기.
 export async function addBoxesToFolder(folderId: string, boxIds: string[], shared = true): Promise<void> {
   if (boxIds.length === 0) return
   const supabase = createClient()
-  const rows = boxIds.map(boxId => ({ folder_id: folderId, box_id: boxId, shared }))
-  const { error } = await supabase
-    .from('box_folders')
-    .upsert(rows, { onConflict: 'folder_id,box_id', ignoreDuplicates: true })
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  const rows = boxIds.map(boxId => ({ folder_id: folderId, box_id: boxId, added_by: user.id, shared }))
+  // added_by(048)는 types.ts 미갱신 컬럼 — 저장소 관례대로 캐스팅.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase.from('box_folders') as any)
+    .upsert(rows, { onConflict: 'folder_id,box_id,added_by', ignoreDuplicates: true })
   if (error) throw error
 }
 
-/** 이 상자를 특정 폴더에서만 뺀다 (공유 목록에서 제거 — 전원 반영. 상자 참여는 유지). */
+/** 내가 담은 상자를 이 폴더에서 뺀다 (남이 담은 링크는 내 소관이 아니라 RLS가 막는다). */
 export async function removeBoxFromFolder(boxId: string, folderId: string): Promise<void> {
   const supabase = createClient()
-  const { error } = await supabase.from('box_folders').delete().eq('box_id', boxId).eq('folder_id', folderId)
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase.from('box_folders') as any).delete().eq('box_id', boxId).eq('folder_id', folderId).eq('added_by', user.id)
   if (error) throw error
 }
 
-/** 폴더 안 상자 순서 저장 (공유 — folder_id별 sort). */
+/** 폴더 안 상자 순서 저장 (내가 담은 링크의 sort만 — 남이 담은 항목은 내 소관이 아니라 호출부에서 제외해 넘긴다). */
 export async function reorderBoxFolders(folderId: string, orderedBoxIds: string[]): Promise<void> {
   const supabase = createClient()
   if (orderedBoxIds.length === 0) return
-  const rows = orderedBoxIds.map((boxId, i) => ({ folder_id: folderId, box_id: boxId, sort: i }))
-  const { error } = await supabase.from('box_folders').upsert(rows, { onConflict: 'folder_id,box_id' })
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  const rows = orderedBoxIds.map((boxId, i) => ({ folder_id: folderId, box_id: boxId, added_by: user.id, sort: i }))
+  // added_by(048)는 types.ts 미갱신 컬럼 — 저장소 관례대로 캐스팅.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase.from('box_folders') as any).upsert(rows, { onConflict: 'folder_id,box_id,added_by' })
   if (error) throw error
 }

@@ -34,6 +34,7 @@ export function OptionDetailScreen() {
       currentUserId={data.userId}
       myNickname={data.r.myNickname}
       participants={data.r.participants}
+      isParticipant={data.r.isParticipant}
     />
   );
 }

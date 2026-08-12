@@ -33,6 +33,7 @@ export type IconName =
   | 'bookmark'
   | 'pin'
   | 'lock'
+  | 'eye'
 
 function inner(name: IconName): ReactNode {
   switch (name) {
@@ -44,6 +45,14 @@ function inner(name: IconName): ReactNode {
         <>
           <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
           <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </>
+      )
+    case 'eye':
+      // 눈(읽기 전용/구경 중) — Feather 지오메트리
+      return (
+        <>
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+          <circle cx="12" cy="12" r="3" />
         </>
       )
     case 'pin':

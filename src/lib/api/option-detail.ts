@@ -6,6 +6,8 @@ type OptionRow = Database['public']['Tables']['options']['Row']
 type Participant = { id: string; nickname: string; avatar_url: string | null }
 
 // 선택지 상세 데이터 로더 — 웹·토스 공유. 가드는 status로 반환.
+// 048: boxes/options RLS가 참여자 아니어도 서랍 접근이면 읽기 허용 → isParticipant=false로 내려가
+//   셸이 댓글 작성·편집 UI를 숨긴 읽기 전용으로 렌더한다.
 export type OptionDetailData =
   | {
       status: 'ok'
@@ -17,9 +19,9 @@ export type OptionDetailData =
       checkable: boolean
       myNickname: string
       participants: Participant[]
+      isParticipant: boolean
     }
   | { status: 'not_found' }
-  | { status: 'forbidden' }
 
 export async function loadOptionDetail(
   supabase: SupabaseClient<Database>,
@@ -42,7 +44,7 @@ export async function loadOptionDetail(
   const box = boxData as typeof boxData & {
     box_participants: { user_id: string; profiles: Participant | null }[]
   }
-  if (!box.box_participants.find(p => p.user_id === userId)) return { status: 'forbidden' }
+  const isParticipant = !!box.box_participants.find(p => p.user_id === userId)
 
   const participants = box.box_participants
     .filter(p => p.profiles)
@@ -62,10 +64,11 @@ export async function loadOptionDetail(
     option,
     creator,
     round: box.current_round,
-    canVote: getBoxStatus(box) === 'OPEN',
+    canVote: isParticipant && getBoxStatus(box) === 'OPEN',
     checklist: box.mode === 'checklist',
     checkable: box.mode === 'checklist' && ((box as unknown as { checkable?: boolean }).checkable ?? false),
     myNickname: me?.nickname ?? '',
     participants,
+    isParticipant,
   }
 }

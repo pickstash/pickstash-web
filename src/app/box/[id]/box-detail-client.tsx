@@ -12,6 +12,7 @@ import {
   useDecideBox,
   useLeaveBox,
   useReopenBox,
+  useJoinBox,
 } from '@/hooks/use-boxes'
 import { useToggleFavorite } from '@/hooks/use-favorites'
 import { useFolders, useMyBoxFolders, useSetBoxFolders, useCreateFolder } from '@/hooks/use-folders'
@@ -39,6 +40,8 @@ interface BoxDetailClientProps {
   currentUserId: string
   initialOptions: Option[]
   initialIsFavorite: boolean
+  /** 048: 서랍 접근으로 읽기 전용 조회 중이면 false — 편집·투표는 숨기고 '함께하기' CTA를 보여준다. */
+  isParticipant: boolean
 }
 
 const DECISION_MODES: { value: DecisionMode; label: string; sub: string }[] = [
@@ -106,7 +109,7 @@ function PencilCircle({ children }: { children: ReactNode }) {
   )
 }
 
-export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions, initialIsFavorite }: BoxDetailClientProps) {
+export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions, initialIsFavorite, isParticipant }: BoxDetailClientProps) {
   const nav = useNav()
   const queryClient = useQueryClient()
   const [box, setBox] = useState(initialBox)
@@ -195,6 +198,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
   const decideBox = useDecideBox(box.id)
   const leaveBox = useLeaveBox()
   const reopenBox = useReopenBox(box.id)
+  const joinBox = useJoinBox(box.id)
   const toggleFavorite = useToggleFavorite(box.id)
   const { data: folders = [] } = useFolders()
   const { data: myFolderIds = [] } = useMyBoxFolders(box.id)
@@ -233,7 +237,8 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
   const showLikes = !isSolo && !isChecklist           // 혼자 상자·체크형 상자는 좋아요 미표시
   // 하단 1차 액션(최종 결정하기/정리완료로 표시) 노출 여부 — 없으면 추가 버튼이 풀폭이 된다.
   // 결정형은 마감투표(auto)여도 '최종 결정하기'로 즉시 수동 마감 가능(521efda) → 진행 중이면 항상 노출.
-  const showPrimaryAction = !isDone
+  // 048: 참여자만(읽기 전용 조회자는 결정할 수 없음).
+  const showPrimaryAction = !isDone && isParticipant
 
   // 폴더 지정/해제 (018: 다중 선택 토글, 모달 유지). 무효화로 체크 갱신.
   function applyFolder(folderId: string, shared = true) {
@@ -271,8 +276,8 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
     </div>
   )
 
-  // 마감 칩은 '마감 투표' 상자에서만 (직접 정하기 상자는 마감 없음). 참여자 누구나 수정.
-  const deadlineNode = !isAuto ? null : !isDone ? (
+  // 마감 칩은 '마감 투표' 상자에서만 (직접 정하기 상자는 마감 없음). 참여자만 수정 가능.
+  const deadlineNode = !isAuto ? null : !isDone && isParticipant ? (
     <button
       onClick={() => setDeadlineSheet(true)}
       className="flex items-center gap-1.5 rounded-full border border-line bg-paper px-3 py-1.5 text-[12px] font-bold text-ink-soft active:bg-cream"
@@ -313,11 +318,11 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
     )
   }
 
-  // 혼자 상자: 아바타 숨기고 초대 버튼만 (마감된 혼자 상자는 아무것도 안 보임)
+  // 혼자 상자: 아바타 숨기고 초대 버튼만 (마감된 혼자 상자·읽기 전용 조회자는 초대 버튼 안 보임)
   const participantsNode = isSolo
-    ? (isDone ? null : inviteEntry(inviteButton, '친구 초대'))
+    ? (isDone || !isParticipant ? null : inviteEntry(inviteButton, '친구 초대'))
     : inviteEntry(
-        <ParticipantAvatars participants={box.box_participants} trailing={isDone ? undefined : inviteButton} />,
+        <ParticipantAvatars participants={box.box_participants} trailing={isDone || !isParticipant ? undefined : inviteButton} />,
         isDone ? '함께한 사람 보기' : '친구 초대',
       )
 
@@ -735,6 +740,14 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
       )}
 
       <div className={`flex-1 space-y-4 px-5 pt-1 ${options.length > 0 ? 'pb-28' : 'pb-5'}`}>
+        {/* 048: 읽기 전용 조회 배너 — 뱃지 줄에 끼워 넣으면 붐벼서 전체 폭 배너로 분리. */}
+        {!isParticipant && (
+          <div className="-mx-5 flex items-center gap-1.5 border-b border-line bg-cream px-5 py-2.5 text-[12.5px] font-bold text-ink-soft">
+            <Icon name="eye" size={15} />
+            구경 중이에요 · 읽기 전용
+          </div>
+        )}
+
         {/* 히어로: 상태 · 질문 · 메모 · 메타 · 참여 */}
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-2">
@@ -772,7 +785,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
                     <Icon name="paperclip" size={20} />
                   </AppLink>
                 )}
-                <div className="relative">
+                {isParticipant && <div className="relative">
                   <button
                     onClick={() => setMenuOpen(v => !v)}
                     aria-label="상자 메뉴"
@@ -826,7 +839,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
                       </div>
                     </>
                   )}
-                </div>
+                </div>}
               </div>
             )}
           </div>
@@ -914,8 +927,8 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
               )}
             </div>
 
-            {/* 다시 정리하기 (번복) — 참여자 누구나 */}
-            {confirmReopen ? (
+            {/* 다시 정리하기 (번복) — 참여자만 */}
+            {!isParticipant ? null : confirmReopen ? (
               <div className="space-y-2.5 rounded-field bg-paper/70 p-3.5">
                 <p className="text-center text-[12.5px] leading-relaxed text-ink-soft">상자를 다시 열까요? 결정이 해제돼요.</p>
                 <div className="flex gap-2">
@@ -954,8 +967,8 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
           </p>
         )}
 
-        {/* 항목 체크 사용 토글 — 모아보기·진행중일 때. 생성 후에도 껐다 켤 수 있다(낙관적 반영). */}
-        {isChecklist && !isDone && (
+        {/* 항목 체크 사용 토글 — 모아보기·진행중·참여자일 때. 생성 후에도 껐다 켤 수 있다(낙관적 반영). */}
+        {isChecklist && !isDone && isParticipant && (
           <button
             type="button"
             onClick={() => {
@@ -979,17 +992,28 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
           boxId={box.id}
           round={box.current_round}
           initialOptions={initialOptions}
-          canVote={showLikes}
+          canVote={showLikes && isParticipant}
           showLikes={showLikes}
           checklist={isChecklist}
           checkable={checkable}
         />
       </div>
 
-      {/* 하단 고정 2단: ＋항목/선택지 추가하기 · 최종 결정하기(결정형)/정리완료로 표시(체크형).
-          목록 안 내려도 상시 추가(스크롤 불편 해소). 액션 없을 때(정리완료)는 추가가 풀폭. 0개면 목록 빈상태 CTA가 대체.
-          결정형은 마감투표(마감일)여도 '최종 결정하기'로 즉시 수동 마감 가능(521efda). */}
-      {options.length > 0 && (
+      {/* 048: 읽기 전용 조회자는 편집 대신 '함께하기' CTA. 승인 없이 즉시 참여자가 된다. */}
+      {!isParticipant ? (
+        <div className="fixed inset-x-0 bottom-[var(--app-nav-h,0px)] z-20 bg-cream px-5 pt-3 pb-[calc(var(--app-cta-safe,env(safe-area-inset-bottom))+0.75rem)] xl:inset-x-auto xl:bottom-10 xl:left-1/2 xl:w-[430px] xl:-translate-x-1/2 xl:rounded-b-[30px]">
+          <button
+            onClick={() => joinBox.mutate()}
+            disabled={joinBox.isPending}
+            className="w-full rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80 disabled:opacity-50"
+          >
+            {joinBox.isPending ? '참여하는 중…' : '함께하기'}
+          </button>
+        </div>
+      ) : options.length > 0 && (
+        /* 하단 고정 2단: ＋항목/선택지 추가하기 · 최종 결정하기(결정형)/정리완료로 표시(체크형).
+           목록 안 내려도 상시 추가(스크롤 불편 해소). 액션 없을 때(정리완료)는 추가가 풀폭. 0개면 목록 빈상태 CTA가 대체.
+           결정형은 마감투표(마감일)여도 '최종 결정하기'로 즉시 수동 마감 가능(521efda). */
         <div className="fixed inset-x-0 bottom-[var(--app-nav-h,0px)] z-20 grid grid-cols-2 gap-2.5 bg-cream px-5 pt-3 pb-[calc(var(--app-cta-safe,env(safe-area-inset-bottom))+0.75rem)] xl:inset-x-auto xl:bottom-10 xl:left-1/2 xl:w-[430px] xl:-translate-x-1/2 xl:rounded-b-[30px]">
           {/* 결정형만 하단 1차 액션. 모아보기(리스트)는 '정리완료' 개념이 없어 버튼 없음 → 추가가 풀폭. */}
           {showPrimaryAction && !isChecklist && (
@@ -1041,7 +1065,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
                 </div>
               ))}
             </div>
-            {!isDone && (
+            {!isDone && isParticipant && (
               <button
                 onClick={() => { setMembersOpen(false); setInvitePicked(new Set()); setInviteOpen(true) }}
                 className="flex w-full items-center justify-center gap-2 rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80"

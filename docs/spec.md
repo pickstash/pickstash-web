@@ -155,14 +155,16 @@ function getBoxStatus(box: { closed_at: string | null }): BoxStatus {
 - **상태 가로지름 / 미분류 / 진입**: 폴더 뷰(`/folder/[id]`)는 그 폴더의 상자 전체를 상태(어질러진/정리된) 무관 노출. 어느 폴더에도 없는 상자는 기존 창고에 그대로(폴더는 추가 뷰). 드로어 "폴더" 섹션(내 폴더 목록 + 새 폴더) + 상자 상세 "폴더 지정"(다중 선택).
 - **라이프사이클 (상자 규칙 미러 — 무오너·누구나 동등)**:
   - **상자 추가/빼기·이름변경**: 멤버 누구나. 단일 객체라 **전원에게 즉시 반영**(복사·동기화 개념 자체가 없음).
-  - **상자 추가 = 초대 (단, 링크별 공유/나만 — v3 2026-08-12)**: 폴더에 상자를 넣으면 기본은 **폴더 멤버 전원이 그 상자 참여자로 등록**(트리거, `on conflict do nothing`). 단 `box_folders.shared`(기본 `true`) 플래그로 링크마다 제어한다 — **담는 시점에 "나만 보기"를 누르면 `shared=false`로 담겨** 자동참여 트리거가 스킵되고 **나만 참여자**로 남는다(다른 멤버의 폴더뷰·초대뷰어에서 안 보임). 상자는 원래 비공개 객체이고 서랍은 공유 수단일 뿐 — "이 서랍에 담을 때 공유할지/나만 볼지"를 고르는 것. **플래그는 (folder,box) 링크별**이라 같은 상자를 A서랍엔 공유·B서랍엔 나만으로 담을 수 있다(여러 서랍 안전). 나중에 폴더 상세에서 링크별로 토글(`set_box_folder_shared` — 공유↔나만 시 다른 멤버를 참여자에 추가/제거, 다른 공유 폴더로 정당화되는 멤버는 유지).
-  - **상자 빼기 = 폴더 분류만 제거**: 폴더 목록에서만 빠지고 **상자 참여는 유지**(전원). 상자는 자기 라이프사이클(마지막 참여자 나가야 소멸)로만 사라진다. ↔ "추가=초대"와 비대칭이나, 빼기로 참여를 끊으면 남의 투표·상자를 파괴할 수 있어 의도적.
-  - **참여(초대 링크)**: `folder_members` 등록 → 트리거가 **그 폴더의 모든 상자에 참여자로 등록**. 이미 멤버면 멱등.
-  - **나가기(멤버 2명+)**: 나만 `folder_members`에서 빠지고 폴더는 남은 멤버에게 유지. 나갈 때 **"상자에서도 나갈까요?"**(기본 꺼짐=폴더만). 켜면 그 폴더의 상자에서도 나감 — 단 **내가 아직 멤버인 다른 폴더에 든 상자는 제외**(멀티폴더 안전).
+  - **상자 추가 = 초대 아님, 가시성 링크(v4 2026-08-12, 048)**: "담기"와 "참여(편집권)"는 완전히 분리된 축이다. 서랍에 상자를 담아도 **더 이상 서랍 멤버가 자동으로 그 상자의 참여자가 되지 않는다.** 대신 서랍 멤버는 담긴 상자를 **읽기 전용으로 조회**할 수 있고(§6-1 뷰어와 같은 경험, `/box/[id]`를 그대로 열되 편집 UI가 숨고 "함께하기" CTA가 뜬다), 편집·투표하려면 "함께하기"를 눌러 **승인 없이 즉시 참여자가 된다**(`join_box` RPC — 오남용 문제가 생기면 승인제로 바꿀 수 있는 잠정 결정). `box_folders`는 **담은 사람(`added_by`)별로 스코프**된다 — 같은 상자를 서랍 멤버 여러 명이 각자 따로 담을 수 있고, 각자 `shared`(기본 `true`)로 "이 서랍 멤버 전원에게 보이게 할지 / 나만 볼지"를 독립적으로 정한다(초대 여부와 무관, 담긴 링크 단위). 예: 내 개인 체크리스트를 공유 서랍에 나만 보기로 담아도 다른 멤버에겐 안 보이고, 그 상자를 함께 쓰는 상대가 같은 서랍에 독립적으로 담고 공개로 정하면 상대 쪽 링크로만 보인다.
+  - **상자 빼기 = 내가 담은 링크만 제거**: 남이 담은(공유한) 링크는 내 소관이 아니라 뺄 수 없다(RLS가 `added_by=본인`으로 제한). 상자 참여와는 무관 — 참여 중이면 그대로 유지.
+  - **서랍 초대**: `folder_members` 등록만 — **더 이상 상자 참여를 유발하지 않는다.** 초대된 사람은 그 서랍에 공유(`shared=true`)된 상자를 읽기 전용으로 볼 수 있을 뿐이다.
+  - **나가기(멤버 2명+)**: 나만 `folder_members`에서 빠지고 폴더는 남은 멤버에게 유지. "상자에서도 나갈까요?" 옵션은 폐기(더 이상 담기=참여가 아니므로 무의미) — 나가면 그냥 내가 담았던 링크가 읽기 접근에서 빠질 뿐, 실제 참여 중인 상자는 별개로 그대로 유지된다.
   - **삭제(멤버 1명=나 / 개인 폴더)**: 폴더 소멸. **마지막 멤버가 나가면 폴더 자동 소멸**(트리거 — 상자의 "마지막 나감→삭제"와 동일). `box_folders`는 cascade, **상자 자체는 유지**. 공유 폴더 "통째 삭제" 액션은 **없음**(무오너 — 각자 나가서 마지막이 소멸). 즉 여럿이면 **"나가기"**, 혼자면 **"삭제"**(상자 버튼 규칙과 동일).
-- **공유 링크 (§6-1 미러)**: `folders.invite_code`(8자) → `/folder-invite/[code]`. 비로그인 뷰어(폴더 + 공유 상자 목록, 각 상자는 상자 읽기전용 뷰어로). 로그인 후 참여 → `join_folder_by_invite_code`(멤버 등록, 멱등). 이미 멤버면 `/folder/[id]`로 리다이렉트.
-- **RPC/트리거**: `get_folder_by_invite_code`·`get_folder_view_by_invite_code`(definer, **`shared=false` 상자 제외** — 045)·`join_folder_by_invite_code`·`leave_folder(p_folder_id, p_leave_boxes)`·`set_box_folder_shared(p_folder_id, p_box_id, p_shared)`(045). 트리거 3종 — ① `box_folders` INSERT→(**`shared`일 때만**) 멤버 전원 상자 참여, ② `folder_members` INSERT→그 폴더의 **공유 상자**에만 참여, ③ `folder_members` DELETE→멤버 0이면 폴더 삭제.
-- **폐기(v1 018/019)**: 복사본 모델(`folders.user_id`·`source_folder_id`, per-user `box_folders(user_id,…)`, `sync_folder_box_to_subscribers` 트리거)은 **021에서 단일 공유 객체로 이관 후 폐기**. ⚠️ box_folders 스키마 변경 = 파괴적 마이그레이션(적용 전 백업 권장).
+- **공유 링크 (§6-1 미러)**: `folders.invite_code`(8자) → `/folder-invite/[code]`. 비로그인 뷰어(폴더 + `shared=true`인 상자 목록, 각 상자는 상자 읽기전용 뷰어로). 로그인 후 참여 → `join_folder_by_invite_code`(멤버 등록, 멱등 — **상자 참여는 더 이상 유발하지 않음**). 이미 멤버면 `/folder/[id]`로 리다이렉트.
+- **읽기 접근 RLS (048)**: `public.can_read_box(box_id)` — 참여자이거나, **내가 멤버인 서랍에 (내가 담았거나 `shared=true`로) 담긴 상자**면 읽기 허용. `boxes`·`box_participants`·`options`·`votes`·`comments`·`comment_likes`의 SELECT 정책이 전부 이 함수를 쓴다. **쓰기(insert/update/delete) 정책은 그대로 참여자 전용** — 읽기만 넓어졌다.
+- **RPC/트리거**: `get_folder_by_invite_code`·`get_folder_view_by_invite_code`(definer, `shared=true`인 링크만 box_id로 dedupe)·`join_folder_by_invite_code`·`leave_folder(p_folder_id, p_leave_boxes)`·`join_box(p_box_id)`(048, "함께하기" — `can_read_box`로 접근 재검증 후 승인 없이 즉시 `box_participants` insert). 서랍 자동참여 트리거(구 `folder_box_added_join`·`folder_member_added_join`)는 **048에서 완전 폐기**. `set_box_folder_shared` RPC도 폐기 — 이제 참여자 동기화가 필요 없어(가시성≠참여) 앱이 `box_folders`를 직접 UPDATE한다(RLS가 `added_by=본인`으로 제한).
+- **범위 밖(미결정)**: 둘러보기(공개 탐색)에서 발견한 상자를 서랍에 담을 수 있게 할지는 아직 정하지 않았다 — §8 Later 참고. 공개 탐색의 `request_to_join`(041, 승인제 참여)은 이번 변경과 무관하게 그대로 유지된다.
+- **폐기 이력**: v1 018/019 복사본 모델(`folders.user_id`·`source_folder_id`, per-user `box_folders(user_id,…)`) → 021에서 단일 공유 객체로 이관. v3(045) "담기=자동초대(링크별 shared 토글)" → **v4(048)에서 자동참여 자체를 폐기**하고 가시성/참여를 완전히 분리. ⚠️ box_folders 스키마 변경(PK를 `(folder_id, box_id, added_by)`로) = 파괴적 마이그레이션(적용 전 백업 권장).
 
 ### 3-8. 상자 목적 — 결정형 / 체크형 (`boxes.mode`, 033, 2026-08-11 추가)
 
@@ -216,6 +218,7 @@ function getBoxStatus(box: { closed_at: string | null }): BoxStatus {
 > - **018 폴더 공유**: `folders.invite_code`·`folders.source_folder_id` 추가. **`box_folders` PK → `(user_id, box_id, folder_id)`**(상자 다중 폴더 포함). RPC 3종(`get_folder_by_invite_code`·`get_folder_view_by_invite_code`·`join_folder_by_invite_code`). §3-7.
 > - **019 폴더 라이브 동기화**: `box_folders` AFTER INSERT/DELETE 트리거 `sync_folder_box_to_subscribers`(security definer) — 소유자 원본 폴더의 상자 추가/제외를 구독 복사본(`source_folder_id`)에 전파(추가=참여+분류, 제외=분류 제거, 폴더 삭제는 전파 안 함). 순수 DB, 앱 코드 변경 없음. §3-7.
 > - **033 상자 목적**: `boxes.mode`(`'decide'`|`'checklist'`, 생성 시 고정) + `options.checked_at`(체크형 전용, `decided_at`과 같은 결의 파생 상태) + `options.group_label`(선택적 카테고리) 추가. `create_box`에 `p_mode` 인자 추가. `get_box_view_by_invite_code`(014)도 세 필드를 함께 반환하도록 재정의. §3-8.
+> - **048 서랍 담기≠초대**: `box_folders` PK를 `(folder_id, box_id, added_by)`로(담은 사람별 스코프) 재구성, 서랍 자동참여 트리거 2종 폐기, `public.can_read_box(box_id)` 도입해 `boxes`·`box_participants`·`options`·`votes`·`comments`·`comment_likes` SELECT RLS를 "참여자 또는 서랍으로 접근 가능"으로 확장(쓰기는 그대로 참여자 전용), `join_box(p_box_id)`("함께하기", 승인 없이 즉시 참여) 신설, `set_box_folder_shared` RPC 폐기(단순 UPDATE로 대체). §3-7.
 > - **휴면(드롭 안 함)**: `boxes.current_round`, `votes.round`(항상 1), `votes.vote_type='dislike'`, options의 레거시 4컬럼. 코드가 아직 일부를 읽어(예: `current_round` 전달) 물리 삭제하지 않음.
 
 ```sql
@@ -489,6 +492,8 @@ create or replace function auto_decide_box(p_box_id uuid) returns void ...;
 - **분기**: 비로그인/비참여자 → 뷰어. 이미 **참여자**면 편집 가능한 `/box/[id]`로 즉시 리다이렉트. 유효하지 않은 코드 → "유효하지 않은 초대 링크예요."
 - **lazy commit**: 로그인 사용자가 마감 지난 `auto_deadline` 상자를 뷰어로 열면 `auto_decide_box` 호출 후 재조회(비로그인 열람은 쓰기 유발 없이 저장된 상태 그대로).
 
+**서랍 접근 읽기 전용과는 별개(§3-7, 048)**: 이건 비로그인 포함 누구나 초대 코드로 보는 별도 뷰어 페이지다. 반면 서랍(폴더)에 담겨 보이는 상자는 **로그인한 서랍 멤버가 `/box/[id]`를 그대로 열되** `isParticipant=false`라 편집 UI 대신 "함께하기" CTA가 뜨는 방식 — 같은 컴포넌트(`BoxDetailClient`)를 재사용하고, 신원도 가려지지 않는다(이미 서로 아는 서랍 멤버라 익명화 불필요). 둘 다 읽기 전용이지만 접근 경로·구현이 다르다.
+
 ### 초대 플로우 (3가지 방식)
 1. **카카오톡 초대**: Kakao JS SDK `Share.sendDefault`로 초대 메시지 전송 (제목: 상자 이름, 버튼: 초대링크)
 2. **초대링크 복사**: `https://<도메인>/invite/<invite_code>` 클립보드 복사. 링크 클릭 시 OG 미리보기(상자 이름 + "함께 정하러 가기") 노출 → **랜딩 = 읽기 전용 뷰어(§6-1)로 로그인 전에 상자 전체 열람** → "카카오로 로그인하고 참여하기" → `box_participants` insert → 상자 상세로. *(구 미리보기 카드(`get_box_preview_by_invite_code`)는 뷰어로 대체됐고 RPC는 OG/메타용으로 잔존.)*
@@ -641,6 +646,7 @@ Later(미완/차기):
 - **다크모드** — 토큰화는 됨, `globals.css` 다크 값 대기.
 - 창고 목록 **검색·친구/그룹 필터** 완성, 친구 자동 등록.
 - **휴면 컬럼 정리**(`current_round`·`votes.round`·`dislike`·options 레거시 4컬럼) — 코드 의존 제거 후 드롭 검토.
+- **둘러보기(공개 탐색) 상자를 서랍에 담을 수 있게 할지 미결정**(048, §3-7) — 지금은 북마크 저장 또는 `request_to_join` 신청만 가능. 서랍 담기를 허용하면 "담기=가시성"과 어떻게 상호작용할지(비참여자가 공개 상자를 서랍에 담아 공유하는 것을 허용할지 등) 별도 논의 필요.
 
 ## 9. AI 작업 규칙
 

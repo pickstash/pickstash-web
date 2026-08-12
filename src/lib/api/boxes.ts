@@ -195,6 +195,18 @@ export async function leaveBox(id: string): Promise<void> {
   await supabase.from('bookmarks').delete().eq('box_id', id).eq('user_id', user.id)
 }
 
+/**
+ * "함께하기" — 서랍으로 읽기 전용 접근 중인(참여자 아닌) 상자에 승인 없이 즉시 참여(048).
+ * 서버 RPC(join_box)가 can_read_box로 접근 권한을 재검증한다 — 임의 box_id로는 참여 불가.
+ */
+export async function joinBox(id: string): Promise<void> {
+  const supabase = createClient()
+  // types.ts 미갱신 RPC(048) — 저장소 관례대로 캐스팅.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase.rpc as any)('join_box', { p_box_id: id })
+  if (error) throw error
+}
+
 export async function markAllSeen(): Promise<void> {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()

@@ -32,6 +32,7 @@ export function BoxDetailScreen() {
       currentUserId={data.userId}
       initialOptions={data.r.options}
       initialIsFavorite={data.r.isFavorite}
+      isParticipant={data.r.isParticipant}
     />
   );
 }

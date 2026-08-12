@@ -30,7 +30,8 @@ export interface FolderBoxItem {
   participants: CardParticipant[]
   isNew: boolean
   isFavorite: boolean
-  shared: boolean // 이 폴더에서 공유(멤버 전원) vs 나만 보기(045)
+  shared: boolean // 이 링크가 공유(서랍 멤버 전원 조회 가능) vs 나만 보기(045)
+  addedByMe: boolean // 이 상자를 내가 담았는지(048) — 남이 담은 링크는 공유/나만 토글·빼기·순서 편집 권한이 없다
 }
 
 export type FolderMember = { user_id: string; profiles: { id: string; nickname: string; avatar_url: string | null } | null }
@@ -165,7 +166,9 @@ export function FolderView({ folderId, folderName, inviteCode, members, initialB
   }
 
   function finishEdit() {
-    if (items.length > 0) reorder.mutate(items.map(i => i.box.id))
+    // 남이 담은(내 소관 아닌) 항목은 순서 저장 대상에서 제외 — 안 그러면 내 이름으로 새로 담아버리게 된다.
+    const mine = items.filter(i => i.addedByMe).map(i => i.box.id)
+    if (mine.length > 0) reorder.mutate(mine)
     setEditing(false)
   }
 
@@ -264,13 +267,17 @@ export function FolderView({ folderId, folderName, inviteCode, members, initialB
               >
                 <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
               </button>
-              <button
-                onClick={() => exclude(item.box.id)}
-                aria-label="서랍에서 빼기"
-                className="flex h-8 w-8 items-center justify-center rounded-full text-tomato active:bg-tomato-tint"
-              >
-                <Icon name="close" size={17} strokeWidth={2.4} />
-              </button>
+              {item.addedByMe ? (
+                <button
+                  onClick={() => exclude(item.box.id)}
+                  aria-label="서랍에서 빼기"
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-tomato active:bg-tomato-tint"
+                >
+                  <Icon name="close" size={17} strokeWidth={2.4} />
+                </button>
+              ) : (
+                <span className="w-8 shrink-0 text-center text-[10px] font-bold text-ink-faint">공유됨</span>
+              )}
             </div>
           ))
         ) : (
@@ -282,8 +289,8 @@ export function FolderView({ folderId, folderName, inviteCode, members, initialB
                 isNew={item.isNew}
                 isFavorite={item.isFavorite}
               />
-              {/* 공유 폴더에서만 상자별 공유/나만 토글. 나만=이 상자는 나만 봄(멤버 제외). */}
-              {isShared && (
+              {/* 공유 폴더 + 내가 담은 링크에서만 상자별 공유/나만 토글(048). 남이 담은 링크는 내 소관이 아님. */}
+              {isShared && item.addedByMe && (
                 <button
                   type="button"
                   onClick={e => { e.preventDefault(); e.stopPropagation(); toggleShared(item.box.id, item.shared) }}
@@ -429,7 +436,7 @@ export function FolderView({ folderId, folderName, inviteCode, members, initialB
             <p className="text-[15px] font-extrabold text-ink">
               {isShared ? `함께 정리 중 ${members.length}명` : '아직 나만 있어요'}
             </p>
-            <p className="mb-4 mt-0.5 text-[12px] text-ink-soft">초대하면 이 서랍의 상자를 함께 정리할 수 있어요.</p>
+            <p className="mb-4 mt-0.5 text-[12px] text-ink-soft">초대하면 이 서랍에 공유된 상자를 볼 수 있어요. 함께 정리하려면 상자에서 &lsquo;함께하기&rsquo;를 눌러야 해요.</p>
             <div className="mb-4 max-h-[38vh] space-y-2.5 overflow-y-auto">
               {members.map(m => (
                 <div key={m.user_id} className="flex items-center gap-3">
@@ -463,8 +470,8 @@ export function FolderView({ folderId, folderName, inviteCode, members, initialB
           <div className="absolute inset-0 bg-ink/45" onClick={() => { setInviteOpen(false); setInvitePicked(new Set()) }} />
           <div className="relative mx-auto flex max-h-[80vh] w-full max-w-[430px] flex-col rounded-t-sheet bg-paper px-5 pb-10 pt-3">
             <div className="mx-auto mb-4 h-1 w-9 rounded-full bg-line" />
-            <p className="text-[15px] font-extrabold text-ink">함께 정리할 사람 초대</p>
-            <p className="mb-3 mt-0.5 text-[12px] text-ink-soft">전에 같이 정한 분은 바로, 처음이면 새롭게 공유로 초대해요.</p>
+            <p className="text-[15px] font-extrabold text-ink">서랍에 초대</p>
+            <p className="mb-3 mt-0.5 text-[12px] text-ink-soft">초대된 사람은 공유된 상자를 볼 수 있어요. 편집은 상자별로 &lsquo;함께하기&rsquo;를 눌러야 해요.</p>
 
             {/* 함께했던 사람 (다중 선택 → 바로 서랍 참여) */}
             <div className="min-h-[3rem] flex-1 overflow-y-auto">

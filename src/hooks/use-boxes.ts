@@ -16,6 +16,7 @@ import {
   autoDecideBox,
   deleteBox,
   leaveBox,
+  joinBox,
   markAllSeen,
   getShakingBoxes,
   type CreateBoxInput,
@@ -202,6 +203,19 @@ export function useLeaveBox() {
       invalidateBoxViews(queryClient)
       nav.refresh() // 웹 RSC(홈·목록) 재요청 — 나간 상자가 이전 화면에 남지 않게
       nav.replace('/') // 나간 상자로 back하면 '참여자 아님→/' 리다이렉트 루프 → 교체
+    },
+  })
+}
+
+/** "함께하기" — 읽기 전용으로 보던 상자에 즉시 참여(048). 성공하면 편집 UI가 나타나야 하므로 상세를 무효화. */
+export function useJoinBox(boxId: string) {
+  const nav = useNav()
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => joinBox(boxId),
+    onSuccess: () => {
+      invalidateBoxViews(queryClient, boxId)
+      nav.refresh()
     },
   })
 }

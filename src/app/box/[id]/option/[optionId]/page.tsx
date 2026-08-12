@@ -16,7 +16,6 @@ export default async function OptionDetailPage({
 
   const r = await loadOptionDetail(supabase, boxId, optionId, user.id)
   if (r.status === 'not_found') notFound()
-  if (r.status === 'forbidden') redirect('/')
 
   return (
     <OptionDetailClient
@@ -30,6 +29,7 @@ export default async function OptionDetailPage({
       currentUserId={user.id}
       myNickname={r.myNickname}
       participants={r.participants}
+      isParticipant={r.isParticipant}
     />
   )
 }

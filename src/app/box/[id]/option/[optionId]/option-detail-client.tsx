@@ -52,6 +52,8 @@ interface OptionDetailClientProps {
   currentUserId: string
   myNickname: string
   participants: Participant[]
+  /** 048: 서랍 접근으로 읽기 전용 조회 중이면 false — 편집·댓글 작성 등 쓰기 UI를 숨긴다. */
+  isParticipant: boolean
 }
 
 export function OptionDetailClient({
@@ -65,6 +67,7 @@ export function OptionDetailClient({
   currentUserId,
   myNickname,
   participants,
+  isParticipant,
 }: OptionDetailClientProps) {
   // 서버에서 받은 초기값으로 시작하되, 수정 직후 이동해와도 최신 이름·본문이 보이도록 라이브 쿼리로 덮어쓴다.
   const { data: fetchedOption } = useOption(initialOption.id)
@@ -122,24 +125,26 @@ export function OptionDetailClient({
         <CommentLikeButton
           count={like.count}
           likedByMe={like.likedByMe}
-          onToggle={() => toggleCommentLike.mutate({ commentId: comment.id, likedByMe: like.likedByMe })}
+          onToggle={isParticipant ? () => toggleCommentLike.mutate({ commentId: comment.id, likedByMe: like.likedByMe }) : undefined}
           onShowLikers={() => setLikersComment(comment.id)}
         />
-        <button
-          onClick={() => {
-            setReplyingTo({
-              parentId: topLevelId,
-              mention: comment.profiles
-                ? { id: comment.user_id, nickname: comment.profiles.nickname }
-                : undefined,
-            })
-            setEditingId(null)
-          }}
-          className="text-[11px] font-bold text-ink-faint"
-        >
-          답글
-        </button>
-        {comment.user_id === currentUserId && (
+        {isParticipant && (
+          <button
+            onClick={() => {
+              setReplyingTo({
+                parentId: topLevelId,
+                mention: comment.profiles
+                  ? { id: comment.user_id, nickname: comment.profiles.nickname }
+                  : undefined,
+              })
+              setEditingId(null)
+            }}
+            className="text-[11px] font-bold text-ink-faint"
+          >
+            답글
+          </button>
+        )}
+        {isParticipant && comment.user_id === currentUserId && (
           <>
             <button
               onClick={() => { setEditingId(comment.id); setReplyingTo(null) }}
@@ -280,6 +285,7 @@ export function OptionDetailClient({
               {checklist && checkable && (
                 <button
                   type="button"
+                  disabled={!isParticipant}
                   onClick={() => toggleChecked.mutate({ optionId: option.id, checked: !option.checked_at })}
                   aria-pressed={!!option.checked_at}
                   aria-label={option.checked_at ? '체크 해제' : '체크'}
@@ -294,8 +300,8 @@ export function OptionDetailClient({
                 {option.name}
               </h1>
             </div>
-            {/* 편집 메뉴 — 참여자 누구나 (008 RLS). 수정·삭제를 한 곳에. */}
-            <div className="relative shrink-0">
+            {/* 편집 메뉴 — 참여자만 (008 RLS). 수정·삭제를 한 곳에. */}
+            {isParticipant && <div className="relative shrink-0">
               <button
                 onClick={() => setMenuOpen(v => !v)}
                 className="mt-1 flex items-center gap-1 text-[12.5px] font-semibold text-ink-faint active:text-ink"
@@ -322,7 +328,7 @@ export function OptionDetailClient({
                   </div>
                 </>
               )}
-            </div>
+            </div>}
           </div>
 
           {/* 생성자 · 생성일 */}
@@ -360,7 +366,7 @@ export function OptionDetailClient({
                     key={block.id}
                     text={block.text}
                     className="space-y-1.5 text-[13.5px] leading-relaxed text-ink"
-                    onToggleCheck={lineIndex => toggleCheck(block.id, lineIndex)}
+                    onToggleCheck={isParticipant ? lineIndex => toggleCheck(block.id, lineIndex) : undefined}
                   />
                 )
               }
@@ -476,16 +482,20 @@ export function OptionDetailClient({
             })}
           </div>
 
-          <CommentComposer
-            key={composerKey}
-            participants={participants}
-            currentUserId={currentUserId}
-            placeholder="댓글을 입력하세요"
-            submitLabel="등록"
-            isPending={createComment.isPending}
-            compact
-            onSubmit={body => createComment.mutate({ body }, { onSuccess: () => setComposerKey(k => k + 1) })}
-          />
+          {isParticipant ? (
+            <CommentComposer
+              key={composerKey}
+              participants={participants}
+              currentUserId={currentUserId}
+              placeholder="댓글을 입력하세요"
+              submitLabel="등록"
+              isPending={createComment.isPending}
+              compact
+              onSubmit={body => createComment.mutate({ body }, { onSuccess: () => setComposerKey(k => k + 1) })}
+            />
+          ) : (
+            <p className="text-center text-[12px] text-ink-faint">함께하기를 누르면 댓글을 남길 수 있어요</p>
+          )}
         </div>
       </div>
 

@@ -13,7 +13,6 @@ export default async function BoxDetailPage({ params }: { params: Promise<{ id: 
 
   const r = await loadBoxDetail(supabase, id, user.id)
   if (r.status === 'not_found') notFound()
-  if (r.status === 'forbidden') redirect('/')
 
   return (
     <BoxDetailClient
@@ -21,6 +20,7 @@ export default async function BoxDetailPage({ params }: { params: Promise<{ id: 
       currentUserId={user.id}
       initialOptions={r.options}
       initialIsFavorite={r.isFavorite}
+      isParticipant={r.isParticipant}
     />
   )
 }

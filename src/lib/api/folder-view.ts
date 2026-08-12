@@ -24,17 +24,31 @@ export async function loadFolderView(
     .order('joined_at', { ascending: true })
   const members = (memberRows ?? []) as unknown as FolderMember[]
 
+  // 048: box_folders는 담은 사람(added_by)별로 스코프된다 — 같은 상자를 여러 멤버가 각자 담을 수 있다.
+  // RLS가 이미 (내가 담았거나 shared=true인) 링크만 돌려주므로, 여기서는 box_id로 dedupe만 하면 된다.
+  // 내가 담은 행이 있으면 그 행(shared·sort)을 쓰고, 없으면(남이 공유해서 보이는 것) shared=true·addedByMe=false.
   const { data: filings } = await supabase
     .from('box_folders')
-    .select('box_id, sort, shared')
+    .select('box_id, sort, shared, added_by')
     .eq('folder_id', folderId)
     // sort 동점이면 created_at로 확정 — tiebreaker 없으면 재조회마다 순서가 뒤섞여
     // 공유/나만 토글(refetch) 시 상자 순서가 바뀌는 버그가 난다.
     .order('sort', { ascending: true })
     .order('created_at', { ascending: true })
-  const filingRows = (filings ?? []) as unknown as { box_id: string; sort: number; shared: boolean }[]
-  const orderedIds = filingRows.map(f => f.box_id)
-  const sharedMap = new Map(filingRows.map(f => [f.box_id, f.shared ?? true]))
+  const filingRows = (filings ?? []) as unknown as { box_id: string; sort: number; shared: boolean; added_by: string }[]
+
+  const orderedIds: string[] = []
+  const sharedMap = new Map<string, boolean>()
+  const addedByMeMap = new Map<string, boolean>()
+  for (const f of filingRows) {
+    const mine = f.added_by === userId
+    if (!orderedIds.includes(f.box_id)) orderedIds.push(f.box_id)
+    // 내 링크가 있으면 그 값으로 덮어쓴다(먼저 만난 남의 공유 링크보다 우선).
+    if (mine || !addedByMeMap.get(f.box_id)) {
+      sharedMap.set(f.box_id, mine ? (f.shared ?? true) : true)
+      addedByMeMap.set(f.box_id, mine)
+    }
+  }
 
   const [{ data: profile }, { data: participations }, { data: favs }] = await Promise.all([
     supabase.from('profiles').select('nickname').eq('id', userId).single(),
@@ -64,6 +78,7 @@ export async function loadFolderView(
     isNew: new Date(b.updated_at) > new Date(lastSeenMap.get(b.id) ?? 0),
     isFavorite: favoriteSet.has(b.id),
     shared: sharedMap.get(b.id) ?? true,
+    addedByMe: addedByMeMap.get(b.id) ?? false,
   }))
 
   // 홈 서랍 레일과 동일한 카드(체크진행률·인기리더·선택지N개·결정문구) — 선택지·투표 추가 조회.
