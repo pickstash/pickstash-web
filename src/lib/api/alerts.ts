@@ -6,10 +6,12 @@ export interface AlertItem {
   boxTitle: string
   optionId: string | null // 있으면 그 선택지 상세까지 이동(026 이후 활동)
   type: string
+  actorId: string // 행위자(join_requested면 신청자) — 알림함 내 수락/거절에 사용
   actorNickname: string
   meta: { option_name?: string; vote_type?: string }
   createdAt: string
   unseen: boolean
+  joinStatus?: 'pending' | 'approved' | 'rejected' // join_requested 항목의 처리 상태(046)
 }
 
 /**
@@ -34,9 +36,18 @@ export async function getAlerts(limit = 100): Promise<AlertItem[]> {
   )
   const lastSeenMap = new Map(participants.map(p => [p.box_id, new Date(p.last_seen_at)]))
 
+  // 참여 신청 처리 상태 — join_requested 항목을 pending/처리됨으로 구분(046). RLS: 참여자는 조회 가능.
+  // join_requests는 types.ts 미갱신 테이블 — 저장소 관례대로 캐스팅(listJoinRequests와 동일).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: reqData } = await (supabase.from('join_requests' as any) as any)
+    .select('box_id, user_id, status')
+    .in('box_id', boxIds)
+  const reqRows = (reqData ?? []) as { box_id: string; user_id: string; status: 'pending' | 'approved' | 'rejected' }[]
+  const joinStatusMap = new Map(reqRows.map(r => [`${r.box_id}:${r.user_id}`, r.status]))
+
   const { data: activities } = await supabase
     .from('box_activities')
-    .select('id, box_id, type, meta, created_at, target_user_id, profiles:actor_id(nickname)')
+    .select('id, box_id, type, meta, created_at, target_user_id, actor_id, profiles:actor_id(nickname)')
     .in('box_id', boxIds)
     // 내 활동은 제외 — 단 자동마감(box_closed_auto)은 시스템 이벤트라 actor(첫 참여자=보통 만든이)
     // 무관하게 전원에게 노출한다(안 그러면 만든 사람이 자기 상자 자동정리를 못 봄).
@@ -58,10 +69,12 @@ export async function getAlerts(limit = 100): Promise<AlertItem[]> {
       boxTitle: titleMap.get(a.box_id) ?? '상자',
       optionId: meta.option_id ?? null,
       type,
+      actorId: a.actor_id ?? '',
       actorNickname: profile?.nickname ?? '누군가',
       meta,
       createdAt: a.created_at,
       unseen: !lastSeen || new Date(a.created_at) > lastSeen,
+      joinStatus: a.type === 'join_requested' ? (joinStatusMap.get(`${a.box_id}:${a.actor_id}`) ?? 'pending') : undefined,
     }
   })
 }

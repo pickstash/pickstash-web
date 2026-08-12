@@ -8,6 +8,7 @@ import { setPendingBoxFolder } from '@/lib/nav/pending-box-folder'
 import { PageHeader } from '@/components/page-header'
 import { BoxCard } from '@/components/box-card'
 import { Icon } from '@/components/icon'
+import { ModeChip } from '@/components/mode-chip'
 import { ShareFolderLinkButton } from './share-folder-link-button'
 import {
   useRenameFolder,
@@ -16,6 +17,7 @@ import {
   useReorderFolderBoxes,
   useBoxesNotInFolder,
   useAddBoxesToFolder,
+  useSetBoxFolderShared,
   useCoParticipantsForFolder,
   useInviteUsersToFolder,
 } from '@/hooks/use-folders'
@@ -28,6 +30,7 @@ export interface FolderBoxItem {
   participants: CardParticipant[]
   isNew: boolean
   isFavorite: boolean
+  shared: boolean // 이 폴더에서 공유(멤버 전원) vs 나만 보기(045)
 }
 
 export type FolderMember = { user_id: string; profiles: { id: string; nickname: string; avatar_url: string | null } | null }
@@ -85,6 +88,7 @@ export function FolderView({ folderId, folderName, inviteCode, members, initialB
   const [addOpen, setAddOpen] = useState(false)
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [confirmShareAdd, setConfirmShareAdd] = useState(false)
+  const [shareAddOn, setShareAddOn] = useState(true) // 담기 확인창 스위치(공개/나만) — 기본 공개
   useBodyScrollLock(addOpen || confirmShareAdd || membersOpen || inviteOpen || renaming || confirmLeave)
 
   const isShared = members.length > 1
@@ -94,6 +98,15 @@ export function FolderView({ folderId, folderName, inviteCode, members, initialB
   const removeBox = useRemoveBoxFromFolder()
   const reorder = useReorderFolderBoxes(folderId)
   const addBoxes = useAddBoxesToFolder(folderId)
+  const setShared = useSetBoxFolderShared(folderId)
+
+  // 공유 폴더에서 상자별 공유↔나만 토글(045). 낙관적 반영 후 서버 동기화.
+  function toggleShared(boxId: string, current: boolean) {
+    setItems(prev => prev.map(it => (it.box.id === boxId ? { ...it, shared: !current } : it)))
+    setShared.mutate({ boxId, shared: !current }, {
+      onError: () => setItems(prev => prev.map(it => (it.box.id === boxId ? { ...it, shared: current } : it))),
+    })
+  }
   // 시트 열렸을 때만 후보 조회
   const { data: candidates = [], isPending: candLoading } = useBoxesNotInFolder(folderId, addOpen)
   // 초대 시트: '함께했던 사람' 후보(시트 열렸을 때만) + 바로 추가 뮤테이션
@@ -123,8 +136,8 @@ export function FolderView({ folderId, folderName, inviteCode, members, initialB
     })
   }
 
-  function doAdd() {
-    addBoxes.mutate(Array.from(picked), {
+  function doAdd(shared = true) {
+    addBoxes.mutate({ boxIds: Array.from(picked), shared }, {
       onSuccess: () => { setAddOpen(false); setConfirmShareAdd(false); setPicked(new Set()); nav.refresh() },
     })
   }
@@ -132,7 +145,7 @@ export function FolderView({ folderId, folderName, inviteCode, members, initialB
   // 공유 서랍(2명+)에 기존 상자를 담으면 멤버 전원이 보게 됨 → 유출 방지 확인.
   function confirmAdd() {
     if (picked.size === 0) return
-    if (isShared) { setConfirmShareAdd(true); return }
+    if (isShared) { setShareAddOn(true); setConfirmShareAdd(true); return }
     doAdd()
   }
 
@@ -262,13 +275,28 @@ export function FolderView({ folderId, folderName, inviteCode, members, initialB
           ))
         ) : (
           items.map(item => (
-            <BoxCard
-              key={item.box.id}
-              box={item.box}
-              participants={item.participants}
-              isNew={item.isNew}
-              isFavorite={item.isFavorite}
-            />
+            <div key={item.box.id} className="relative">
+              <BoxCard
+                box={item.box}
+                participants={item.participants}
+                isNew={item.isNew}
+                isFavorite={item.isFavorite}
+              />
+              {/* 공유 폴더에서만 상자별 공유/나만 토글. 나만=이 상자는 나만 봄(멤버 제외). */}
+              {isShared && (
+                <button
+                  type="button"
+                  onClick={e => { e.preventDefault(); e.stopPropagation(); toggleShared(item.box.id, item.shared) }}
+                  disabled={setShared.isPending}
+                  className={`absolute bottom-2.5 right-2.5 z-10 flex items-center gap-1 rounded-full px-2 py-1 text-[10.5px] font-extrabold shadow-sm ${
+                    item.shared ? 'bg-cream text-ink-soft' : 'bg-ink text-cream'
+                  }`}
+                >
+                  <Icon name={item.shared ? 'user' : 'lock'} size={11} strokeWidth={2.4} />
+                  {item.shared ? '공유' : '나만'}
+                </button>
+              )}
+            </div>
           ))
         )}
       </div>
@@ -330,7 +358,7 @@ export function FolderView({ folderId, folderName, inviteCode, members, initialB
                         {on && <Icon name="check" size={12} strokeWidth={3} />}
                       </span>
                       <span className="min-w-0 flex-1 truncate text-[14px] font-semibold text-ink">{b.title}</span>
-                      {b.isDone && <span className="shrink-0 rounded-full bg-leaf-tint px-2 py-0.5 text-[10px] font-bold text-[#37714A]">정리됨</span>}
+                      <span className="shrink-0"><ModeChip mode={b.mode} /></span>
                     </button>
                   )
                 })
@@ -356,21 +384,33 @@ export function FolderView({ folderId, folderName, inviteCode, members, initialB
           <div className="relative w-full max-w-[300px] rounded-[20px] bg-paper p-5 shadow-[0_16px_40px_rgba(42,42,39,0.25)]">
             <p className="break-keep text-[15px] font-extrabold text-ink">함께 쓰는 서랍이에요</p>
             <p className="mt-1.5 break-keep text-[12.5px] leading-relaxed text-ink-soft">
-              &lsquo;{title}&rsquo; 서랍을 함께 쓰는{' '}
-              <span className="font-bold text-ink">{members.length}명 모두</span>에게{' '}
-              {picked.size > 1 ? `고른 상자 ${picked.size}개가` : '이 상자가'} 공유돼요. 계속할까요?
+              &lsquo;{title}&rsquo; 서랍엔 <span className="font-bold text-ink">{members.length}명</span>이 함께 있어요.
             </p>
-            <div className="mt-4 flex gap-2">
+            <button
+              type="button"
+              onClick={() => setShareAddOn(v => !v)}
+              aria-pressed={shareAddOn}
+              className="mt-4 flex w-full items-center justify-between gap-3 rounded-field border-[1.5px] border-line bg-paper px-4 py-3 text-left"
+            >
+              <span className="min-w-0">
+                <span className="block text-[13px] font-bold text-ink">서랍 사람들에게 공개</span>
+                <span className="mt-0.5 block text-[11.5px] text-ink-soft">{shareAddOn ? `멤버 전원이 ${picked.size > 1 ? '상자들을' : '이 상자를'} 봐요` : '나만 볼 수 있어요'}</span>
+              </span>
+              <span className={`relative h-6 w-10 shrink-0 rounded-full transition-colors ${shareAddOn ? 'bg-ink' : 'bg-[#D9D6C2]'}`}>
+                <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-paper shadow-sm transition-all ${shareAddOn ? 'left-[18px]' : 'left-0.5'}`} />
+              </span>
+            </button>
+            <div className="mt-3 flex gap-2">
               <button
                 onClick={() => setConfirmShareAdd(false)}
-                className="flex-1 rounded-field border border-line py-3 text-[13px] font-bold text-ink-soft"
+                className="flex-1 rounded-field border border-line py-3 text-[13px] font-bold text-ink-soft active:bg-cream"
               >
                 취소
               </button>
               <button
-                onClick={doAdd}
+                onClick={() => doAdd(shareAddOn)}
                 disabled={addBoxes.isPending}
-                className="flex-1 rounded-field bg-ink py-3 text-[13px] font-bold text-cream disabled:opacity-50"
+                className="flex-1 rounded-field bg-ink py-3 text-[13px] font-bold text-cream active:opacity-80 disabled:opacity-50"
               >
                 {addBoxes.isPending ? '담는 중…' : '담기'}
               </button>

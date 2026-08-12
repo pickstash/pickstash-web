@@ -9,17 +9,17 @@ import { AppLink } from '@/lib/nav/nav'
 import { Icon } from '@/components/icon'
 import { Spinner } from '@/components/spinner'
 import { BoxSummaryCard } from '@/components/box-summary-card'
-import type { BoxCard } from '@/lib/domain/home'
+import { HomeBriefView } from '@/components/home-brief'
+import type { BoxCard, HomeBrief } from '@/lib/domain/home'
 
 interface DrawerRailProps {
-  allCards: BoxCard[] // "전체" 선택 시 보여줄 목록(홈 데이터로 이미 최대 5개로 캡됨)
-  allCount: number // openCount + doneCount — 전체 진짜 총합("전체 보기" 노출·칩 카운트에 사용)
+  brief: HomeBrief // "브리핑" 칩(첫 자리·기본 선택)의 내용 — 마감임박/즐겨찾기소식/최근결정
 }
 
-// 서랍 레일 — "전체" 칩이 항상 첫 자리(기본 선택)로 고정돼 홈이 비지 않는다. 칩을 누르면
+// 서랍 레일 — "브리핑" 칩이 항상 첫 자리(기본 선택)로 고정돼 홈이 비지 않는다. 칩을 누르면
 // 하단에 그 서랍의 상자가 스태거 애니메이션으로 "꺼내진" 느낌으로 등장(별도 배경 래핑 없음).
-// 서랍이 0개여도 "전체"+"새 서랍" 칩만 남는 것으로 자연 처리(별도 빈 상태 분기 없음).
-export function DrawerRail({ allCards, allCount }: DrawerRailProps) {
+// 전체 상자 브라우징은 상자 탭이 전담 — 홈 첫 화면은 큐레이션된 브리핑.
+export function DrawerRail({ brief }: DrawerRailProps) {
   const [selected, setSelected] = useState<string>('all')
 
   const { data: foldersData } = useQuery({
@@ -38,8 +38,7 @@ export function DrawerRail({ allCards, allCount }: DrawerRailProps) {
   const folderId = isAll ? undefined : selected
   const { data: folderData, isPending: folderPending } = useFolderBoxes(folderId)
 
-  const items: BoxCard[] = isAll ? allCards : folderData?.status === 'ok' ? folderData.cards : []
-  const hasMoreAll = isAll && allCount > allCards.length
+  const items: BoxCard[] = !isAll && folderData?.status === 'ok' ? folderData.cards : []
 
   return (
     <section>
@@ -58,9 +57,8 @@ export function DrawerRail({ allCards, allCount }: DrawerRailProps) {
             isAll ? 'border-butter-deep bg-butter-tint text-ink' : 'border-[#ECEADC] bg-paper text-ink active:bg-butter-tint/50'
           }`}
         >
-          <Icon name="box" size={13} className={isAll ? 'text-ink' : 'text-ink-soft'} />
-          전체 상자
-          <span className="text-ink-faint">{allCount}</span>
+          <Icon name="pin" size={13} className={isAll ? 'text-ink' : 'text-ink-soft'} />
+          브리핑
         </button>
 
         {folders.map(f => {
@@ -89,22 +87,10 @@ export function DrawerRail({ allCards, allCount }: DrawerRailProps) {
         </AppLink>
       </div>
 
-      {/* 상자 목록 — 별도 배경 래핑 없이 페이지 바탕 위에 바로 */}
+      {/* 브리핑(전체 자리) 또는 선택한 서랍의 상자 목록 — 별도 배경 래핑 없이 페이지 바탕 위에 바로 */}
       <div key={selected} className="mt-3 px-5">
-        {isAll && (
-          <div className="mb-2 flex items-center justify-between px-1">
-            <p className="text-[13px] font-bold text-ink-soft">최근 활동순</p>
-            {hasMoreAll && (
-              <AppLink href="/boxes" className="flex items-center gap-0.5 text-[13px] font-bold text-ink-soft active:text-ink">
-                전체 보기
-                <Icon name="chevronRight" size={12} />
-              </AppLink>
-            )}
-          </div>
-        )}
-
-        {/* 서랍 선택 시엔 "최근 활동순" 라벨은 생략(칩에 이미 이름·개수 있음)하되, "전체 보기"는
-            그 서랍 상세(/folder/[id])로 — 요약 카드만 있는 레일과 달리 거기서 순서 변경·추가·제외가 된다. */}
+        {/* 서랍 선택 시 "전체 보기"는 그 서랍 상세(/folder/[id])로 — 요약 카드만 있는 레일과 달리
+            거기서 순서 변경·추가·제외가 된다. */}
         {!isAll && !folderPending && items.length > 0 && (
           <div className="mb-2 flex justify-end px-1">
             <AppLink href={`/folder/${folderId}`} className="flex items-center gap-0.5 text-[13px] font-bold text-ink-soft active:text-ink">
@@ -114,9 +100,11 @@ export function DrawerRail({ allCards, allCount }: DrawerRailProps) {
           </div>
         )}
 
-        {!isAll && folderPending ? (
+        {isAll ? (
+          <HomeBriefView brief={brief} />
+        ) : folderPending ? (
           <Spinner className="py-8" />
-        ) : !isAll && items.length === 0 ? (
+        ) : items.length === 0 ? (
           // options-section.tsx 빈 상태와 동일 톤(점선 카드+원형 아이콘 배지). 서랍 상세로 보내
           // 거기서 바로 새 상자를 만들거나 기존 상자를 담을 수 있게(그 화면의 '+ 상자' 시트).
           <AppLink

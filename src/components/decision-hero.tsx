@@ -56,7 +56,7 @@ export function DecisionHero({ box }: { box: OpenBoxCard }) {
             <div className="flex shrink-0 items-start gap-2">
               {box.isFavorite && (
                 <Icon
-                  name="star"
+                  name="bookmark"
                   size={16}
                   strokeWidth={1.5}
                   style={{ fill: 'var(--color-butter)', stroke: 'var(--color-butter-dark)', marginTop: 3 }}

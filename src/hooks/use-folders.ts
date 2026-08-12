@@ -1,6 +1,7 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
+import { useNav } from '@/lib/nav/nav'
 import { createClient } from '@/lib/supabase/client'
 import {
   getMyFolders,
@@ -13,6 +14,7 @@ import {
   reorderBoxFolders,
   getMyBoxesNotInFolder,
   addBoxesToFolder,
+  setBoxFolderShared,
 } from '@/lib/api/folders'
 import { loadFolderView } from '@/lib/api/folder-view'
 import { getCoParticipantsForFolder, inviteUsersToFolder } from '@/lib/api/folder-invites'
@@ -21,13 +23,15 @@ import { getCoParticipantsForFolder, inviteUsersToFolder } from '@/lib/api/folde
 // FolderChips(홈, ['folders']) + 토스 서랍 목록(['folders-page']) + 서랍 상세(['folder-view',*]).
 // refetchType:'all' — 담을 당시 서랍 화면은 비활성(안 마운트)이라, 기본값이면 stale 표시만 되고
 // staleTime(60s) 캐시가 남아 다시 들어가도 옛 데이터가 보인다. 비활성 쿼리도 즉시 refetch시켜 최신화.
-function invalidateFolderViews(qc: QueryClient) {
+function invalidateFolderViews(qc: QueryClient, nav: { refresh: () => void }) {
   qc.invalidateQueries({ queryKey: ['folders'], refetchType: 'all' })
   qc.invalidateQueries({ queryKey: ['folders-page'], refetchType: 'all' })
   qc.invalidateQueries({ queryKey: ['folder-view'], refetchType: 'all' })
   // 홈 온보딩 분기는 home.folders 수를 본다 → 서랍 삭제/나가기가 여기 반영 안 되면
   // 상자·서랍 0인데도 nothing=false로 온보딩이 안 뜬다.
   qc.invalidateQueries({ queryKey: ['home'], refetchType: 'all' })
+  // 웹 RSC(서랍·홈 서버 컴포넌트) 재요청 + 토스 전체 무효화 — 뒤로가기/이전화면 복귀 시 즉시 반영.
+  nav.refresh()
 }
 
 export function useFolders() {
@@ -51,27 +55,30 @@ export function useFolderBoxes(folderId: string | undefined) {
 
 export function useCreateFolder() {
   const queryClient = useQueryClient()
+  const nav = useNav()
   return useMutation({
     mutationFn: (name: string) => createFolder(name),
-    onSuccess: () => invalidateFolderViews(queryClient),
+    onSuccess: () => invalidateFolderViews(queryClient, nav),
   })
 }
 
 export function useRenameFolder() {
   const queryClient = useQueryClient()
+  const nav = useNav()
   return useMutation({
     mutationFn: (arg: { id: string; name: string }) => renameFolder(arg.id, arg.name),
-    onSuccess: () => invalidateFolderViews(queryClient),
+    onSuccess: () => invalidateFolderViews(queryClient, nav),
   })
 }
 
 /** 폴더 나가기(멤버십 제거). 혼자면=삭제(마지막 나감→자동 소멸). leaveBoxes면 그 폴더 상자에서도 나감. */
 export function useLeaveFolder() {
   const queryClient = useQueryClient()
+  const nav = useNav()
   return useMutation({
     mutationFn: (arg: { folderId: string; leaveBoxes?: boolean }) => leaveFolder(arg.folderId, arg.leaveBoxes),
     onSuccess: () => {
-      invalidateFolderViews(queryClient)
+      invalidateFolderViews(queryClient, nav)
       queryClient.invalidateQueries({ queryKey: ['boxFolder'] })
     },
   })
@@ -89,11 +96,12 @@ export function useMyBoxFolders(boxId: string) {
 /** 상자가 속할 내 폴더 집합을 folderIds로 맞추기 (018 다중 선택) */
 export function useSetBoxFolders(boxId: string) {
   const queryClient = useQueryClient()
+  const nav = useNav()
   return useMutation({
-    mutationFn: (folderIds: string[]) => setBoxFolders(boxId, folderIds),
+    mutationFn: (input: { ids: string[]; sharedByFolder?: Record<string, boolean> }) => setBoxFolders(boxId, input.ids, input.sharedByFolder),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['boxFolder', boxId] })
-      invalidateFolderViews(queryClient)
+      invalidateFolderViews(queryClient, nav)
     },
   })
 }
@@ -110,23 +118,38 @@ export function useBoxesNotInFolder(folderId: string, enabled = true) {
 /** 기존 상자(들)를 이 폴더에 담기 */
 export function useAddBoxesToFolder(folderId: string) {
   const queryClient = useQueryClient()
+  const nav = useNav()
   return useMutation({
-    mutationFn: (boxIds: string[]) => addBoxesToFolder(folderId, boxIds),
+    mutationFn: (input: { boxIds: string[]; shared?: boolean }) => addBoxesToFolder(folderId, input.boxIds, input.shared),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['boxes-not-in-folder', folderId], refetchType: 'all' })
-      invalidateFolderViews(queryClient)
+      invalidateFolderViews(queryClient, nav)
     },
   })
 }
 
 /** 편집 모드: 상자를 특정 폴더에서만 제외 */
+// 폴더 링크 공유/나만 토글(045). 참여자 추가/제거는 서버 RPC가 처리 → 폴더뷰·상자뷰 무효화.
+export function useSetBoxFolderShared(folderId: string) {
+  const queryClient = useQueryClient()
+  const nav = useNav()
+  return useMutation({
+    mutationFn: (arg: { boxId: string; shared: boolean }) => setBoxFolderShared(folderId, arg.boxId, arg.shared),
+    onSuccess: (_d, arg) => {
+      queryClient.invalidateQueries({ queryKey: ['boxFolder', arg.boxId] })
+      invalidateFolderViews(queryClient, nav)
+    },
+  })
+}
+
 export function useRemoveBoxFromFolder() {
   const queryClient = useQueryClient()
+  const nav = useNav()
   return useMutation({
     mutationFn: (arg: { boxId: string; folderId: string }) => removeBoxFromFolder(arg.boxId, arg.folderId),
     onSuccess: (_d, arg) => {
       queryClient.invalidateQueries({ queryKey: ['boxFolder', arg.boxId] })
-      invalidateFolderViews(queryClient)
+      invalidateFolderViews(queryClient, nav)
     },
   })
 }
@@ -134,9 +157,10 @@ export function useRemoveBoxFromFolder() {
 /** 편집 모드: 폴더 안 상자 순서 저장 ('완료' 시 orderedBoxIds로 일괄 반영). */
 export function useReorderFolderBoxes(folderId: string) {
   const queryClient = useQueryClient()
+  const nav = useNav()
   return useMutation({
     mutationFn: (orderedBoxIds: string[]) => reorderBoxFolders(folderId, orderedBoxIds),
-    onSuccess: () => invalidateFolderViews(queryClient),
+    onSuccess: () => invalidateFolderViews(queryClient, nav),
   })
 }
 
@@ -152,11 +176,12 @@ export function useCoParticipantsForFolder(folderId: string, enabled = true) {
 /** 고른 사람들을 이 서랍에 바로 추가(+초대 푸시). 초대 즉시 서랍 뷰가 갱신되게 무효화. */
 export function useInviteUsersToFolder(folderId: string) {
   const queryClient = useQueryClient()
+  const nav = useNav()
   return useMutation({
     mutationFn: (userIds: string[]) => inviteUsersToFolder(folderId, userIds),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['co-participants-folder', folderId], refetchType: 'all' })
-      invalidateFolderViews(queryClient)
+      invalidateFolderViews(queryClient, nav)
     },
   })
 }

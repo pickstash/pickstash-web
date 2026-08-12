@@ -27,6 +27,24 @@ export async function updateAvatarUrl(avatarUrl: string | null): Promise<void> {
   if (error) throw error
 }
 
+/** 내 한줄소개 + 관심 태그 조회 (설정 편집 프리필). */
+export async function getMyBioTags(): Promise<{ bio: string; tags: string[] }> {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { bio: '', tags: [] }
+  const { data } = await supabase.from('profiles').select('bio, tags').eq('id', user.id).single()
+  return { bio: data?.bio ?? '', tags: data?.tags ?? [] }
+}
+
+/** 한줄소개 + 관심 태그 저장 (본인). tags는 정규화된 배열(#·공백 제거는 호출부). */
+export async function updateProfileBio(bio: string, tags: string[]): Promise<void> {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  const { error } = await supabase.from('profiles').update({ bio: bio || null, tags }).eq('id', user.id)
+  if (error) throw error
+}
+
 export async function uploadAvatar(file: File): Promise<string> {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()

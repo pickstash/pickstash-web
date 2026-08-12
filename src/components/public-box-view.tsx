@@ -67,7 +67,7 @@ export function PublicBoxView({ boxId }: { boxId: string }) {
         <div>
           <div className="flex items-center gap-1.5">
             <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-extrabold ${v.mode === 'checklist' ? 'bg-leaf-tint text-[#37714A]' : 'bg-butter-tint text-ink'}`}>
-              {v.mode === 'checklist' ? '체크' : '결정'}
+              {v.mode === 'checklist' ? '모아보기' : '결정'}
             </span>
             <h1 className="text-[20px] font-extrabold tracking-tight text-ink">{v.title}</h1>
           </div>
@@ -89,7 +89,7 @@ export function PublicBoxView({ boxId }: { boxId: string }) {
             <div key={o.id} className={`rounded-card border p-3.5 ${o.decided_at ? 'border-butter-dark bg-butter-tint/40' : 'border-[#ECEADC] bg-paper'}`}>
               <div className="flex items-center gap-1.5">
                 {o.decided_at && <span className="rounded-full bg-ink px-1.5 py-0.5 text-[10px] font-extrabold text-cream">결정</span>}
-                {v.mode === 'checklist' && o.checked_at && <Icon name="check" size={14} strokeWidth={3} />}
+                {/* 모아보기(체크형)의 체크 상태는 개인 진행이라 공개 뷰엔 노출하지 않음 — 공유되는 건 항목 리스트뿐 */}
                 <span className="text-[14.5px] font-extrabold text-ink">{o.name}</span>
                 {v.mode === 'decide' && o.like_count > 0 && (
                   <span className="ml-auto flex items-center gap-1 text-[12px] font-bold text-ink-soft"><Icon name="heart" size={13} />{o.like_count}</span>

@@ -14,18 +14,27 @@ export interface Database {
           id: string
           nickname: string
           avatar_url: string | null
+          handle: string | null
+          bio: string | null
+          tags: string[]
           created_at: string
         }
         Insert: {
           id: string
           nickname: string
           avatar_url?: string | null
+          handle?: string | null
+          bio?: string | null
+          tags?: string[]
           created_at?: string
         }
         Update: {
           id?: string
           nickname?: string
           avatar_url?: string | null
+          handle?: string | null
+          bio?: string | null
+          tags?: string[]
           created_at?: string
         }
         Relationships: []
@@ -40,6 +49,7 @@ export interface Database {
           current_round: number
           decision_mode: string
           mode: string
+          checkable: boolean
           invite_code: string
           created_at: string
           updated_at: string
@@ -53,6 +63,7 @@ export interface Database {
           current_round?: number
           decision_mode?: string
           mode?: string
+          checkable?: boolean
           invite_code?: string
           created_at?: string
           updated_at?: string
@@ -66,6 +77,7 @@ export interface Database {
           current_round?: number
           decision_mode?: string
           mode?: string
+          checkable?: boolean
           invite_code?: string
           created_at?: string
           updated_at?: string
@@ -210,6 +222,24 @@ export interface Database {
         }
         Relationships: []
       }
+      bookmarks: {
+        Row: {
+          user_id: string
+          box_id: string
+          created_at: string
+        }
+        Insert: {
+          user_id: string
+          box_id: string
+          created_at?: string
+        }
+        Update: {
+          user_id?: string
+          box_id?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       favorites: {
         Row: {
           user_id: string
@@ -278,18 +308,21 @@ export interface Database {
           box_id: string
           folder_id: string
           sort: number
+          shared: boolean
           created_at: string
         }
         Insert: {
           box_id: string
           folder_id: string
           sort?: number
+          shared?: boolean
           created_at?: string
         }
         Update: {
           box_id?: string
           folder_id?: string
           sort?: number
+          shared?: boolean
           created_at?: string
         }
         Relationships: []

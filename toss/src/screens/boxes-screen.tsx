@@ -21,7 +21,7 @@ type TypeFilter = "all" | "decide" | "checklist";
 const TYPE_CHIPS: { key: TypeFilter; label: string }[] = [
   { key: "all", label: "전체" },
   { key: "decide", label: "결정형" },
-  { key: "checklist", label: "체크형" },
+  { key: "checklist", label: "모아보기" },
 ];
 
 function FolderMemberAvatars({ members, max = 3 }: { members: FolderCard["members"]; max?: number }) {

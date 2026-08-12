@@ -89,7 +89,13 @@ export async function getMyBoxFolderIds(boxId: string): Promise<string[]> {
  * 이 상자가 속할 폴더 집합을 folderIds로 맞춘다 (공유 목록 — 폴더 스코프).
  * 공유 폴더에 넣으면 트리거가 폴더 멤버 전원을 그 상자에 참여시킨다(초대).
  */
-export async function setBoxFolders(boxId: string, folderIds: string[]): Promise<void> {
+// sharedByFolder: 새로 담는 링크의 공유 여부(045). 기본 true(멤버 전원 공유). false=나만 보기.
+// 이미 있는 링크는 ignoreDuplicates라 shared가 안 바뀐다(토글은 setBoxFolderShared로).
+export async function setBoxFolders(
+  boxId: string,
+  folderIds: string[],
+  sharedByFolder: Record<string, boolean> = {},
+): Promise<void> {
   const supabase = createClient()
 
   // 1) 더 이상 선택 안 된 폴더에서 제외 (RLS가 내가 멤버인 폴더로 스코프)
@@ -98,9 +104,9 @@ export async function setBoxFolders(boxId: string, folderIds: string[]): Promise
   const { error: delErr } = await del
   if (delErr) throw delErr
 
-  // 2) 새로 선택된 폴더에 추가 (이미 있으면 무시)
+  // 2) 새로 선택된 폴더에 추가 (이미 있으면 무시). 나만 담기는 shared=false로 INSERT → 트리거가 자동참여 스킵.
   if (folderIds.length > 0) {
-    const rows = folderIds.map(folderId => ({ folder_id: folderId, box_id: boxId }))
+    const rows = folderIds.map(folderId => ({ folder_id: folderId, box_id: boxId, shared: sharedByFolder[folderId] ?? true }))
     const { error } = await supabase
       .from('box_folders')
       .upsert(rows, { onConflict: 'folder_id,box_id', ignoreDuplicates: true })
@@ -108,11 +114,21 @@ export async function setBoxFolders(boxId: string, folderIds: string[]): Promise
   }
 }
 
+// 폴더 링크 공유/나만 토글(045 RPC) — 공유↔나만 시 다른 멤버 참여자 추가/제거까지 서버가 동기화.
+export async function setBoxFolderShared(folderId: string, boxId: string, shared: boolean): Promise<void> {
+  const supabase = createClient()
+  // types.ts 미갱신 RPC(045) — 저장소 관례대로 캐스팅.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase.rpc as any)('set_box_folder_shared', { p_folder_id: folderId, p_box_id: boxId, p_shared: shared })
+  if (error) throw error
+}
+
 /** 담기 후보(=서랍 상세의 '기존 상자 담기') 항목. */
 export interface BoxPickerItem {
   id: string
   title: string
   isDone: boolean
+  mode: 'decide' | 'checklist'
 }
 
 /** 내가 참여한 상자 중 이 폴더에 아직 없는 것 목록 (기존 상자 담기 선택용). 최신순. */
@@ -124,24 +140,25 @@ export async function getMyBoxesNotInFolder(folderId: string): Promise<BoxPicker
   const [{ data: parts }, { data: inFolder }] = await Promise.all([
     supabase
       .from('box_participants')
-      .select('boxes(id, title, closed_at, updated_at)')
+      .select('boxes(id, title, closed_at, updated_at, mode)')
       .eq('user_id', user.id),
     supabase.from('box_folders').select('box_id').eq('folder_id', folderId),
   ])
 
   const already = new Set((inFolder ?? []).map(r => r.box_id))
   return (parts ?? [])
-    .map(p => p.boxes as unknown as { id: string; title: string; closed_at: string | null; updated_at: string } | null)
+    .map(p => p.boxes as unknown as { id: string; title: string; closed_at: string | null; updated_at: string; mode: string } | null)
     .filter((b): b is NonNullable<typeof b> => !!b && !already.has(b.id))
     .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
-    .map(b => ({ id: b.id, title: b.title, isDone: !!b.closed_at }))
+    .map(b => ({ id: b.id, title: b.title, isDone: !!b.closed_at, mode: b.mode === 'checklist' ? 'checklist' : 'decide' }))
 }
 
 /** 기존 상자(들)를 이 폴더에 담는다 (트리거가 폴더 멤버 전원을 그 상자에 참여시킴). 이미 있으면 무시. */
-export async function addBoxesToFolder(folderId: string, boxIds: string[]): Promise<void> {
+// shared: 담는 링크의 공유 여부(045). 기본 true. false=나만 보기(트리거가 자동참여 스킵).
+export async function addBoxesToFolder(folderId: string, boxIds: string[], shared = true): Promise<void> {
   if (boxIds.length === 0) return
   const supabase = createClient()
-  const rows = boxIds.map(boxId => ({ folder_id: folderId, box_id: boxId }))
+  const rows = boxIds.map(boxId => ({ folder_id: folderId, box_id: boxId, shared }))
   const { error } = await supabase
     .from('box_folders')
     .upsert(rows, { onConflict: 'folder_id,box_id', ignoreDuplicates: true })

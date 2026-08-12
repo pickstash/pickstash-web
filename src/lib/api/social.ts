@@ -19,6 +19,8 @@ export interface PublicBoxCard {
   total: number
   save_count: number
   author: { id: string; handle: string | null; nickname: string; avatar_url: string | null } | null
+  // 저장함(get_my_bookmarks)에서만 채워짐 — 내가 참여 중인 상자면 true(→ /box/:id), 아니면 공개 상자(→ /p/:id).
+  is_member?: boolean
 }
 
 export interface ProfileFeed {
@@ -27,6 +29,7 @@ export interface ProfileFeed {
   nickname: string
   avatar_url: string | null
   bio: string | null
+  tags: string[]
   followers: number
   following: number
   public_count: number
@@ -39,6 +42,7 @@ export interface PersonResult {
   nickname: string
   avatar_url: string | null
   bio: string | null
+  tags: string[]
   followers: number
   public_count: number
 }
@@ -161,6 +165,13 @@ export async function isFollowing(followeeId: string): Promise<boolean> {
   const { data } = await (supabase.from('follows' as any) as any)
     .select('followee_id').eq('follower_id', user.id).eq('followee_id', followeeId).maybeSingle()
   return !!data
+}
+
+// 팔로워/팔로잉 사람 목록 (047 RPC). kind='followers'=나를 팔로우, 'following'=내가 팔로우.
+export async function getFollowList(userId: string, kind: 'followers' | 'following'): Promise<PersonResult[]> {
+  const supabase = createClient()
+  const { data } = await (supabase.rpc as any)('get_follow_list', { p_user_id: userId, p_kind: kind })
+  return (data ?? []) as PersonResult[]
 }
 
 // 북마크(저장함) — bookmarks 테이블 직접(RLS: 본인만)

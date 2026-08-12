@@ -3,7 +3,7 @@ import { TossAds } from "@apps-in-toss/web-framework";
 import { AD_GROUP_ID, ensureAdsInitialized } from "../lib/toss-ads";
 
 // 하단 고정 배너 광고(토스 전용 — 웹 빌드에는 포함되지 않음). 홈은 인라인 배너(inline-ad-banner.tsx)를
-// 대신 쓰고 이 컴포넌트를 렌더하지 않는다(화면에 광고 1개만) — 알림·프로필·돋보기는 계속 이 고정 배너.
+// 대신 쓰고 이 컴포넌트를 렌더하지 않는다(화면에 광고 1개만). 돋보기도 인라인 배너(검색바 아래).
 // 광고그룹 ID 미설정이거나 토스 앱 환경이 아니면(WebView 브라우저 미리보기 등) 아무것도 렌더하지 않는다.
 export function AdBanner() {
   const containerRef = useRef<HTMLDivElement>(null);

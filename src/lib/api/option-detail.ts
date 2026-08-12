@@ -14,6 +14,7 @@ export type OptionDetailData =
       round: number
       canVote: boolean
       checklist: boolean
+      checkable: boolean
       myNickname: string
       participants: Participant[]
     }
@@ -63,6 +64,7 @@ export async function loadOptionDetail(
     round: box.current_round,
     canVote: getBoxStatus(box) === 'OPEN',
     checklist: box.mode === 'checklist',
+    checkable: box.mode === 'checklist' && ((box as unknown as { checkable?: boolean }).checkable ?? false),
     myNickname: me?.nickname ?? '',
     participants,
   }

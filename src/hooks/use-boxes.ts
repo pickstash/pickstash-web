@@ -10,6 +10,7 @@ import {
   updateBoxMemo,
   updateBoxDeadline,
   updateBoxDecisionMode,
+  updateBoxCheckable,
   decideBox,
   reopenBox,
   autoDecideBox,
@@ -122,6 +123,20 @@ export function useUpdateBoxDecisionMode(boxId: string) {
   })
 }
 
+/** 항목 체크 사용 토글 (모아보기). 낙관적: 상세 로컬 box 상태는 컴포넌트에서 갱신, 캐시만 무효화. */
+export function useUpdateBoxCheckable(boxId: string) {
+  const nav = useNav()
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (checkable: boolean) => updateBoxCheckable(boxId, checkable),
+    onSuccess: () => {
+      invalidateBoxViews(queryClient, boxId)
+      queryClient.invalidateQueries({ queryKey: ['options', boxId], refetchType: 'all' }) // 끌 때 초기화된 체크 반영
+      nav.refresh()
+    },
+  })
+}
+
 /** 결정: 선택한 선택지(들)로 정리완료 */
 export function useDecideBox(boxId: string) {
   const nav = useNav()
@@ -172,6 +187,7 @@ export function useDeleteBox() {
     mutationFn: (boxId: string) => deleteBox(boxId),
     onSuccess: () => {
       invalidateBoxViews(queryClient)
+      nav.refresh() // 웹 RSC(홈·목록) 재요청 — 삭제 상자가 이전 화면에 남지 않게
       nav.replace('/') // 삭제된 상자로 back하면 리다이렉트 루프 → 교체
     },
   })
@@ -184,6 +200,7 @@ export function useLeaveBox() {
     mutationFn: (boxId: string) => leaveBox(boxId),
     onSuccess: () => {
       invalidateBoxViews(queryClient)
+      nav.refresh() // 웹 RSC(홈·목록) 재요청 — 나간 상자가 이전 화면에 남지 않게
       nav.replace('/') // 나간 상자로 back하면 '참여자 아님→/' 리다이렉트 루프 → 교체
     },
   })

@@ -24,6 +24,7 @@ import { AlertsScreen } from "./screens/alerts-screen";
 import { ExploreScreen } from "./screens/explore-screen";
 import { PublicBoxScreen } from "./screens/public-box-screen";
 import { ProfileViewScreen } from "./screens/profile-view-screen";
+import { FollowsScreen } from "./screens/follows-screen";
 import { BoxLinksScreen, OptionNewScreen, OptionEditScreen } from "./screens/reused-pages";
 import { TabBar } from "./components/tab-bar";
 // 파라미터 없는 A형 페이지는 웹 페이지 컴포넌트를 그대로 라우팅(그대로 재사용).
@@ -88,10 +89,11 @@ function App() {
   // 초대 뷰어(공유 링크)는 비로그인도 열람 가능 — 로그인 게이트 예외. 참여 시 인라인 로그인(nav.login).
   const isInviteRoute = pathname.startsWith("/invite/") || pathname.startsWith("/folder-invite/");
   // 탭바는 폼(집중)·초대 뷰어를 제외한 모든 화면. 초대 뷰어는 자체 '참여하기' CTA만 둔다.
-  const showTabBar = !isFormRoute(pathname) && !isInviteRoute;
-  // 하단 고정 배너는 알림에서만(탭바 위 고정, 그 높이를 --app-nav-h에 더해 콘텐츠가 배너 위로 밀리게 한다).
-  // 홈은 인라인 배너(히어로 아래, HomeView의 midBanner)라 하단 고정 자리가 필요 없다.
-  const showBanner = pathname === "/alerts" && showTabBar;
+  // 남의 프로필(/u/:handle)·팔로우 목록은 드릴다운(뒤로가기 있음)이라 탭바 숨겨 몰입감 준다.
+  const isProfileDrilldown = pathname.startsWith("/u/") || pathname.startsWith("/follows/");
+  const showTabBar = !isFormRoute(pathname) && !isInviteRoute && !isProfileDrilldown;
+  // 광고는 홈·둘러보기·알림 모두 인라인 배너(각 View의 midBanner 슬롯)라 하단 고정 예약 자리가 없다.
+  // (--app-banner-h는 프로필에 남은 고정 AdBanner가 참조하므로 0으로 유지.)
 
   // iOS 엣지 스와이프 뒤로가기는 홈·로그인에서만 OFF(실수로 앱이 종료되는 것 방지) — 나머지 화면은 ON(편의).
   //   홈 = 로그인 상태의 '/'. 로그인 = 세션 없음(초대 뷰어 제외, LoginScreen이 뜨는 조건). 둘 다 '/'에 있어도 안전.
@@ -119,7 +121,7 @@ function App() {
     //   폼 화면(탭바 없음)은 CTA가 bottom-0라 직접 인셋(safe-bottom)이 필요하다.
     <div
       style={{
-        "--app-banner-h": showBanner ? "56px" : "0px", // 배너 높이(권장 96px보다 낮춤 — 너무 높아 보여서)
+        "--app-banner-h": "0px", // 고정 배너 폐기(전부 인라인). 프로필 잔존 AdBanner가 이 값에 의존.
         "--app-nav-h": showTabBar
           ? "calc(var(--app-tabbar-h, 0px) + var(--app-banner-h, 0px))"
           : "0px",
@@ -138,7 +140,9 @@ function App() {
       {/* 옛 창고 목록 경로 (탭에서 필터로 흡수됨, 딥링크 호환 위해 유지) */}
       <Route path="/messy" element={<BoxListScreen kind="messy" />} />
       <Route path="/done" element={<BoxListScreen kind="done" />} />
-      <Route path="/favorites" element={<BoxListScreen kind="favorites" />} />
+      <Route path="/bookmarks" element={<BoxListScreen kind="favorites" />} />
+      {/* 구 경로 호환 — /favorites → /bookmarks (북마크 일원화) */}
+      <Route path="/favorites" element={<Navigate to="/bookmarks" replace />} />
 
       {/* 상자 */}
       <Route path="/box/new" element={<NewBoxPage />} />
@@ -160,6 +164,7 @@ function App() {
       <Route path="/explore" element={<ExploreScreen />} />
       <Route path="/p/:id" element={<PublicBoxScreen />} />
       <Route path="/u/:handle" element={<ProfileViewScreen />} />
+      <Route path="/follows/:userId/:tab" element={<FollowsScreen />} />
 
       {/* 알림함 — 푸시(intoss://pickstash/alerts 고정) 목적지 */}
       <Route path="/alerts" element={<AlertsScreen />} />

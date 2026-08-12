@@ -26,15 +26,20 @@ export async function loadFolderView(
 
   const { data: filings } = await supabase
     .from('box_folders')
-    .select('box_id, sort')
+    .select('box_id, sort, shared')
     .eq('folder_id', folderId)
+    // sort 동점이면 created_at로 확정 — tiebreaker 없으면 재조회마다 순서가 뒤섞여
+    // 공유/나만 토글(refetch) 시 상자 순서가 바뀌는 버그가 난다.
     .order('sort', { ascending: true })
-  const orderedIds = (filings ?? []).map(f => f.box_id)
+    .order('created_at', { ascending: true })
+  const filingRows = (filings ?? []) as unknown as { box_id: string; sort: number; shared: boolean }[]
+  const orderedIds = filingRows.map(f => f.box_id)
+  const sharedMap = new Map(filingRows.map(f => [f.box_id, f.shared ?? true]))
 
   const [{ data: profile }, { data: participations }, { data: favs }] = await Promise.all([
     supabase.from('profiles').select('nickname').eq('id', userId).single(),
     supabase.from('box_participants').select('box_id, last_seen_at').eq('user_id', userId),
-    supabase.from('favorites').select('box_id').eq('user_id', userId),
+    supabase.from('bookmarks').select('box_id').eq('user_id', userId),
   ])
 
   let rawBoxes: RawOpenBox[] = []
@@ -58,6 +63,7 @@ export async function loadFolderView(
     participants: b.box_participants,
     isNew: new Date(b.updated_at) > new Date(lastSeenMap.get(b.id) ?? 0),
     isFavorite: favoriteSet.has(b.id),
+    shared: sharedMap.get(b.id) ?? true,
   }))
 
   // 홈 서랍 레일과 동일한 카드(체크진행률·인기리더·선택지N개·결정문구) — 선택지·투표 추가 조회.

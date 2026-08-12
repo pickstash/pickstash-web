@@ -31,11 +31,29 @@ export type IconName =
   | 'user'
   | 'broom'
   | 'bookmark'
+  | 'pin'
+  | 'lock'
 
 function inner(name: IconName): ReactNode {
   switch (name) {
     case 'bookmark':
       return <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+    case 'lock':
+      // 자물쇠(비공개) — Feather 지오메트리
+      return (
+        <>
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </>
+      )
+    case 'pin':
+      // 압정(pushpin) — Lucide 지오메트리
+      return (
+        <>
+          <line x1="12" y1="17" x2="12" y2="22" />
+          <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" />
+        </>
+      )
     case 'comment':
       return <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
     case 'star':

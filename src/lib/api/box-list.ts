@@ -40,7 +40,7 @@ export async function loadBoxList(
 ): Promise<BoxListData> {
   const [{ data: participations }, { data: favs }, { data: profile }] = await Promise.all([
     supabase.from('box_participants').select('box_id, last_seen_at').eq('user_id', userId),
-    supabase.from('favorites').select('box_id').eq('user_id', userId),
+    supabase.from('bookmarks').select('box_id').eq('user_id', userId),
     supabase.from('profiles').select('nickname').eq('id', userId).single(),
   ])
   const lastSeenMap = new Map((participations ?? []).map(p => [p.box_id, p.last_seen_at]))
@@ -77,7 +77,7 @@ export async function loadBoxList(
   } else {
     // 즐겨찾기: 진행·정리 섞임 → 상자 생성일 최신순(다른 탭과 일관). 조인이라 client 정렬.
     const { data } = await supabase
-      .from('favorites')
+      .from('bookmarks')
       .select('box_id, boxes(*, box_participants(user_id, profiles(avatar_url, nickname)), options(id, name, decided_at))')
       .eq('user_id', userId)
     boxes = (data ?? []).map(f => f.boxes).filter(Boolean) as unknown as RawBox[]
@@ -114,7 +114,7 @@ export async function loadAllBoxCards(
       .select('*, box_participants(user_id, profiles(avatar_url, nickname)), options(id, box_id, name, checked_at, decided_at)')
       .order('updated_at', { ascending: false }),
     supabase.from('box_participants').select('box_id, last_seen_at').eq('user_id', userId),
-    supabase.from('favorites').select('box_id').eq('user_id', userId),
+    supabase.from('bookmarks').select('box_id').eq('user_id', userId),
   ])
 
   const boxes = (rawBoxes ?? []) as unknown as RawBoxWithOptions[]

@@ -25,9 +25,10 @@ export type BoxMode = 'decide' | 'checklist'   // 상자 목적: 결정형 / 체
 export interface CreateBoxInput {
   title: string
   memo?: string
-  mode: BoxMode                        // 목적: 결정형 / 체크형 — 생성 시 고정, 이후 변경 불가
+  mode: BoxMode                        // 목적: 결정형 / 모아보기 — 생성 시 고정, 이후 변경 불가
   decision_mode: DecisionMode          // 직접 정하기 / 마감 투표 (mode==='decide'일 때만 의미 있음)
   deadline_at: string | null           // auto_deadline일 때만 값, manual이면 null
+  checkable?: boolean                  // 모아보기 상자에서 항목 체크 사용 여부(mode==='checklist'일 때만 의미, 기본 false)
 }
 
 export async function createBox(input: CreateBoxInput): Promise<Box> {
@@ -36,12 +37,15 @@ export async function createBox(input: CreateBoxInput): Promise<Box> {
   // 상자 + 생성자 참여자 행을 원자적으로 생성한다 (RPC).
   // 직접 .insert().select() 하면 INSERT ... RETURNING이 boxes의 SELECT 정책(EXISTS box_participants)을
   // 타는데, 이 시점엔 참여자 행이 없어 42501("violates RLS")로 실패한다. RPC 안에서 참여자까지 넣고 조회해 반환.
-  const { data: box, error } = await supabase.rpc('create_box', {
+  // p_checkable은 types.ts 미갱신 파라미터(044 6-arg 오버로드) — 저장소 관례대로 rpc 캐스팅.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: box, error } = await (supabase.rpc as any)('create_box', {
     p_title: input.title,
     p_memo: input.memo ?? null,
     p_decision_mode: input.decision_mode,
     p_deadline_at: input.decision_mode === 'auto_deadline' ? input.deadline_at : null,
     p_mode: input.mode,
+    p_checkable: input.mode === 'checklist' ? (input.checkable ?? false) : false,
   })
 
   if (error) throw error
@@ -111,6 +115,25 @@ export async function updateBoxDecisionMode(id: string, mode: DecisionMode, dead
   if (error) throw error
 }
 
+/** 항목 체크 사용 여부 토글 (모아보기 상자, 참여자 누구나). 생성 후에도 껐다 켤 수 있다.
+ *  끌 때는 체크 상태를 전부 초기화한다 — 다시 켜도 깨끗하게 시작(잔여 체크 방지). */
+export async function updateBoxCheckable(id: string, checkable: boolean): Promise<void> {
+  const supabase = createClient()
+  const { error } = await supabase
+    .from('boxes')
+    .update({ checkable, updated_at: new Date().toISOString() })
+    .eq('id', id)
+  if (error) throw error
+  if (!checkable) {
+    const { error: e2 } = await supabase
+      .from('options')
+      .update({ checked_at: null })
+      .eq('box_id', id)
+      .not('checked_at', 'is', null)
+    if (e2) throw e2
+  }
+}
+
 export async function updateBoxMemo(id: string, memo: string | null): Promise<void> {
   const supabase = createClient()
   const { error } = await supabase
@@ -166,10 +189,10 @@ export async function leaveBox(id: string): Promise<void> {
     .eq('box_id', id)
     .eq('user_id', user.id)
   if (error) throw error
-  // 나가면 이 상자는 내 모든 목록(RLS)에서 사라지므로 즐겨찾기도 정리한다.
+  // 나가면 이 상자는 내 모든 목록(RLS)에서 사라지므로 북마크도 정리한다.
   // (안 지우면 홈 '즐겨찾는 창고' 카운트엔 잡히는데 목록엔 안 떠 불일치.)
   // 마지막 참여자였다면 상자 cascade로 이미 삭제됐을 수 있어 이 delete는 무해한 no-op.
-  await supabase.from('favorites').delete().eq('box_id', id).eq('user_id', user.id)
+  await supabase.from('bookmarks').delete().eq('box_id', id).eq('user_id', user.id)
 }
 
 export async function markAllSeen(): Promise<void> {

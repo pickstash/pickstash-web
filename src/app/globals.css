@@ -33,7 +33,8 @@
   --color-butter-tint: #fbf1ce; /* 들썩 패널·그룹 라벨·좋아요 활성 배경 */
 
   /* 상태 의미 전용 */
-  --color-tangerine: #ee7b3f; /* 결판 중·스탬프 */
+  --color-tangerine: #ee7b3f; /* 결판 중·스탬프·결정형 칩 */
+  --color-tangerine-tint: #fbe7d7; /* 결정형(결정하기) 칩 배경 */
   --color-leaf: #4e9c63; /* 정리완료 */
   --color-leaf-tint: #e3efe0;
   --color-tomato: #de5b41; /* 싫어요·삭제·에러 */

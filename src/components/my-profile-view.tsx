@@ -1,14 +1,17 @@
 'use client'
 
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { AppLink } from '@/lib/nav/nav'
 import { Icon } from '@/components/icon'
+import { PullToRefresh } from '@/components/pull-to-refresh'
+import { ProfileBoxCard } from '@/components/profile-box-card'
 import { getMyProfile, getMyBookmarks, type PublicBoxCard } from '@/lib/api/social'
 
 // 내 프로필(인스타식) — 헤더 + [공개 | 저장함] 탭 + 상자 그리드. 설정은 톱니 → /profile/settings.
 export function MyProfileView() {
   const [tab, setTab] = useState<'public' | 'saved'>('public')
+  const queryClient = useQueryClient()
   const { data: profile, isPending } = useQuery({ queryKey: ['my-profile'], queryFn: getMyProfile })
   const { data: saved = [] } = useQuery({ queryKey: ['my-bookmarks'], queryFn: getMyBookmarks, enabled: tab === 'saved' })
 
@@ -18,6 +21,10 @@ export function MyProfileView() {
   const grid = tab === 'public' ? profile.boxes : saved
 
   return (
+    <PullToRefresh onRefresh={() => Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['my-profile'] }),
+      queryClient.invalidateQueries({ queryKey: ['my-bookmarks'] }),
+    ])}>
     <main className="mx-auto min-h-dvh max-w-[430px] bg-cream pb-28">
       {/* 우상단은 토스 시스템 버튼 자리라 비워둔다 — 액션은 본문 안으로. */}
       <header className="px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-1">
@@ -35,12 +42,14 @@ export function MyProfileView() {
             )}
           </div>
           <div className="flex flex-1 justify-around text-center">
-            {[['공개', profile.public_count], ['팔로워', profile.followers], ['팔로잉', profile.following]].map(([k, v]) => (
-              <div key={k as string}>
-                <p className="text-[16px] font-extrabold text-ink">{v}</p>
-                <p className="text-[11px] text-ink-faint">{k}</p>
-              </div>
-            ))}
+            {([['공개', profile.public_count, null], ['팔로워', profile.followers, 'followers'], ['팔로잉', profile.following, 'following']] as const).map(([k, v, tab]) => {
+              const inner = (<><p className="text-[16px] font-extrabold text-ink">{v}</p><p className="text-[11px] text-ink-faint">{k}</p></>)
+              return tab ? (
+                <AppLink key={k} href={`/follows/${profile.id}/${tab}`} className="active:opacity-60">{inner}</AppLink>
+              ) : (
+                <div key={k}>{inner}</div>
+              )
+            })}
           </div>
         </div>
 
@@ -53,6 +62,13 @@ export function MyProfileView() {
               <AppLink href="/profile/settings" className="text-[12px] font-bold text-tangerine">아이디를 설정하면 프로필을 공유할 수 있어요 →</AppLink>
             )}
             {profile.bio && <p className="mt-1 text-[12.5px] text-ink-soft">{profile.bio}</p>}
+            {profile.tags.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1">
+                {profile.tags.map(t => (
+                  <span key={t} className="rounded-full bg-cream px-2 py-0.5 text-[11px] font-medium text-ink-soft">#{t}</span>
+                ))}
+              </div>
+            )}
           </div>
           <AppLink
             href="/profile/settings"
@@ -83,21 +99,10 @@ export function MyProfileView() {
             {tab === 'public' ? '아직 공개한 상자가 없어요.' : '저장한 상자가 없어요.'}
           </p>
         ) : (
-          grid.map((b: PublicBoxCard) => (
-            <AppLink key={b.id} href={`/p/${b.id}`} className="block">
-              <div className="flex h-[96px] flex-col justify-between rounded-[14px] border border-[#ECEADC] bg-paper p-3 active:bg-butter-tint/40">
-                <span className={`w-fit rounded-md px-1.5 py-0.5 text-[10px] font-extrabold ${b.mode === 'checklist' ? 'bg-leaf-tint text-[#37714A]' : 'bg-butter-tint text-ink'}`}>
-                  {b.mode === 'checklist' ? '체크' : '결정'}
-                </span>
-                <div>
-                  <h4 className="line-clamp-2 text-[12.5px] font-extrabold leading-snug text-ink">{b.title}</h4>
-                  {b.mode === 'decide' && b.winner && <p className="mt-0.5 truncate text-[11px] font-bold text-ink-soft">→ {b.winner}</p>}
-                </div>
-              </div>
-            </AppLink>
-          ))
+          grid.map((b: PublicBoxCard) => <ProfileBoxCard key={b.id} box={b} />)
         )}
       </div>
     </main>
+    </PullToRefresh>
   )
 }

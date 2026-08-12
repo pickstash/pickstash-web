@@ -109,7 +109,7 @@ export function BoxViewer({
         {isDone && (
           <section className="rounded-card border border-butter-dark/30 bg-butter-tint p-4">
             {isChecklist ? (
-              <p className="text-[14px] font-bold text-ink-soft">체크리스트를 정리했어요.</p>
+              <p className="text-[14px] font-bold text-ink-soft">목록을 정리했어요.</p>
             ) : decidedNames.length > 0 ? (
               <p className="text-[15px] font-extrabold text-ink">
                 <span className="bg-butter px-1 underline decoration-butter-dark decoration-2">
@@ -136,7 +136,6 @@ export function BoxViewer({
           {view.options.map(option => {
             const blocks = parseBlocks(option.content)
             const isDecided = !!option.decided_at
-            const isChecked = !!option.checked_at
             const isLeader = !isDone && showLikes && maxLikes > 0 && option.like_count === maxLikes
 
             return (
@@ -153,17 +152,8 @@ export function BoxViewer({
                 )}
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex min-w-0 items-start gap-2">
-                    {isChecklist && (
-                      <span
-                        aria-hidden
-                        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-[7px] border-[1.5px] ${
-                          isChecked ? 'border-ink bg-ink text-cream' : 'border-line bg-paper'
-                        }`}
-                      >
-                        {isChecked && <Icon name="check" size={12} strokeWidth={3} />}
-                      </span>
-                    )}
-                    <h3 className={`min-w-0 text-[16px] font-extrabold leading-snug ${isChecked ? 'text-ink-faint line-through' : 'text-ink'}`}>
+                    {/* 모아보기(체크형) 체크 상태는 개인 진행이라 공개 뷰엔 미표시 — 항목 리스트만 공유 */}
+                    <h3 className="min-w-0 text-[16px] font-extrabold leading-snug text-ink">
                       {option.name}
                     </h3>
                   </div>

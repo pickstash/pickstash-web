@@ -44,10 +44,10 @@ export const BOX_LIST_META: Record<
     emptyDesc: '첫 결정을 내려보세요!',
   },
   favorites: {
-    title: '즐겨찾는 창고',
+    title: '북마크한 창고',
     description: '다시 꺼내보고 싶은 상자들이 모였어요.',
-    emptyTitle: '즐겨찾는 상자가 없어요',
-    emptyDesc: '상자 상세에서 별 아이콘을 눌러 담아두세요!',
+    emptyTitle: '북마크한 상자가 없어요',
+    emptyDesc: '상자 상세에서 북마크 아이콘을 눌러 담아두세요!',
   },
   all: {
     title: '상자',

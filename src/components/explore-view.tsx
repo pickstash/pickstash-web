@@ -1,15 +1,17 @@
 'use client'
 
 import { useState } from 'react'
+import type { ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { AppLink } from '@/lib/nav/nav'
-import { Icon } from '@/components/icon'
+import { Icon, type IconName } from '@/components/icon'
 import { getPublicFeed, searchPublic, type PublicBoxCard, type PersonResult } from '@/lib/api/social'
 import { FollowButton } from '@/components/follow-button'
 
-// 돋보기(탐색) — 공개 상자 검색 + 사람 검색 + 인기/최근 공개 피드. 공유(웹·토스).
-export function ExploreView() {
+// 돋보기(탐색) — 공개 상자 검색 + 사람 검색 + 최근 공개 피드. 공유(웹·토스).
+// midBanner: 검색바와 피드 사이 인라인 광고(토스 전용 슬롯).
+export function ExploreView({ midBanner }: { midBanner?: ReactNode } = {}) {
   const [q, setQ] = useState('')
   const [tab, setTab] = useState<'box' | 'people'>('box')
   const query = q.trim()
@@ -62,16 +64,21 @@ export function ExploreView() {
       </header>
 
       <div className="flex-1 space-y-2.5 px-5 pb-28 pt-2">
-        {!query && <p className="px-0.5 text-[12px] font-bold text-ink-soft">인기 있는 결정</p>}
+        {midBanner && <div>{midBanner}</div>}
+        {!query && boxes.length > 0 && <p className="px-0.5 text-[12px] font-bold text-ink-soft">최근 공개된 결정</p>}
 
         {query && tab === 'people' ? (
           people.length === 0 ? (
-            <Empty text="사람을 찾지 못했어요" />
+            <Empty icon="user" title="찾는 사람이 없어요" subtitle="@아이디나 닉네임으로 검색해보세요" />
           ) : (
             people.map(p => <PersonRow key={p.id} person={p} />)
           )
         ) : boxes.length === 0 ? (
-          <Empty text={query ? '결과가 없어요' : '아직 공개된 결정이 없어요'} />
+          query ? (
+            <Empty icon="search" title="검색 결과가 없어요" subtitle="다른 키워드로 찾아보세요" />
+          ) : (
+            <Empty icon="box" title="아직 공개된 게 없어요" subtitle="상자를 공개하면 여기에서 다른 사람들과 나눌 수 있어요" />
+          )
         ) : (
           boxes.map(b => <PublicBoxRow key={b.id} box={b} />)
         )}
@@ -80,10 +87,16 @@ export function ExploreView() {
   )
 }
 
-function Empty({ text }: { text: string }) {
+function Empty({ icon, title, subtitle }: { icon: IconName; title: string; subtitle?: string }) {
   return (
-    <div className="mt-6 rounded-card border border-dashed border-[#D9D6C2] bg-paper/60 px-6 py-12 text-center">
-      <p className="text-[13px] font-bold text-ink-soft">{text}</p>
+    <div className="mt-6 flex flex-col items-center gap-3 rounded-card border border-dashed border-[#D9D6C2] bg-paper/60 px-6 pt-11 pb-12 text-center">
+      <span className="flex h-14 w-14 items-center justify-center rounded-full bg-butter-tint text-ink">
+        <Icon name={icon} size={26} strokeWidth={1.9} />
+      </span>
+      <div>
+        <p className="text-[15px] font-extrabold tracking-tight text-ink">{title}</p>
+        {subtitle && <p className="mx-auto mt-1.5 max-w-[15rem] text-[12.5px] leading-relaxed text-ink-soft">{subtitle}</p>}
+      </div>
     </div>
   )
 }
@@ -99,10 +112,7 @@ function PublicBoxRow({ box }: { box: PublicBoxCard }) {
         <h3 className={`truncate text-[17px] font-extrabold leading-snug tracking-tight ${done ? 'text-ink-soft' : 'text-ink'}`}>{box.title}</h3>
 
         {box.mode === 'checklist' ? (
-          <p className="mt-2 flex items-center gap-1 text-[12.5px] font-bold text-ink-soft">
-            <Icon name="check" size={13} strokeWidth={2.5} />
-            {box.checked}/{box.total} 체크
-          </p>
+          <p className="mt-2 text-[12.5px] font-bold text-ink-soft">항목 {box.total}개</p>
         ) : box.winner ? (
           <p className="mt-1.5 text-[13.5px] text-ink">
             <span className="font-extrabold [box-shadow:inset_0_-8px_0_#FFD84A]">{box.winner}</span>
@@ -142,6 +152,9 @@ function PersonRow({ person }: { person: PersonResult }) {
         <p className="truncate text-[11.5px] text-ink-faint">
           {person.handle ? `@${person.handle} · ` : ''}공개 {person.public_count} · 팔로워 {person.followers}
         </p>
+        {person.tags.length > 0 && (
+          <p className="mt-0.5 truncate text-[11px] font-bold text-ink-soft">{person.tags.map(t => `#${t}`).join(' ')}</p>
+        )}
       </div>
       <FollowButton userId={person.id} />
     </AppLink>

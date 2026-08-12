@@ -47,7 +47,20 @@ export interface BoxCardCtx {
   votes: { option_id: string; vote_type: string }[]
 }
 
-export const HOME_RAIL_LIMIT = 8 // 히어로 1개 + 레일 최대 8개까지만 좋아요 집계/표시
+/** 들썩이는 상자 항목 — 열림 상자 카드 + 최근 7일 내 '무슨 일이 있었는지' 한 줄. */
+export interface ShakingItem {
+  card: BoxCard // status: 'open'
+  note: string // formatActivity로 만든 최신 활동 문구
+}
+
+/** 홈 브리핑 — "돌아왔을 때 놓치면 안 되는 것". 전체 상자 브라우징은 상자 탭이 전담.
+ *  ① 최근에 이렇게 정했어요(7일 이내 정리완료) → ② 들썩이는 상자(7일 이내 다른 사람 활동). */
+export interface HomeBrief {
+  recentDone: BoxCard[] // ① 7일 이내 정리완료, 최대 5개
+  shaking: ShakingItem[] // ② 7일 이내 다른 사람 활동 있는 열림 상자(열어봐도 7일간 유지)
+}
+
+export const BRIEF_WINDOW_MS = 7 * 86_400_000 // 최근 결정·들썩임 공통 유지창 7일
 
 const deadlineTime = (b: RawOpenBox) =>
   b.decision_mode === 'auto_deadline' && b.deadline_at ? new Date(b.deadline_at).getTime() : Infinity
@@ -132,19 +145,4 @@ export function buildBoxCards(boxes: RawOpenBox[], ctx: BoxCardCtx): BoxCard[] {
       leaders: like?.leaders ?? [],
     }
   })
-}
-
-/** 표시 대상 상자(전부 열림) + 좋아요 원천 데이터 → 히어로/레일 카드. */
-export function buildHomeCards(
-  displayed: RawOpenBox[],
-  ctx: BoxCardCtx,
-): { hero: OpenBoxCard | null; railCards: OpenBoxCard[] } {
-  const cards = buildBoxCards(displayed, ctx)
-    .filter((c): c is BoxCard & { status: 'open' } => c.status === 'open')
-    .map((c): OpenBoxCard => {
-      const { status, ...rest } = c
-      void status
-      return rest
-    })
-  return { hero: cards[0] ?? null, railCards: cards.slice(1) }
 }

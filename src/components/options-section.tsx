@@ -26,11 +26,13 @@ interface OptionsSectionProps {
   showLikes?: boolean
   /** 있으면 '선택지 N개' 옆에 링크 모아보기 칩 표시 */
   linksHref?: string
-  /** 체크형 상자(§033) — 좋아요·1위·결정 대신 체크박스+그룹으로 렌더 */
+  /** 모아보기 상자(§033) — 좋아요·1위·결정 대신 항목+그룹으로 렌더 */
   checklist?: boolean
+  /** 모아보기 중 '항목 체크 사용'(044) — true일 때만 항목에 체크박스를 그린다. 기본 false */
+  checkable?: boolean
 }
 
-export function OptionsSection({ boxId, round, initialOptions, canVote, showLikes = true, linksHref, checklist = false }: OptionsSectionProps) {
+export function OptionsSection({ boxId, round, initialOptions, canVote, showLikes = true, linksHref, checklist = false, checkable = false }: OptionsSectionProps) {
   const { data: options = initialOptions } = useOptions(boxId)
   const { data: votes = {} } = useBoxVotes(boxId, round)
   const [sortMode, setSortMode] = useState<OptionSortMode>('latest')
@@ -100,7 +102,9 @@ export function OptionsSection({ boxId, round, initialOptions, canVote, showLike
             const counts = votes[option.id] ?? { like: 0, dislike: 0, myVote: null }
             const preview = getOptionPreview(parseBlocks(option.content))
             const isLead = leaderIds.has(option.id)
-            const checked = !!option.checked_at
+            // 체크 사용(checkable)이 꺼지면 취소선·체크도 즉시 사라지게 — checked_at 초기화 전파와
+            // 무관하게 표시를 확정한다(스위치 끈 뒤 체크된 글씨가 남던 문제).
+            const checked = checkable && !!option.checked_at
             const groupLabel = option.group_label?.trim() || null
             const showGroupHeader = checklist && groupLabel && groupLabel !== (visible[i - 1]?.group_label?.trim() || null)
             return (
@@ -128,7 +132,7 @@ export function OptionsSection({ boxId, round, initialOptions, canVote, showLike
                   />
 
                   <div className="flex items-start gap-3">
-                    {checklist && (
+                    {checklist && checkable && (
                       <button
                         type="button"
                         onClick={() => toggleChecked.mutate({ optionId: option.id, checked: !checked })}

@@ -5,24 +5,28 @@ import { useCreateBox } from '@/hooks/use-boxes'
 import { DeadlineBottomSheet } from '@/components/deadline-bottom-sheet'
 import { Icon } from '@/components/icon'
 import { takePendingBoxFolder } from '@/lib/nav/pending-box-folder'
+import { takePendingBoxDraft } from '@/lib/nav/pending-box-draft'
 import { defaultDeadline, formatKoreanDateTime } from '@/lib/utils'
 import type { DecisionMode, BoxMode } from '@/lib/api/boxes'
 
 const PURPOSES: { value: BoxMode; label: string; sub: string }[] = [
-  { value: 'decide', label: '결정하기', sub: '후보를 모아 투표하거나 골라서 정해요' },
-  { value: 'checklist', label: '체크하기', sub: '항목을 적고 같이 체크만 해요. 투표 없음' },
+  { value: 'decide', label: '결정하기', sub: '후보를 모아 몇가지를 정해요' },
+  { value: 'checklist', label: '모아보기', sub: '기억하고 싶은 것들을 모아둬요' },
 ]
 
 const DECISION_MODES: { value: DecisionMode; label: string; sub: string }[] = [
-  { value: 'manual', label: '직접 정하기', sub: '원할 때 직접 골라 정해요 (안 정하고 모아두기만 해도 돼요)' },
+  { value: 'manual', label: '직접 정하기', sub: '마감일 없이 아무때나 결정해요' },
   { value: 'auto_deadline', label: '마감 투표', sub: '마감 때 좋아요 최다가 자동으로 정해져요' },
 ]
 
 export function CreateBoxForm() {
-  const [title, setTitle] = useState('')
+  // 홈 빈 상태 추천 템플릿에서 넘어왔으면 제목·종류를 미리 채운다(1회성 소비).
+  const [draft] = useState(() => takePendingBoxDraft())
+  const [title, setTitle] = useState(draft?.title ?? '')
   const [memo, setMemo] = useState('')
-  const [purpose, setPurpose] = useState<BoxMode>('decide')
+  const [purpose, setPurpose] = useState<BoxMode>(draft?.mode ?? 'decide')
   const [decisionMode, setDecisionMode] = useState<DecisionMode>('manual')
+  const [checkable, setCheckable] = useState(false) // 모아보기에서 항목 체크 사용 여부(기본 꺼짐)
   const [deadline, setDeadline] = useState<Date | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
   // 서랍 상세에서 넘어왔으면 그 서랍에 바로 담아 만든다(1회성 소비).
@@ -48,6 +52,7 @@ export function CreateBoxForm() {
         mode: purpose,
         decision_mode: decisionMode,
         deadline_at: needsDeadline && deadline ? deadline.toISOString() : null,
+        checkable: purpose === 'checklist' ? checkable : undefined,
       },
       folderId: pendingFolder?.id,
     })
@@ -107,6 +112,24 @@ export function CreateBoxForm() {
           })}
         </div>
       </div>
+
+      {/* 항목 체크 사용 — 목적을 '모아보기'로 골랐을 때만. 기본 꺼짐(모아두는 게 본질, 체크는 선택) */}
+      {purpose === 'checklist' && (
+        <button
+          type="button"
+          onClick={() => setCheckable(v => !v)}
+          aria-pressed={checkable}
+          className="flex w-full items-center justify-between gap-3 rounded-field border-[1.5px] border-line bg-paper px-4 py-3 text-left"
+        >
+          <span className="min-w-0">
+            <span className="block text-sm font-bold text-ink">항목별 체크박스 사용</span>
+            <span className="mt-0.5 block text-[12px] leading-snug text-ink-soft">상자를 만든 이후에도 설정할 수 있어요</span>
+          </span>
+          <span className={`relative h-6 w-10 shrink-0 rounded-full transition-colors ${checkable ? 'bg-ink' : 'bg-[#D9D6C2]'}`}>
+            <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-paper shadow-sm transition-all ${checkable ? 'left-[18px]' : 'left-0.5'}`} />
+          </span>
+        </button>
+      )}
 
       {/* 결정 방식 — 목적을 '결정하기'로 골랐을 때만 노출 */}
       {purpose === 'decide' && (

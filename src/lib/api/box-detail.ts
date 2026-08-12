@@ -33,7 +33,7 @@ export async function loadBoxDetail(
   if (!box.box_participants.find(p => p.user_id === userId)) return { status: 'forbidden' }
 
   const [{ data: favorite }] = await Promise.all([
-    supabase.from('favorites').select('box_id').eq('user_id', userId).eq('box_id', boxId).maybeSingle(),
+    supabase.from('bookmarks').select('box_id').eq('user_id', userId).eq('box_id', boxId).maybeSingle(),
     supabase
       .from('box_participants')
       .update({ last_seen_at: new Date().toISOString() })

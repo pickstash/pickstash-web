@@ -3,6 +3,10 @@ import withSerwist from "@serwist/next";
 
 const nextConfig: NextConfig = {
   turbopack: {},
+  // /favorites → /bookmarks 영구 이전(북마크 개념 일원화). 딥링크·구 URL 호환.
+  async redirects() {
+    return [{ source: '/favorites', destination: '/bookmarks', permanent: true }];
+  },
 };
 
 export default withSerwist({

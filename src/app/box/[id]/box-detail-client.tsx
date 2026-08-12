@@ -1,12 +1,14 @@
 'use client'
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useNav, AppLink } from '@/lib/nav/nav'
 import {
   useUpdateBoxTitle,
   useUpdateBoxMemo,
   useUpdateBoxDeadline,
   useUpdateBoxDecisionMode,
+  useUpdateBoxCheckable,
   useDecideBox,
   useLeaveBox,
   useReopenBox,
@@ -19,16 +21,16 @@ import { useCoParticipants, useInviteUsersToBox } from '@/hooks/use-invites'
 import { useBodyScrollLock } from '@/hooks/use-body-scroll-lock'
 import { DeadlineBottomSheet } from '@/components/deadline-bottom-sheet'
 import { OptionsSection } from '@/components/options-section'
-import { JoinRequests } from '@/components/join-requests'
 import { Icon } from '@/components/icon'
+import { ModeChip } from '@/components/mode-chip'
 import { AppDrawer } from '@/components/app-drawer'
 import { PageHeader } from '@/components/page-header'
 import { shareInviteLink, hasNativeShare } from '@/lib/share/native-share'
-import { getBoxStatus, isDoneStatus, BOX_STATUS_LABEL, type BoxStatus } from '@/lib/domain/box-status'
+import { getBoxStatus, isDoneStatus } from '@/lib/domain/box-status'
 import { parseBlocks, linkBlocksOf } from '@/lib/domain/option-content'
 import { getLeaderKey } from '@/lib/domain/winner'
 import { setBoxVisibility } from '@/lib/api/social'
-import { formatDeadlineCompact, defaultDeadline } from '@/lib/utils'
+import { formatDeadlineCompact, defaultDeadline, formatKoreanDate } from '@/lib/utils'
 import type { BoxWithParticipants, BoxParticipant, DecisionMode } from '@/lib/api/boxes'
 import type { Option } from '@/lib/api/options'
 
@@ -37,11 +39,6 @@ interface BoxDetailClientProps {
   currentUserId: string
   initialOptions: Option[]
   initialIsFavorite: boolean
-}
-
-const STATUS_BADGE_CLASS: Record<BoxStatus, string> = {
-  RESOLVED: 'bg-leaf-tint text-[#37714A]',
-  OPEN: 'border border-[#D9D6C2] bg-paper text-ink-soft',
 }
 
 const DECISION_MODES: { value: DecisionMode; label: string; sub: string }[] = [
@@ -111,6 +108,7 @@ function PencilCircle({ children }: { children: ReactNode }) {
 
 export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions, initialIsFavorite }: BoxDetailClientProps) {
   const nav = useNav()
+  const queryClient = useQueryClient()
   const [box, setBox] = useState(initialBox)
   // 재진입/refetch로 참여자가 바뀌면(다른 사람이 나감/들어옴) 로컬 box에 반영.
   // 참여자만 동기화 — 제목·메모 등 로컬 편집 중인 필드는 덮지 않는다.
@@ -137,6 +135,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
   const [tagInput, setTagInput] = useState(((box as unknown as { tags?: string[] }).tags ?? []).join(', '))
   const [publishBusy, setPublishBusy] = useState(false)
   const isPublic = ((box as unknown as { visibility?: string }).visibility) === 'public'
+  const publicTags = ((box as unknown as { tags?: string[] }).tags ?? [])
 
   async function savePublish() {
     if (publishBusy) return
@@ -146,6 +145,12 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
       await setBoxVisibility(box.id, publicOn, tags)
       setBox(prev => ({ ...prev, visibility: publicOn ? 'public' : 'private', tags } as unknown as typeof prev))
       setPublishOpen(false)
+      // 공개 여부 변경 → 탐색 피드·내 프로필(공개 그리드/카운트) 최신화. 웹 클라 쿼리 + RSC 둘 다.
+      queryClient.invalidateQueries({ queryKey: ['public-feed'], refetchType: 'all' })
+      queryClient.invalidateQueries({ queryKey: ['public-search'], refetchType: 'all' })
+      queryClient.invalidateQueries({ queryKey: ['my-profile'], refetchType: 'all' })
+      queryClient.invalidateQueries({ queryKey: ['profile-feed'], refetchType: 'all' })
+      nav.refresh()
     } catch {
       /* 실패 시 시트 유지 */
     } finally {
@@ -154,6 +159,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
   }
   const [folderNameInput, setFolderNameInput] = useState('')
   const [confirmShareFolder, setConfirmShareFolder] = useState<{ id: string; name: string; count: number } | null>(null)
+  const [shareFolderOn, setShareFolderOn] = useState(true) // 담기 확인창 스위치(공개/나만) — 기본 공개
   const [inviteOpen, setInviteOpen] = useState(false)
   const [invitePicked, setInvitePicked] = useState<Set<string>>(new Set())
   const [isFavorite, setIsFavorite] = useState(initialIsFavorite)
@@ -185,6 +191,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
   const updateMemo = useUpdateBoxMemo(box.id)
   const updateDeadline = useUpdateBoxDeadline(box.id)
   const updateDecisionMode = useUpdateBoxDecisionMode(box.id)
+  const updateCheckable = useUpdateBoxCheckable(box.id)
   const decideBox = useDecideBox(box.id)
   const leaveBox = useLeaveBox()
   const reopenBox = useReopenBox(box.id)
@@ -220,7 +227,8 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
   const status = getBoxStatus(box)
   const isDone = isDoneStatus(status)
   const isSolo = box.box_participants.length === 1
-  const isChecklist = box.mode === 'checklist'        // 체크형 상자(§033) — 좋아요·1위·마감·결정 UI 전부 숨김
+  const isChecklist = box.mode === 'checklist'        // 모아보기 상자(§033) — 좋아요·1위·마감·결정 UI 전부 숨김
+  const checkable = isChecklist && ((box as unknown as { checkable?: boolean }).checkable ?? false) // 항목 체크 사용(044)
   const isAuto = !isChecklist && box.decision_mode === 'auto_deadline'
   const showLikes = !isSolo && !isChecklist           // 혼자 상자·체크형 상자는 좋아요 미표시
   // 하단 1차 액션(최종 결정하기/정리완료로 표시) 노출 여부 — 없으면 추가 버튼이 풀폭이 된다.
@@ -228,11 +236,11 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
   const showPrimaryAction = !isDone
 
   // 폴더 지정/해제 (018: 다중 선택 토글, 모달 유지). 무효화로 체크 갱신.
-  function applyFolder(folderId: string) {
+  function applyFolder(folderId: string, shared = true) {
     const set = new Set(myFolderIds)
     if (set.has(folderId)) set.delete(folderId)
     else set.add(folderId)
-    setFolders.mutate(Array.from(set))
+    setFolders.mutate({ ids: Array.from(set), sharedByFolder: { [folderId]: shared } })
   }
 
   // 공유 서랍(2명+)에 '새로 담기'면 유출 방지 확인창을 먼저 띄운다. 빼기·개인 서랍은 즉시.
@@ -240,6 +248,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
     const adding = !myFolderIds.includes(folderId)
     const f = folders.find(x => x.id === folderId)
     if (adding && f && f.member_count > 1) {
+      setShareFolderOn(true) // 기본 공개
       setConfirmShareFolder({ id: folderId, name: f.name, count: f.member_count })
       return
     }
@@ -474,19 +483,32 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
           <div className="relative w-full max-w-[300px] rounded-[20px] bg-paper p-5 shadow-[0_16px_40px_rgba(42,42,39,0.25)]">
             <p className="break-keep text-[15px] font-extrabold text-ink">함께 쓰는 서랍이에요</p>
             <p className="mt-1.5 break-keep text-[12.5px] leading-relaxed text-ink-soft">
-              &lsquo;{confirmShareFolder.name}&rsquo; 서랍을 함께 쓰는{' '}
-              <span className="font-bold text-ink">{confirmShareFolder.count}명 모두</span>에게 이 상자가 공유돼요. 계속할까요?
+              &lsquo;{confirmShareFolder.name}&rsquo; 서랍엔 <span className="font-bold text-ink">{confirmShareFolder.count}명</span>이 함께 있어요.
             </p>
-            <div className="mt-4 flex gap-2">
+            <button
+              type="button"
+              onClick={() => setShareFolderOn(v => !v)}
+              aria-pressed={shareFolderOn}
+              className="mt-4 flex w-full items-center justify-between gap-3 rounded-field border-[1.5px] border-line bg-paper px-4 py-3 text-left"
+            >
+              <span className="min-w-0">
+                <span className="block text-[13px] font-bold text-ink">서랍 사람들에게 공개</span>
+                <span className="mt-0.5 block text-[11.5px] text-ink-soft">{shareFolderOn ? '멤버 전원이 이 상자를 봐요' : '나만 볼 수 있어요'}</span>
+              </span>
+              <span className={`relative h-6 w-10 shrink-0 rounded-full transition-colors ${shareFolderOn ? 'bg-ink' : 'bg-[#D9D6C2]'}`}>
+                <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-paper shadow-sm transition-all ${shareFolderOn ? 'left-[18px]' : 'left-0.5'}`} />
+              </span>
+            </button>
+            <div className="mt-3 flex gap-2">
               <button
                 onClick={() => setConfirmShareFolder(null)}
-                className="flex-1 rounded-field border border-line py-3 text-[13px] font-bold text-ink-soft"
+                className="flex-1 rounded-field border border-line py-3 text-[13px] font-bold text-ink-soft active:bg-cream"
               >
                 취소
               </button>
               <button
-                onClick={() => { applyFolder(confirmShareFolder.id); setConfirmShareFolder(null) }}
-                className="flex-1 rounded-field bg-ink py-3 text-[13px] font-bold text-cream"
+                onClick={() => { applyFolder(confirmShareFolder.id, shareFolderOn); setConfirmShareFolder(null) }}
+                className="flex-1 rounded-field bg-ink py-3 text-[13px] font-bold text-cream active:opacity-80"
               >
                 담기
               </button>
@@ -629,7 +651,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
                 createFolder.mutate(n, {
                   onSuccess: folder => {
                     setFolderNameInput('')
-                    setFolders.mutate([...myFolderIds, folder.id])
+                    setFolders.mutate({ ids: [...myFolderIds, folder.id] })
                   },
                 })
               }}
@@ -716,19 +738,25 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
         {/* 히어로: 상태 · 질문 · 메모 · 메타 · 참여 */}
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-2">
-            <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-bold ${STATUS_BADGE_CLASS[status]}`}>
-              {BOX_STATUS_LABEL[status]}
-            </span>
-            {/* 상자 액션 — 헤더 대신 뱃지 줄로(토스 시스템 버튼 겹침 회피 + 긴 제목 폭 확보): 즐겨찾기·링크·편집. */}
+            {/* 모드 라벨 + 공개중 배지(공개 상자일 때). ModeChip은 어디서나 동일 스타일. */}
+            <div className="flex min-w-0 items-center gap-1.5">
+              <ModeChip mode={isChecklist ? 'checklist' : 'decide'} />
+              {isPublic && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-line bg-paper px-2.5 py-0.5 text-xs font-bold text-ink-soft">
+                  <span className="h-1.5 w-1.5 rounded-full bg-leaf" />공개중
+                </span>
+              )}
+            </div>
+            {/* 상자 액션 — 헤더 대신 뱃지 줄로(토스 시스템 버튼 겹침 회피 + 긴 제목 폭 확보): 북마크·링크·편집. */}
             {!editingTitle && (
               <div className="flex shrink-0 items-center gap-0.5">
                 <button
                   onClick={handleToggleFavorite}
-                  aria-label="즐겨찾기"
+                  aria-label="북마크"
                   className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-transform active:scale-90"
                 >
                   <Icon
-                    name="star"
+                    name="bookmark"
                     size={22}
                     strokeWidth={1.6}
                     className={isFavorite ? undefined : 'text-ink-faint'}
@@ -826,6 +854,15 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
             <h1 className="text-[22px] font-extrabold leading-tight tracking-tight text-ink">{box.title}</h1>
           )}
 
+          {/* 공개 상자 해시태그 — 공개 설정에서 단 태그. 둘러보기 검색에 쓰인다. */}
+          {isPublic && publicTags.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {publicTags.map(t => (
+                <span key={t} className="rounded-full bg-cream px-2 py-0.5 text-[11px] font-medium text-ink-soft">#{t}</span>
+              ))}
+            </div>
+          )}
+
           {editingMemo ? (
             <div className="space-y-1.5">
               <textarea
@@ -854,6 +891,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
 
           {/* 마감(마감 투표만) + 참여자. 공유는 참여자 탭 → 초대 시트로 일원화(뷰어=초대 같은 링크). */}
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <span className="text-[11.5px] text-ink-faint">만든 날 {formatKoreanDate(box.created_at)}</span>
             {deadlineNode}
             {participantsNode}
           </div>
@@ -865,7 +903,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
             <div className="flex flex-col items-start gap-2.5 text-left">
               <PencilCircle>정리완료!</PencilCircle>
               {isChecklist ? (
-                <p className="text-[13.5px] text-ink-soft">체크리스트를 정리했어요</p>
+                <p className="text-[13.5px] text-ink-soft">목록을 정리했어요</p>
               ) : decidedOptions.length > 0 ? (
                 <p className="text-[18px] font-extrabold leading-snug text-ink">
                   <span className="[box-shadow:inset_0_-9px_0_#FFD84A]">{decidedOptions.map(o => o.name).join(', ')}</span>
@@ -907,14 +945,34 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
           </div>
         )}
 
-        {/* 참여 신청 대기 — 참여자에게만(공개 상자). 신청 없으면 미렌더. */}
-        <JoinRequests boxId={box.id} />
+        {/* 참여 신청 수락/거절은 알림함(alerts-view)에서 처리 — 상자 상세엔 두지 않는다. */}
 
         {/* 인기 (진행 중 · 여럿·결정형 상자) — 좋아요 최다 단독+2개↑일 때만. 체크형은 제외. */}
         {!isChecklist && !isDone && showLikes && displayLeaderName && (
           <p className="text-[12.5px] font-bold text-ink-soft">
             인기 · <span className="text-ink">{displayLeaderName}</span>
           </p>
+        )}
+
+        {/* 항목 체크 사용 토글 — 모아보기·진행중일 때. 생성 후에도 껐다 켤 수 있다(낙관적 반영). */}
+        {isChecklist && !isDone && (
+          <button
+            type="button"
+            onClick={() => {
+              const next = !checkable
+              setBox(prev => ({ ...prev, checkable: next }))
+              updateCheckable.mutate(next, { onError: () => setBox(prev => ({ ...prev, checkable: !next })) })
+            }}
+            aria-pressed={checkable}
+            className="flex w-full items-center justify-between gap-3 rounded-field border border-line bg-paper px-4 py-3 text-left"
+          >
+            <span className="min-w-0">
+              <span className="block text-sm font-bold text-ink">항목별 체크박스 사용</span>
+            </span>
+            <span className={`relative h-6 w-10 shrink-0 rounded-full transition-colors ${checkable ? 'bg-ink' : 'bg-[#D9D6C2]'}`}>
+              <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-paper shadow-sm transition-all ${checkable ? 'left-[18px]' : 'left-0.5'}`} />
+            </span>
+          </button>
         )}
 
         <OptionsSection
@@ -924,6 +982,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
           canVote={showLikes}
           showLikes={showLikes}
           checklist={isChecklist}
+          checkable={checkable}
         />
       </div>
 
@@ -932,6 +991,7 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
           결정형은 마감투표(마감일)여도 '최종 결정하기'로 즉시 수동 마감 가능(521efda). */}
       {options.length > 0 && (
         <div className="fixed inset-x-0 bottom-[var(--app-nav-h,0px)] z-20 grid grid-cols-2 gap-2.5 bg-cream px-5 pt-3 pb-[calc(var(--app-cta-safe,env(safe-area-inset-bottom))+0.75rem)] xl:inset-x-auto xl:bottom-10 xl:left-1/2 xl:w-[430px] xl:-translate-x-1/2 xl:rounded-b-[30px]">
+          {/* 결정형만 하단 1차 액션. 모아보기(리스트)는 '정리완료' 개념이 없어 버튼 없음 → 추가가 풀폭. */}
           {showPrimaryAction && !isChecklist && (
             <button
               onClick={openDecide}
@@ -940,18 +1000,9 @@ export function BoxDetailClient({ box: initialBox, currentUserId, initialOptions
               최종 결정하기
             </button>
           )}
-          {showPrimaryAction && isChecklist && (
-            <button
-              onClick={() => decideBox.mutate([], { onSuccess: () => setBox(prev => ({ ...prev, closed_at: new Date().toISOString() })) })}
-              disabled={decideBox.isPending}
-              className="rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80 disabled:opacity-50"
-            >
-              정리완료로 표시
-            </button>
-          )}
           <AppLink
             href={`/box/${box.id}/option/new`}
-            className={`flex items-center justify-center gap-1.5 rounded-field border border-dashed border-[#D9D6C2] bg-paper/50 py-4 text-[13px] font-bold text-ink-soft active:bg-cream ${showPrimaryAction ? '' : 'col-span-2'}`}
+            className={`flex items-center justify-center gap-1.5 rounded-field border border-dashed border-[#D9D6C2] bg-paper/50 py-4 text-[13px] font-bold text-ink-soft active:bg-cream ${showPrimaryAction && !isChecklist ? '' : 'col-span-2'}`}
           >
             <Icon name="plus" size={16} />
             {isChecklist ? '항목 추가하기' : '선택지 추가하기'}

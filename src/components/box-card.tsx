@@ -1,7 +1,7 @@
 import { AppLink } from '@/lib/nav/nav'
-import { getBoxStatus, BOX_STATUS_LABEL, type BoxStatus } from '@/lib/domain/box-status'
 import { formatKoreanDate, formatDeadline } from '@/lib/utils'
 import { Icon } from '@/components/icon'
+import { ModeChip } from '@/components/mode-chip'
 import type { Box } from '@/lib/api/boxes'
 
 type CardParticipant = { user_id: string; profiles: { avatar_url: string | null; nickname: string } | null }
@@ -41,37 +41,30 @@ function CardAvatars({ participants, max = 4 }: { participants: CardParticipant[
   )
 }
 
-const STATUS_BADGE_CLASS: Record<BoxStatus, string> = {
-  RESOLVED: 'bg-leaf-tint text-[#37714A]',
-  OPEN: 'border border-[#D9D6C2] bg-paper text-ink-soft',
-}
-
 export function BoxCard({ box, participants, winnerName, isFavorite }: BoxCardProps) {
-  const status = getBoxStatus(box)
   const isAuto = box.decision_mode === 'auto_deadline'
+  const checklist = box.mode === 'checklist'
 
   return (
     <AppLink href={`/box/${box.id}`} className="block">
       <div className="rounded-card border border-[#ECEADC] bg-paper p-4 shadow-[0_2px_10px_rgba(42,42,39,0.05)] transition-colors active:bg-butter-tint/40">
         <div className="flex items-start justify-between gap-2">
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            <h3 className="truncate text-[15.5px] font-extrabold leading-snug tracking-tight text-ink">
+          <div className="min-w-0 flex-1">
+            {/* 모드 라벨 — 공유 ModeChip(정리중/정리완료 배지는 제거). */}
+            <ModeChip mode={checklist ? 'checklist' : 'decide'} />
+            <h3 className="mt-1.5 truncate text-[15.5px] font-extrabold leading-snug tracking-tight text-ink">
               {box.title}
             </h3>
           </div>
-          <div className="flex shrink-0 items-center gap-1.5">
-            {isFavorite && (
-              <Icon
-                name="star"
-                size={15}
-                strokeWidth={1.5}
-                style={{ fill: 'var(--color-butter)', stroke: 'var(--color-butter-dark)' }}
-              />
-            )}
-            <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${STATUS_BADGE_CLASS[status]}`}>
-              {BOX_STATUS_LABEL[status]}
-            </span>
-          </div>
+          {isFavorite && (
+            <Icon
+              name="bookmark"
+              size={15}
+              strokeWidth={1.5}
+              className="shrink-0"
+              style={{ fill: 'var(--color-butter)', stroke: 'var(--color-butter-dark)' }}
+            />
+          )}
         </div>
 
         {winnerName && (

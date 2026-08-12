@@ -155,13 +155,13 @@ function getBoxStatus(box: { closed_at: string | null }): BoxStatus {
 - **상태 가로지름 / 미분류 / 진입**: 폴더 뷰(`/folder/[id]`)는 그 폴더의 상자 전체를 상태(어질러진/정리된) 무관 노출. 어느 폴더에도 없는 상자는 기존 창고에 그대로(폴더는 추가 뷰). 드로어 "폴더" 섹션(내 폴더 목록 + 새 폴더) + 상자 상세 "폴더 지정"(다중 선택).
 - **라이프사이클 (상자 규칙 미러 — 무오너·누구나 동등)**:
   - **상자 추가/빼기·이름변경**: 멤버 누구나. 단일 객체라 **전원에게 즉시 반영**(복사·동기화 개념 자체가 없음).
-  - **상자 추가 = 초대**: 폴더에 상자를 넣으면 **폴더 멤버 전원이 그 상자 참여자로 등록**된다(트리거, `on conflict do nothing`).
+  - **상자 추가 = 초대 (단, 링크별 공유/나만 — v3 2026-08-12)**: 폴더에 상자를 넣으면 기본은 **폴더 멤버 전원이 그 상자 참여자로 등록**(트리거, `on conflict do nothing`). 단 `box_folders.shared`(기본 `true`) 플래그로 링크마다 제어한다 — **담는 시점에 "나만 보기"를 누르면 `shared=false`로 담겨** 자동참여 트리거가 스킵되고 **나만 참여자**로 남는다(다른 멤버의 폴더뷰·초대뷰어에서 안 보임). 상자는 원래 비공개 객체이고 서랍은 공유 수단일 뿐 — "이 서랍에 담을 때 공유할지/나만 볼지"를 고르는 것. **플래그는 (folder,box) 링크별**이라 같은 상자를 A서랍엔 공유·B서랍엔 나만으로 담을 수 있다(여러 서랍 안전). 나중에 폴더 상세에서 링크별로 토글(`set_box_folder_shared` — 공유↔나만 시 다른 멤버를 참여자에 추가/제거, 다른 공유 폴더로 정당화되는 멤버는 유지).
   - **상자 빼기 = 폴더 분류만 제거**: 폴더 목록에서만 빠지고 **상자 참여는 유지**(전원). 상자는 자기 라이프사이클(마지막 참여자 나가야 소멸)로만 사라진다. ↔ "추가=초대"와 비대칭이나, 빼기로 참여를 끊으면 남의 투표·상자를 파괴할 수 있어 의도적.
   - **참여(초대 링크)**: `folder_members` 등록 → 트리거가 **그 폴더의 모든 상자에 참여자로 등록**. 이미 멤버면 멱등.
   - **나가기(멤버 2명+)**: 나만 `folder_members`에서 빠지고 폴더는 남은 멤버에게 유지. 나갈 때 **"상자에서도 나갈까요?"**(기본 꺼짐=폴더만). 켜면 그 폴더의 상자에서도 나감 — 단 **내가 아직 멤버인 다른 폴더에 든 상자는 제외**(멀티폴더 안전).
   - **삭제(멤버 1명=나 / 개인 폴더)**: 폴더 소멸. **마지막 멤버가 나가면 폴더 자동 소멸**(트리거 — 상자의 "마지막 나감→삭제"와 동일). `box_folders`는 cascade, **상자 자체는 유지**. 공유 폴더 "통째 삭제" 액션은 **없음**(무오너 — 각자 나가서 마지막이 소멸). 즉 여럿이면 **"나가기"**, 혼자면 **"삭제"**(상자 버튼 규칙과 동일).
 - **공유 링크 (§6-1 미러)**: `folders.invite_code`(8자) → `/folder-invite/[code]`. 비로그인 뷰어(폴더 + 공유 상자 목록, 각 상자는 상자 읽기전용 뷰어로). 로그인 후 참여 → `join_folder_by_invite_code`(멤버 등록, 멱등). 이미 멤버면 `/folder/[id]`로 리다이렉트.
-- **RPC/트리거**: `get_folder_by_invite_code`·`get_folder_view_by_invite_code`(definer)·`join_folder_by_invite_code`·`leave_folder(p_folder_id, p_leave_boxes)`. 트리거 3종 — ① `box_folders` INSERT→멤버 전원 상자 참여, ② `folder_members` INSERT→그 폴더 상자 전원 참여, ③ `folder_members` DELETE→멤버 0이면 폴더 삭제.
+- **RPC/트리거**: `get_folder_by_invite_code`·`get_folder_view_by_invite_code`(definer, **`shared=false` 상자 제외** — 045)·`join_folder_by_invite_code`·`leave_folder(p_folder_id, p_leave_boxes)`·`set_box_folder_shared(p_folder_id, p_box_id, p_shared)`(045). 트리거 3종 — ① `box_folders` INSERT→(**`shared`일 때만**) 멤버 전원 상자 참여, ② `folder_members` INSERT→그 폴더의 **공유 상자**에만 참여, ③ `folder_members` DELETE→멤버 0이면 폴더 삭제.
 - **폐기(v1 018/019)**: 복사본 모델(`folders.user_id`·`source_folder_id`, per-user `box_folders(user_id,…)`, `sync_folder_box_to_subscribers` 트리거)은 **021에서 단일 공유 객체로 이관 후 폐기**. ⚠️ box_folders 스키마 변경 = 파괴적 마이그레이션(적용 전 백업 권장).
 
 ### 3-8. 상자 목적 — 결정형 / 체크형 (`boxes.mode`, 033, 2026-08-11 추가)
@@ -220,10 +220,15 @@ function getBoxStatus(box: { closed_at: string | null }): BoxStatus {
 
 ```sql
 -- 프로필 (auth.users 1:1)
+-- 036: handle(고유 @아이디)·bio(한줄소개) 추가. 046: tags(관심 해시태그 text[]) 추가.
+--   bio·tags는 공개 프로필에 표시되고, tags는 사람 검색(search_public)에서 handle·nickname과 함께 매칭된다.
 create table profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   nickname text not null,
   avatar_url text,                       -- 카카오 프로필 또는 기본 이미지
+  handle text,                           -- 036: 고유 @아이디 (^[a-z0-9_]{3,20}$)
+  bio text,                              -- 036: 한줄소개
+  tags text[] not null default '{}',     -- 046: 관심 해시태그 (사람 검색 노출)
   created_at timestamptz not null default now()
 );
 
@@ -294,7 +299,19 @@ create table group_members (
   primary key (group_id, user_id)
 );
 
--- 즐겨찾기
+-- 즐겨찾기/북마크 — 2026-08 일원화: 코드는 이제 favorites를 안 읽고 bookmarks 하나만 쓴다(045).
+-- 두 테이블 스키마 동일(user_id, box_id, created_at). favorites는 데이터만 bookmarks로 이관 후 휴면(차기 정리 마이그레이션에서 drop).
+-- 별표(참여 중 내 상자 즐겨찾기)와 저장(남의 공개 상자)이 같은 '북마크' 개념·같은 테이블로 통합됨.
+--   · 홈 '즐겨찾는 창고' 레일·/favorites·별표 = member-scoped 쿼리라 내가 참여 중인 상자만.
+--   · 프로필 저장함(get_my_bookmarks, security definer) = 참여 중 + 남의 공개 상자 전부(나만 봄).
+--     카드에 is_member 플래그 → true면 /box/:id(전체 기능), false면 /p/:id(공개 뷰어)로 라우팅.
+create table bookmarks (
+  user_id uuid not null references profiles(id) on delete cascade,
+  box_id uuid not null references boxes(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (user_id, box_id)
+);
+-- (레거시) favorites — 동일 스키마, 휴면. 신규 코드에서 참조 금지.
 create table favorites (
   user_id uuid not null references profiles(id) on delete cascade,
   box_id uuid not null references boxes(id) on delete cascade,

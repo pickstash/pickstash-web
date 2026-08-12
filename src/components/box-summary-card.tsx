@@ -52,7 +52,7 @@ function ParticipantsRow({ participants }: { participants: HeroParticipant[] }) 
  * home-stream-card.tsx(열림 전용) + 인라인 DoneCard(home-view.tsx)를 대체·흡수.
  * 모드 칩·즐겨찾기 별·좋아요·댓글·정리됨 배지는 의도적으로 없음(리디자인 확정 사항).
  */
-export function BoxSummaryCard({ card }: { card: BoxCard }) {
+export function BoxSummaryCard({ card, note }: { card: BoxCard; note?: string }) {
   if (card.status === 'done') {
     return (
       <AppLink href={`/box/${card.id}`} className="block">
@@ -90,10 +90,7 @@ export function BoxSummaryCard({ card }: { card: BoxCard }) {
         </div>
 
         {box.mode === 'checklist' ? (
-          <p className="mt-2 flex items-center gap-1 text-[12.5px] font-bold text-ink-soft">
-            <Icon name="check" size={13} strokeWidth={2.5} />
-            {box.checked}/{box.total} 체크
-          </p>
+          <p className="mt-2 text-[12.5px] font-bold text-ink-soft">항목 {box.total}개</p>
         ) : box.leaders.length > 0 ? (
           <div className="mt-2 flex min-w-0 items-center gap-1.5 text-[12.5px] font-extrabold text-ink">
             <span className="shrink-0 rounded-full bg-butter px-[7px] py-0.5 text-[10.5px]">인기</span>
@@ -104,6 +101,14 @@ export function BoxSummaryCard({ card }: { card: BoxCard }) {
         )}
 
         <ParticipantsRow participants={box.participants} />
+
+        {/* 들썩이는 상자 — 최근 활동 한 줄(무슨 일이 있었는지) */}
+        {note && (
+          <p className="mt-2.5 flex items-center gap-1.5 border-t border-[#F0EEE0] pt-2.5 text-[11.5px] font-semibold text-ink-soft">
+            <Icon name="bell" size={12} strokeWidth={2.2} className="shrink-0 text-butter-dark" />
+            <span className="min-w-0 truncate">{note}</span>
+          </p>
+        )}
       </div>
     </AppLink>
   )

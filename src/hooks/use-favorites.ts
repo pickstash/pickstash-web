@@ -33,6 +33,8 @@ export function useToggleFavorite(boxId: string) {
       qc.invalidateQueries({ queryKey: ['box-list'], refetchType: 'all' })
       qc.invalidateQueries({ queryKey: ['folder-view'], refetchType: 'all' })
       qc.invalidateQueries({ queryKey: ['box-detail', boxId], refetchType: 'all' })
+      // 즐겨찾기=북마크 일원화 → 프로필 저장함(참여 중 상자 포함)도 갱신.
+      qc.invalidateQueries({ queryKey: ['my-bookmarks'], refetchType: 'all' })
     },
   })
 }

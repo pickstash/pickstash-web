@@ -9,7 +9,7 @@ import { getAlerts } from "@/lib/api/alerts";
 const TABS: { href: string; icon: IconName; label: string }[] = [
   { href: "/", icon: "home", label: "홈" },
   { href: "/boxes", icon: "box", label: "상자" },
-  { href: "/explore", icon: "search", label: "돋보기" },
+  { href: "/explore", icon: "search", label: "둘러보기" },
   { href: "/alerts", icon: "bell", label: "알림" },
   { href: "/profile", icon: "user", label: "프로필" },
 ];
@@ -18,7 +18,7 @@ const TABS: { href: string; icon: IconName; label: string }[] = [
 function tabOf(p: string): string {
   if (p === "/") return "/";
   if (p === "/boxes" || p.startsWith("/box/") || p === "/messy" || p === "/done" ||
-      p === "/favorites" || p === "/folders" || p.startsWith("/folder/")) return "/boxes";
+      p === "/bookmarks" || p === "/favorites" || p === "/folders" || p.startsWith("/folder/")) return "/boxes";
   if (p.startsWith("/explore") || p.startsWith("/p/") || p.startsWith("/u/")) return "/explore";
   if (p.startsWith("/alerts")) return "/alerts";
   if (p.startsWith("/profile")) return "/profile";

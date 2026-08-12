@@ -45,8 +45,10 @@ interface OptionDetailClientProps {
   boxId: string
   round: number
   canVote: boolean
-  /** 체크형 상자(§033) — 좋아요 대신 체크박스, 그룹 라벨을 보여준다. */
+  /** 모아보기 상자(§033) — 좋아요 대신 그룹 라벨을 보여준다. */
   checklist?: boolean
+  /** 모아보기 중 '항목 체크 사용'(044) — true일 때만 체크박스를 그린다. 기본 false */
+  checkable?: boolean
   currentUserId: string
   myNickname: string
   participants: Participant[]
@@ -59,6 +61,7 @@ export function OptionDetailClient({
   round,
   canVote,
   checklist = false,
+  checkable = false,
   currentUserId,
   myNickname,
   participants,
@@ -274,7 +277,7 @@ export function OptionDetailClient({
 
           <div className="flex items-start justify-between gap-2">
             <div className="flex min-w-0 items-start gap-2.5">
-              {checklist && (
+              {checklist && checkable && (
                 <button
                   type="button"
                   onClick={() => toggleChecked.mutate({ optionId: option.id, checked: !option.checked_at })}
@@ -287,7 +290,7 @@ export function OptionDetailClient({
                   {option.checked_at && <Icon name="check" size={14} strokeWidth={3} />}
                 </button>
               )}
-              <h1 className={`min-w-0 text-[22px] font-extrabold leading-tight tracking-tight ${option.checked_at ? 'text-ink-faint line-through' : 'text-ink'}`}>
+              <h1 className={`min-w-0 text-[22px] font-extrabold leading-tight tracking-tight ${checkable && option.checked_at ? 'text-ink-faint line-through' : 'text-ink'}`}>
                 {option.name}
               </h1>
             </div>
