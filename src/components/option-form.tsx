@@ -36,8 +36,8 @@ interface OptionFormProps {
   initialGroupLabel?: string | null
 }
 
-const MAX_IMAGES = 6
-const MAX_BLOCKS = 20
+const MAX_IMAGES = 15
+const MAX_BLOCKS = 25
 
 function newId(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID()

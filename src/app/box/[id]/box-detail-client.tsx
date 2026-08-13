@@ -146,15 +146,15 @@ export function BoxDetailClient({
     }
   }
   const [folderNameInput, setFolderNameInput] = useState('')
-  const [confirmShareFolder, setConfirmShareFolder] = useState<{ id: string; name: string; count: number } | null>(null)
-  const [shareFolderOn, setShareFolderOn] = useState(true) // 담기 확인창 스위치(공개/나만) — 기본 공개
+  // 폴더별 '나만보기' 미리 설정 — 담기 시트 인라인 스위치. 기본 공개(false). 함께 쓰는 서랍+혼자 상자일 때만 노출.
+  const [privateByFolder, setPrivateByFolder] = useState<Record<string, boolean>>({})
   const [inviteOpen, setInviteOpen] = useState(false)
   const [invitePicked, setInvitePicked] = useState<Set<string>>(new Set())
   const [isFavorite, setIsFavorite] = useState(initialIsFavorite)
   const [deciding, setDeciding] = useState(false)
   useBodyScrollLock(
     membersOpen || inviteOpen || folderModal || modeModal || deadlineSheet || deciding ||
-    confirmLeave || confirmReopen || confirmShareFolder != null || publishOpen,
+    confirmLeave || confirmReopen || publishOpen,
   )
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
@@ -233,17 +233,19 @@ export function BoxDetailClient({
     setFolders.mutate({ ids: Array.from(set), sharedByFolder: { [folderId]: shared } })
   }
 
-  // 공유 서랍(2명+)에 '새로 담기'면 유출 방지 확인창을 먼저 띄운다. 빼기·개인 서랍은 즉시.
-  // 049: 이미 여럿이 함께 쓰는(참여자 2명+) 상자는 나만보기가 의미 없다 — 항상 공유로, 확인창도 생략.
-  function toggleFolder(folderId: string) {
-    const adding = !myFolderIds.includes(folderId)
-    const f = folders.find(x => x.id === folderId)
-    if (adding && f && f.member_count > 1 && isSolo) {
-      setShareFolderOn(true) // 기본 공개
-      setConfirmShareFolder({ id: folderId, name: f.name, count: f.member_count })
-      return
+  // 담기 토글 — 담을 땐 그 서랍의 '나만보기' 미리설정값(privateByFolder)을 shared로 반영한다.
+  // (함께 쓰는 서랍+혼자 상자만 나만보기가 의미 있고, 그 경우 시트의 인라인 스위치로 미리 고른다.)
+  function toggleFolderInSheet(folderId: string) {
+    const isPrivate = privateByFolder[folderId] ?? false
+    applyFolder(folderId, !isPrivate)
+  }
+
+  // 나만보기 스위치 변경 — 이미 담긴 서랍이면 멤버십은 유지한 채 공유 설정만 즉시 갱신한다.
+  function setFolderPrivate(folderId: string, isPrivate: boolean) {
+    setPrivateByFolder(prev => ({ ...prev, [folderId]: isPrivate }))
+    if (myFolderIds.includes(folderId)) {
+      setFolders.mutate({ ids: myFolderIds, sharedByFolder: { [folderId]: !isPrivate } })
     }
-    applyFolder(folderId)
   }
 
   const decidedOptions = options.filter(o => o.decided_at)
@@ -483,47 +485,6 @@ export function BoxDetailClient({
         </div>
       )}
 
-      {/* 공유 서랍 담기 확인 — 멤버 전원이 이 상자를 보게 되는 유출 방지 */}
-      {confirmShareFolder && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center px-8">
-          <div className="absolute inset-0 bg-ink/40" onClick={() => setConfirmShareFolder(null)} />
-          <div className="relative w-full max-w-[300px] rounded-[20px] bg-paper p-5 shadow-[0_16px_40px_rgba(42,42,39,0.25)]">
-            <p className="break-keep text-[15px] font-extrabold text-ink">함께 쓰는 서랍이에요</p>
-            <p className="mt-1.5 break-keep text-[12.5px] leading-relaxed text-ink-soft">
-              &lsquo;{confirmShareFolder.name}&rsquo; 서랍엔 <span className="font-bold text-ink">{confirmShareFolder.count}명</span>이 함께 있어요.
-            </p>
-            <button
-              type="button"
-              onClick={() => setShareFolderOn(v => !v)}
-              aria-pressed={shareFolderOn}
-              className="mt-4 flex w-full items-center justify-between gap-3 rounded-field border-[1.5px] border-line bg-paper px-4 py-3 text-left"
-            >
-              <span className="min-w-0">
-                <span className="block text-[13px] font-bold text-ink">서랍 사람들에게 공개</span>
-                <span className="mt-0.5 block text-[11.5px] text-ink-soft">{shareFolderOn ? '멤버 전원이 이 상자를 봐요' : '나만 볼 수 있어요'}</span>
-              </span>
-              <span className={`relative h-6 w-10 shrink-0 rounded-full transition-colors ${shareFolderOn ? 'bg-ink' : 'bg-[#D9D6C2]'}`}>
-                <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-paper shadow-sm transition-all ${shareFolderOn ? 'left-[18px]' : 'left-0.5'}`} />
-              </span>
-            </button>
-            <div className="mt-3 flex gap-2">
-              <button
-                onClick={() => setConfirmShareFolder(null)}
-                className="flex-1 rounded-field border border-line py-3 text-[13px] font-bold text-ink-soft active:bg-cream"
-              >
-                취소
-              </button>
-              <button
-                onClick={() => { applyFolder(confirmShareFolder.id, shareFolderOn); setConfirmShareFolder(null) }}
-                className="flex-1 rounded-field bg-ink py-3 text-[13px] font-bold text-cream active:opacity-80"
-              >
-                담기
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* 결정 방식 변경 (참여자 누구나) */}
       {modeModal && (
         <div className="fixed inset-0 z-50 flex flex-col justify-end">
@@ -627,25 +588,47 @@ export function BoxDetailClient({
               )}
               {folders.map(f => {
                 const checked = myFolderIds.includes(f.id)
+                const isPrivate = privateByFolder[f.id] ?? false
+                // 나만보기는 함께 쓰는 서랍(2명+) + 혼자 상자일 때만 의미 있다.
+                const canPrivate = f.member_count > 1 && isSolo
                 return (
-                  <button
-                    key={f.id}
-                    onClick={() => toggleFolder(f.id)}
-                    aria-pressed={checked}
-                    className="flex w-full items-center justify-between gap-2 rounded-[12px] px-3 py-3 text-left text-sm font-semibold text-ink active:bg-cream"
-                  >
-                    <span className="flex min-w-0 items-center gap-2">
+                  <div key={f.id} className="flex w-full items-center justify-between gap-2 rounded-[12px] px-3 py-2.5">
+                    <button
+                      type="button"
+                      onClick={() => toggleFolderInSheet(f.id)}
+                      aria-pressed={checked}
+                      className="flex min-w-0 flex-1 items-center gap-2 text-left text-sm font-semibold text-ink active:opacity-70"
+                    >
                       <Icon name="folder" size={16} className="shrink-0 text-ink-soft" />
                       <span className="truncate">{f.name}</span>
-                    </span>
-                    <span
-                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${
-                        checked ? 'border-butter-dark bg-butter' : 'border-line bg-paper'
-                      }`}
-                    >
-                      {checked && <Icon name="check" size={13} strokeWidth={3.2} className="text-ink" />}
-                    </span>
-                  </button>
+                    </button>
+                    <div className="flex shrink-0 items-center gap-2.5">
+                      {canPrivate && (
+                        <button
+                          type="button"
+                          onClick={() => setFolderPrivate(f.id, !isPrivate)}
+                          aria-pressed={isPrivate}
+                          className="flex items-center gap-1.5"
+                        >
+                          <span className="text-[11px] font-bold text-ink-soft">나만보기</span>
+                          <span className={`relative h-5 w-9 rounded-full transition-colors ${isPrivate ? 'bg-ink' : 'bg-[#D9D6C2]'}`}>
+                            <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-paper shadow-sm transition-all ${isPrivate ? 'left-[18px]' : 'left-0.5'}`} />
+                          </span>
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => toggleFolderInSheet(f.id)}
+                        aria-pressed={checked}
+                        aria-label={checked ? '서랍에서 빼기' : '서랍에 담기'}
+                        className={`flex h-5 w-5 items-center justify-center rounded-md border ${
+                          checked ? 'border-butter-dark bg-butter' : 'border-line bg-paper'
+                        }`}
+                      >
+                        {checked && <Icon name="check" size={13} strokeWidth={3.2} className="text-ink" />}
+                      </button>
+                    </div>
+                  </div>
                 )
               })}
             </div>
@@ -1012,6 +995,7 @@ export function BoxDetailClient({
           showLikes={showLikes}
           checklist={isChecklist}
           checkable={checkable}
+          canCheck={isParticipant}
           headerAction={isChecklist && !isDone && isParticipant ? (
             // 항목 체크 사용 토글 — '항목 N개' 오른쪽 끝. 생성 후에도 껐다 켤 수 있다(낙관적 반영).
             <button

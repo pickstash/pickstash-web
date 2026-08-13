@@ -46,7 +46,8 @@ export function FollowButton({ userId, className }: { userId: string; className?
 
   return (
     <button
-      onClick={toggle}
+      // 링크(AppLink) 안에 놓여도 팔로우만 토글되고 상세로 안 넘어가게 — 클릭 전파·기본이동 차단.
+      onClick={e => { e.preventDefault(); e.stopPropagation(); toggle() }}
       disabled={pending}
       className={`${layout} active:opacity-80 disabled:opacity-50 ${stateColor}`}
     >

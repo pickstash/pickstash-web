@@ -111,21 +111,26 @@ function PublicBoxRow({ box }: { box: PublicBoxCard }) {
       <div className={`rounded-card border border-[#ECEADC] p-4 active:bg-butter-tint/40 ${done ? 'bg-paper/70' : 'bg-paper shadow-[0_2px_10px_rgba(42,42,39,0.05)]'}`}>
         <h3 className={`truncate text-[17px] font-extrabold leading-snug tracking-tight ${done ? 'text-ink-soft' : 'text-ink'}`}>{box.title}</h3>
 
-        {box.mode === 'checklist' ? (
-          <p className="mt-2 text-[12.5px] font-bold text-ink-soft">항목 {box.total}개</p>
-        ) : box.winner ? (
-          <p className="mt-1.5 text-[13.5px] text-ink">
-            <span className="font-extrabold [box-shadow:inset_0_-8px_0_#FFD84A]">{box.winner}</span>
-            <span className="font-normal">(으)로 결정!</span>
-          </p>
-        ) : (
-          <p className="mt-2 text-[12.5px] font-bold text-ink-soft">선택지 {box.total}개</p>
-        )}
+        {/* 항목/선택지 개수 대신 등록된 태그를 보여준다. 결정형은 결정 문구 유지.
+            태그가 없어도 이 슬롯은 min-h로 자리를 지켜(카드 높이 일정) 목록이 들쭉날쭉하지 않게 한다. */}
+        <div className="mt-2 min-h-[18px]">
+          {box.mode !== 'checklist' && box.winner ? (
+            <p className="truncate text-[13px] text-ink">
+              <span className="font-extrabold [box-shadow:inset_0_-8px_0_#FFD84A]">{box.winner}</span>
+              <span className="font-normal">(으)로 결정!</span>
+            </p>
+          ) : box.tags.length > 0 ? (
+            <p className="truncate text-[12.5px] font-bold text-butter-deep">{box.tags.map(t => `#${t}`).join(' ')}</p>
+          ) : null}
+        </div>
 
         <div className="mt-2 flex items-center justify-between text-[11.5px] text-ink-faint">
-          <span>by {box.author?.handle ? `@${box.author.handle}` : box.author?.nickname ?? '누군가'}</span>
+          <span className="min-w-0 truncate">
+            by {box.author?.handle ? `@${box.author.handle}` : box.author?.nickname ?? '누군가'}
+            {box.participant_count > 0 && ` (${box.participant_count}명 참여중)`}
+          </span>
           {box.save_count > 0 && (
-            <span className="flex items-center gap-1"><Icon name="bookmark" size={12} />{box.save_count}</span>
+            <span className="flex shrink-0 items-center gap-1"><Icon name="bookmark" size={12} />{box.save_count}</span>
           )}
         </div>
       </div>

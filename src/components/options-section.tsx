@@ -30,11 +30,13 @@ interface OptionsSectionProps {
   checklist?: boolean
   /** 모아보기 중 '항목 체크 사용'(044) — true일 때만 항목에 체크박스를 그린다. 기본 false */
   checkable?: boolean
+  /** 체크박스를 눌러 토글할 수 있는지(=참여자). false면 주인이 체크한 상태만 보여주고 클릭 비활성. 기본 true */
+  canCheck?: boolean
   /** 헤더('항목/선택지 N개') 오른쪽 끝에 얹을 컨트롤 — 예: 체크형의 '항목별 체크박스' 토글. */
   headerAction?: ReactNode
 }
 
-export function OptionsSection({ boxId, round, initialOptions, canVote, showLikes = true, linksHref, checklist = false, checkable = false, headerAction }: OptionsSectionProps) {
+export function OptionsSection({ boxId, round, initialOptions, canVote, showLikes = true, linksHref, checklist = false, checkable = false, canCheck = true, headerAction }: OptionsSectionProps) {
   const { data: options = initialOptions } = useOptions(boxId)
   const { data: votes = {} } = useBoxVotes(boxId, round)
   const [sortMode, setSortMode] = useState<OptionSortMode>('latest')
@@ -131,14 +133,20 @@ export function OptionsSection({ boxId, round, initialOptions, canVote, showLike
                     {checklist && checkable && (
                       <button
                         type="button"
-                        onClick={() => toggleChecked.mutate({ optionId: option.id, checked: !checked })}
+                        disabled={!canCheck}
+                        onClick={e => { e.preventDefault(); e.stopPropagation(); toggleChecked.mutate({ optionId: option.id, checked: !checked }) }}
                         aria-pressed={checked}
-                        aria-label={checked ? '체크 해제' : '체크'}
-                        className={`relative z-10 mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[6px] border-[1.5px] ${
-                          checked ? 'border-ink bg-ink text-cream' : 'border-line bg-paper'
-                        }`}
+                        aria-label={checked ? '체크됨' : '체크 안 됨'}
+                        // 손가락이 체크박스보다 커서 옆 링크로 새지 않게 — 체크박스가 있는 좌측 수직 스트립
+                        // 전체를 버튼(z-10, 카드 상·하·좌 끝까지 확장 = 카드 p-3.5 상쇄)으로 덮어, 그 열은
+                        // 링크 이동이 막히고 어디를 눌러도 토글된다. 읽기 모드(!canCheck)는 pointer-events-none으로 링크에 흘려보냄.
+                        className="relative z-10 -my-3.5 -ml-3.5 flex shrink-0 items-start self-stretch py-3.5 pl-3.5 pr-3 disabled:pointer-events-none"
                       >
-                        {checked && <Icon name="check" size={11} strokeWidth={3} />}
+                        <span className={`mt-0.5 flex h-[18px] w-[18px] items-center justify-center rounded-[6px] border-[1.5px] ${
+                          checked ? 'border-ink bg-ink text-cream' : 'border-line bg-paper'
+                        }`}>
+                          {checked && <Icon name="check" size={11} strokeWidth={3} />}
+                        </span>
                       </button>
                     )}
 

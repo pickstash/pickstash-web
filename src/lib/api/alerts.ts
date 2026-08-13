@@ -26,7 +26,7 @@ export async function getAlerts(limit = 100): Promise<AlertItem[]> {
 
   const { data: participants } = await supabase
     .from('box_participants')
-    .select('box_id, last_seen_at, boxes(id, title)')
+    .select('box_id, last_seen_at, joined_at, boxes(id, title)')
     .eq('user_id', user.id)
   if (!participants?.length) return []
 
@@ -35,6 +35,13 @@ export async function getAlerts(limit = 100): Promise<AlertItem[]> {
     participants.map(p => [p.box_id, (p.boxes as unknown as { title?: string } | null)?.title ?? '상자']),
   )
   const lastSeenMap = new Map(participants.map(p => [p.box_id, new Date(p.last_seen_at)]))
+  // 초대/가입 이전 활동은 알림에서 제외 — 새로 참여한 사람에게 상자의 과거 내역이 쏟아지지 않게.
+  const joinedAtMap = new Map(
+    participants.map(p => {
+      const j = (p as unknown as { joined_at: string | null }).joined_at
+      return [p.box_id, j ? new Date(j) : null] as const
+    }),
+  )
 
   // 참여 신청 처리 상태 — join_requested 항목을 pending/처리됨으로 구분(046). RLS: 참여자는 조회 가능.
   // join_requests는 types.ts 미갱신 테이블 — 저장소 관례대로 캐스팅(listJoinRequests와 동일).
@@ -57,7 +64,12 @@ export async function getAlerts(limit = 100): Promise<AlertItem[]> {
     .order('created_at', { ascending: false })
     .limit(limit)
 
-  return (activities ?? []).map(a => {
+  return (activities ?? [])
+    .filter(a => {
+      const joined = joinedAtMap.get(a.box_id)
+      return !joined || new Date(a.created_at) >= joined
+    })
+    .map(a => {
     const profile = a.profiles as unknown as { nickname: string } | null
     const lastSeen = lastSeenMap.get(a.box_id)
     const meta = (a.meta ?? {}) as { option_name?: string; vote_type?: string; option_id?: string; mentioned_ids?: string[] }

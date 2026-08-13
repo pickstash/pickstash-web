@@ -18,6 +18,7 @@ export interface PublicBoxCard {
   winner: string | null
   checked: number
   total: number
+  participant_count: number
   save_count: number
   author: { id: string; handle: string | null; nickname: string; avatar_url: string | null } | null
 }
@@ -76,7 +77,11 @@ export async function searchPublic(
   q: string,
 ): Promise<{ boxes: PublicBoxCard[]; people: PersonResult[] }> {
   const { data } = await (supabase.rpc as any)('search_public', { p_q: q })
-  return (data ?? { boxes: [], people: [] }) as { boxes: PublicBoxCard[]; people: PersonResult[] }
+  const result = (data ?? { boxes: [], people: [] }) as { boxes: PublicBoxCard[]; people: PersonResult[] }
+  // 사람 결과에서 본인은 제외 — 나를 팔로우할 일은 없으니 검색에 뜨면 어색하다.
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user) result.people = result.people.filter(p => p.id !== user.id)
+  return result
 }
 
 // ── 쓰기(클라 액션) ─────────────────────────────

@@ -99,7 +99,7 @@ export function MyProfileView() {
             {profile.handle ? (
               <p className="text-[12px] text-ink-faint">@{profile.handle}</p>
             ) : (
-              <AppLink href="/profile/settings" className="text-[12px] font-bold text-tangerine">아이디를 설정하면 프로필을 공유할 수 있어요 →</AppLink>
+              <AppLink href="/profile/settings" className="text-[12px] font-medium text-tangerine">아이디를 설정하면 프로필을 공유할 수 있어요 →</AppLink>
             )}
             {profile.bio && <BioText text={profile.bio} className="mt-1 text-[12.5px] text-ink-soft" />}
           </div>
