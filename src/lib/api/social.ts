@@ -77,11 +77,7 @@ export async function searchPublic(
   q: string,
 ): Promise<{ boxes: PublicBoxCard[]; people: PersonResult[] }> {
   const { data } = await (supabase.rpc as any)('search_public', { p_q: q })
-  const result = (data ?? { boxes: [], people: [] }) as { boxes: PublicBoxCard[]; people: PersonResult[] }
-  // 사람 결과에서 본인은 제외 — 나를 팔로우할 일은 없으니 검색에 뜨면 어색하다.
-  const { data: { user } } = await supabase.auth.getUser()
-  if (user) result.people = result.people.filter(p => p.id !== user.id)
-  return result
+  return (data ?? { boxes: [], people: [] }) as { boxes: PublicBoxCard[]; people: PersonResult[] }
 }
 
 /** 내 @handle 조회 — 없으면 null(공개 설정처럼 핸들 유무를 미리 확인해야 하는 화면에서 씀). */

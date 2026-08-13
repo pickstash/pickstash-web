@@ -8,6 +8,7 @@ import { AppLink } from '@/lib/nav/nav'
 import { Icon, type IconName } from '@/components/icon'
 import { getPublicFeed, searchPublic, type PublicBoxCard, type PersonResult } from '@/lib/api/social'
 import { FollowButton } from '@/components/follow-button'
+import { useCurrentUserId } from '@/hooks/use-profile'
 
 // 돋보기(탐색) — 공개 상자 검색 + 사람 검색 + 최근 공개 피드. 공유(웹·토스).
 // midBanner: 검색바와 피드 사이 인라인 광고(토스 전용 슬롯).
@@ -15,6 +16,7 @@ export function ExploreView({ midBanner }: { midBanner?: ReactNode } = {}) {
   const [q, setQ] = useState('')
   const [tab, setTab] = useState<'box' | 'people'>('box')
   const query = q.trim()
+  const currentUserId = useCurrentUserId()
 
   const feed = useQuery({
     queryKey: ['public-feed'],
@@ -71,7 +73,7 @@ export function ExploreView({ midBanner }: { midBanner?: ReactNode } = {}) {
           people.length === 0 ? (
             <Empty icon="user" title="찾는 사람이 없어요" subtitle="@아이디나 닉네임으로 검색해보세요" />
           ) : (
-            people.map(p => <PersonRow key={p.id} person={p} />)
+            people.map(p => <PersonRow key={p.id} person={p} isSelf={p.id === currentUserId} />)
           )
         ) : boxes.length === 0 ? (
           query ? (
@@ -132,7 +134,7 @@ function PublicBoxRow({ box }: { box: PublicBoxCard }) {
   )
 }
 
-function PersonRow({ person }: { person: PersonResult }) {
+function PersonRow({ person, isSelf }: { person: PersonResult; isSelf: boolean }) {
   return (
     <AppLink
       href={person.handle ? `/u/${person.handle}` : '#'}
@@ -155,7 +157,7 @@ function PersonRow({ person }: { person: PersonResult }) {
           <p className="mt-0.5 truncate text-[11px] font-bold text-ink-soft">{person.tags.map(t => `#${t}`).join(' ')}</p>
         )}
       </div>
-      <FollowButton userId={person.id} />
+      {!isSelf && <FollowButton userId={person.id} />}
     </AppLink>
   )
 }

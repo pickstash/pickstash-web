@@ -53,7 +53,9 @@ export function useCreateBox() {
         queryClient.invalidateQueries({ queryKey: ['folders'] })
       }
       invalidateBoxViews(queryClient)
-      nav.push(`/box/${box.id}`)
+      // replace — push로 두면 '상자 만들기' 폼이 히스토리에 남아, 만든 직후 뒤로가기(헤더·기기 둘 다)가
+      // 새 상자가 아니라 폼으로 돌아가버린다. 폼은 결과물이 아니라 일회성 단계라 히스토리에 남을 이유가 없다.
+      nav.replace(`/box/${box.id}`)
     },
   })
 }
