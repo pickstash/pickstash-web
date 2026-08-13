@@ -92,7 +92,7 @@ function App() {
   const isProfileDrilldown = pathname.startsWith("/u/") || pathname.startsWith("/follows/");
   const showTabBar = !isFormRoute(pathname) && !isInviteRoute && !isProfileDrilldown;
   // 광고는 홈·둘러보기·알림 모두 인라인 배너(각 View의 midBanner 슬롯)라 하단 고정 예약 자리가 없다.
-  // (--app-banner-h는 프로필에 남은 고정 AdBanner가 참조하므로 0으로 유지.)
+  // 프로필에 남아있던 고정 AdBanner(border-t만 남아 탭바 위에 얇은 검정 선으로 보이던 버그)는 삭제됨.
 
   // iOS 엣지 스와이프는 전 화면 OFF. 단일 WebView 미니앱이라 네이티브 스와이프=미니앱 종료로 동작하고
   // (react-router 클라 히스토리를 네이티브가 몰라 가로챌 수 없다), 어느 화면에서 스와이프해도 토스로 나가버린다.
@@ -112,7 +112,7 @@ function App() {
   return (
     // --app-tabbar-h: TabBar 자신이 useLayoutEffect + ResizeObserver로 실측해 :root에 세팅한다
     //   (tab-bar.tsx 참고) — 아이콘·라벨·패딩이 정하는 내용 기반 높이라 여기서 rem 상수로 흉내내면
-    //   AdBanner가 탭바 실제 높이보다 낮게 자리잡아 가려지는 사고가 났었다(재발 금지).
+    //   고정 배너가 탭바 실제 높이보다 낮게 자리잡아 가려지는 사고가 났었다(재발 금지).
     // --app-nav-h: 탭바 있는 라우트에서만 탭바 실제 높이로 올린다(하위 main·CTA가 상속). 실측된
     //   --app-tabbar-h에 배너 높이를 더한 값(배너가 탭바 위에 얹히므로 콘텐츠는 그만큼 더 밀려야 한다).
     // --app-cta-safe: 하단 CTA가 먹을 인셋. 탭바 화면은 CTA가 이미 --app-nav-h만큼 탭바 위로 떠서
@@ -120,7 +120,7 @@ function App() {
     //   폼 화면(탭바 없음)은 CTA가 bottom-0라 직접 인셋(safe-bottom)이 필요하다.
     <div
       style={{
-        "--app-banner-h": "0px", // 고정 배너 폐기(전부 인라인). 프로필 잔존 AdBanner가 이 값에 의존.
+        "--app-banner-h": "0px", // 고정 배너는 전부 폐기(인라인으로 대체)됐지만, --app-nav-h 계산식이 참조하니 0으로 유지.
         "--app-nav-h": showTabBar
           ? "calc(var(--app-tabbar-h, 0px) + var(--app-banner-h, 0px))"
           : "0px",

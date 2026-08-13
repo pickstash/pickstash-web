@@ -68,37 +68,38 @@ export function TabBar() {
 
   const activeHref = tabOf(pathname);
 
+  // 토스 TDS 피그마 "Tab Bar Master Component" 실측(확대 crop): 좌우·하단은 화면에 완전히 붙고
+  // 위 모서리만 둥근 독(dock) 형태다 — 언뜻 알약처럼 보이지만 아래쪽 모서리는 직각이었다(내가 착각했던 부분).
+  // 탭 행 자체 높이는 62px(iOS 세이프에어리어 제외 스펙) — 세이프에어리어는 그 아래 별도 여백으로 덧붙인다
+  // (탭 행 높이를 안 줄이고, 흰 카드 배경만 세이프에어리어까지 이어지게).
   return (
-    // 토스 미니앱 브랜딩 가이드: 탭바는 화면에 붙는 전체폭 바가 아니라 여백을 둔 플로팅 형태여야 한다.
-    // 실제 토스 탭바(Mobile_Tabbar) 레퍼런스: 완전한 필(알약) 모양, 테두리 없이 그림자로만 뜬 흰 카드.
-    // 바깥 div가 좌우·하단 여백(+safe-area)을 잡고, 안쪽 nav가 rounded-full·그림자로 뜬 카드로 보이게 한다.
-    <div
-      ref={rootRef}
-      className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-2.5 pb-[calc(var(--app-safe-bottom,0px)+0.375rem)]"
-    >
-      <nav className="flex w-full max-w-[400px] items-center justify-around rounded-full bg-paper py-1.5 shadow-[0_6px_18px_-4px_rgba(42,42,39,0.18)]">
-        {TABS.map((t) => {
-          const active = activeHref === t.href;
-          return (
-            <button
-              key={t.href}
-              onClick={() => goTab(t.href)}
-              className={`relative flex flex-1 flex-col items-center gap-0.5 py-1.5 text-[10px] font-semibold ${
-                active ? "text-ink" : "text-ink-faint"
-              }`}
-            >
-              <span className="relative">
-                <Icon name={t.icon} size={22} strokeWidth={active ? 2.1 : 1.75} />
-                {t.href === "/alerts" && unseenCount > 0 && (
-                  <span className="absolute -right-2 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-tomato px-1 text-[9px] font-extrabold leading-none text-white">
-                    {unseenCount > 99 ? "99+" : unseenCount}
-                  </span>
-                )}
-              </span>
-              {t.label}
-            </button>
-          );
-        })}
+    <div ref={rootRef} className="fixed inset-x-0 bottom-0 z-40">
+      <nav className="rounded-t-sheet bg-paper shadow-[0_-6px_20px_rgba(42,42,39,0.1)]">
+        <div className="flex h-[62px] items-center justify-around px-3">
+          {TABS.map((t) => {
+            const active = activeHref === t.href;
+            return (
+              <button
+                key={t.href}
+                onClick={() => goTab(t.href)}
+                className={`relative flex flex-1 flex-col items-center gap-0.5 py-1.5 text-[11px] font-semibold ${
+                  active ? "text-ink" : "text-ink-faint"
+                }`}
+              >
+                <span className="relative">
+                  <Icon name={t.icon} size={22} strokeWidth={active ? 2.1 : 1.75} />
+                  {t.href === "/alerts" && unseenCount > 0 && (
+                    <span className="absolute -right-2 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-tomato px-1 text-[9px] font-extrabold leading-none text-white">
+                      {unseenCount > 99 ? "99+" : unseenCount}
+                    </span>
+                  )}
+                </span>
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+        <div style={{ height: "var(--app-safe-bottom, 0px)" }} />
       </nav>
     </div>
   );

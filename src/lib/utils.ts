@@ -1,3 +1,13 @@
+/** catch(e)에서 사람이 읽을 메시지를 뽑는다. Supabase(PostgrestError 등)는 Error 인스턴스가 아니라
+ * `e instanceof Error` 체크만으로는 서버가 던진 구체적인 사유(예: RPC raise exception 메시지)가
+ * 항상 fallback으로 뭉개진다 — message 속성이 있으면 그걸 우선한다. */
+export function errorMessage(e: unknown, fallback: string): string {
+  if (e && typeof e === 'object' && 'message' in e && typeof (e as { message: unknown }).message === 'string') {
+    return (e as { message: string }).message
+  }
+  return fallback
+}
+
 export function formatKoreanDate(dateStr: string): string {
   return new Intl.DateTimeFormat('ko-KR', {
     year: 'numeric',

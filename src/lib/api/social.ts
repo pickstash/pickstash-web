@@ -84,6 +84,15 @@ export async function searchPublic(
   return result
 }
 
+/** 내 @handle 조회 — 없으면 null(공개 설정처럼 핸들 유무를 미리 확인해야 하는 화면에서 씀). */
+export async function getMyHandle(): Promise<string | null> {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+  const { data } = await supabase.from('profiles').select('handle').eq('id', user.id).single()
+  return ((data as unknown as { handle?: string | null } | null)?.handle) ?? null
+}
+
 // ── 쓰기(클라 액션) ─────────────────────────────
 export async function claimHandle(handle: string): Promise<void> {
   const supabase = createClient()

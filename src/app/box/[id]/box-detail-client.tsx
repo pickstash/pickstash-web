@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNav, AppLink } from '@/lib/nav/nav'
 import {
   useUpdateBoxTitle,
@@ -29,9 +29,9 @@ import { PencilCircle } from '@/components/pencil-circle'
 import { shareInviteLink, hasNativeShare } from '@/lib/share/native-share'
 import { getBoxStatus, isDoneStatus } from '@/lib/domain/box-status'
 import { parseBlocks, linkBlocksOf } from '@/lib/domain/option-content'
-import { setBoxVisibility, requestToJoin } from '@/lib/api/social'
+import { setBoxVisibility, requestToJoin, getMyHandle, claimHandle } from '@/lib/api/social'
 import { setBoxFolderShared } from '@/lib/api/folders'
-import { formatDeadlineCompact, defaultDeadline, formatKoreanDate } from '@/lib/utils'
+import { formatDeadlineCompact, defaultDeadline, formatKoreanDate, errorMessage } from '@/lib/utils'
 import type { BoxWithParticipants, BoxParticipant, DecisionMode } from '@/lib/api/boxes'
 import type { Option } from '@/lib/api/options'
 import type { JoinRequestStatus } from '@/lib/api/box-detail'
@@ -122,9 +122,29 @@ export function BoxDetailClient({
   const [publicOn, setPublicOn] = useState(((box as unknown as { visibility?: string }).visibility) === 'public')
   const [tagInput, setTagInput] = useState(((box as unknown as { tags?: string[] }).tags ?? []).join(', '))
   const [publishBusy, setPublishBusy] = useState(false)
-  const [publishError, setPublishError] = useState<string | null>(null) // 공개 실패 사유(예: 아이디 미설정)
+  const [publishError, setPublishError] = useState<string | null>(null) // 공개 실패 사유
   const isPublic = ((box as unknown as { visibility?: string }).visibility) === 'public'
   const publicTags = ((box as unknown as { tags?: string[] }).tags ?? [])
+
+  // 057: 공개하려면 @handle이 있어야 한다 — 시트 열렸을 때만 조회. 없으면 토글이 아예 안 먹고
+  // 이 자리에서 바로 아이디를 만들 수 있게 한다(프로필로 안 보내고 이 화면에서 완결).
+  const { data: myHandle } = useQuery({
+    queryKey: ['my-handle', currentUserId],
+    queryFn: getMyHandle,
+    enabled: publishOpen,
+  })
+  const [handleValue, setHandleValue] = useState('')
+  const [handleError, setHandleError] = useState<string | null>(null)
+  const claimHandleMutation = useMutation({
+    mutationFn: (h: string) => claimHandle(h),
+    onSuccess: () => {
+      setHandleError(null)
+      setHandleValue('')
+      queryClient.invalidateQueries({ queryKey: ['my-handle', currentUserId] })
+      setPublicOn(true) // 아이디가 막 생겼으니 이어서 공개로 전환
+    },
+    onError: (e: unknown) => setHandleError(errorMessage(e, '아이디 설정에 실패했어요')),
+  })
 
   async function savePublish() {
     if (publishBusy) return
@@ -143,7 +163,7 @@ export function BoxDetailClient({
       nav.refresh()
     } catch (e) {
       // 예: '공개하려면 아이디(@handle)를 먼저 설정해주세요'(057) — 시트 유지 + 사유 표시.
-      setPublishError(e instanceof Error ? e.message : '저장에 실패했어요. 다시 시도해주세요.')
+      setPublishError(errorMessage(e, '저장에 실패했어요. 다시 시도해주세요.'))
     } finally {
       setPublishBusy(false)
     }
@@ -551,7 +571,11 @@ export function BoxDetailClient({
 
             <button
               type="button"
-              onClick={() => setPublicOn(v => !v)}
+              onClick={() => {
+                // 057: 아이디(@handle) 없으면 공개로 못 넘어간다 — 토글이 아예 안 먹고 아래 아이디 만들기로 유도.
+                if (!publicOn && myHandle === null) return
+                setPublicOn(v => !v)
+              }}
               className="flex w-full items-center justify-between rounded-field border-[1.5px] border-line bg-paper px-4 py-3"
             >
               <span className="text-[14px] font-bold text-ink">{publicOn ? '공개' : '비공개'}</span>
@@ -559,6 +583,35 @@ export function BoxDetailClient({
                 <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-paper transition-all ${publicOn ? 'left-[18px]' : 'left-0.5'}`} />
               </span>
             </button>
+
+            {/* 아이디 없으면 공개 전환 자체가 막힌다 — 프로필로 안 보내고 여기서 바로 만들게. */}
+            {!publicOn && myHandle === null && (
+              <div className="mt-3 space-y-2 rounded-field border-[1.5px] border-dashed border-butter-dark bg-butter-tint/40 p-3.5">
+                <p className="text-[12.5px] font-bold text-ink">공개하려면 아이디(@)가 먼저 필요해요</p>
+                <div className="flex gap-2">
+                  <div className="flex min-w-0 flex-1 items-center rounded-field border-[1.5px] border-line bg-paper pl-3.5 focus-within:border-butter-dark">
+                    <span className="text-sm text-ink-faint">@</span>
+                    <input
+                      type="text"
+                      value={handleValue}
+                      onChange={e => setHandleValue(e.target.value.toLowerCase())}
+                      placeholder="myid"
+                      maxLength={20}
+                      className="min-w-0 flex-1 bg-transparent px-1 py-2.5 text-sm text-ink focus:outline-none"
+                    />
+                  </div>
+                  <button
+                    onClick={() => claimHandleMutation.mutate(handleValue.trim())}
+                    disabled={claimHandleMutation.isPending || handleValue.trim().length < 3}
+                    className="shrink-0 rounded-field bg-ink px-4 py-2.5 text-sm font-bold text-cream disabled:opacity-50"
+                  >
+                    {claimHandleMutation.isPending ? '만드는 중…' : '만들기'}
+                  </button>
+                </div>
+                <p className="text-[11px] text-ink-faint">소문자·숫자·밑줄 3~20자</p>
+                {handleError && <p className="text-[11px] font-semibold text-tomato">{handleError}</p>}
+              </div>
+            )}
 
             {publicOn && (
               <div className="mt-3">
@@ -572,14 +625,7 @@ export function BoxDetailClient({
               </div>
             )}
 
-            {publishError && (
-              <p className="mt-3 text-[12.5px] font-semibold text-tomato">
-                {publishError}
-                {publishError.includes('아이디') && (
-                  <AppLink href="/profile/settings" onClick={() => setPublishOpen(false)} className="ml-1 underline">아이디 설정하러 가기</AppLink>
-                )}
-              </p>
-            )}
+            {publishError && <p className="mt-3 text-[12.5px] font-semibold text-tomato">{publishError}</p>}
 
             <button
               onClick={savePublish}

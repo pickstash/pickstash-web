@@ -11,6 +11,7 @@ import { extractTags } from '@/lib/domain/hashtags'
 import { claimHandle } from '@/lib/api/social'
 import { createClient } from '@/lib/supabase/client'
 import { signOut } from '@/lib/api/auth'
+import { errorMessage } from '@/lib/utils'
 import { PageHeader } from '@/components/page-header'
 import { AppDrawer } from '@/components/app-drawer'
 
@@ -55,7 +56,7 @@ export function ProfileClient({ userId, nickname, avatarUrl, kakaoAvatarUrl }: P
       queryClient.invalidateQueries({ queryKey: ['profile', userId] })
       nav.refresh()
     },
-    onError: (e: unknown) => setHandleError(e instanceof Error ? e.message : '설정에 실패했어요'),
+    onError: (e: unknown) => setHandleError(errorMessage(e, '설정에 실패했어요')),
   })
 
   // 한줄소개 — 부모 로더 밖에서 조회. 편집 중 refetch가 덮지 않게 최초 1회만 시드.
