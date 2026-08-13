@@ -9,6 +9,7 @@ import {
   updateOption,
   deleteOption,
   toggleOptionChecked,
+  reorderOptions,
   type CreateOptionInput,
   type UpdateOptionInput,
   type OptionWithCounts,
@@ -19,6 +20,25 @@ export function useOptions(boxId: string) {
     queryKey: ['options', boxId],
     queryFn: () => getOptions(boxId),
     enabled: !!boxId,
+  })
+}
+
+/** 모아보기 항목 드래그 정렬 — orderedIds 순서로 저장(RPC). 즉시 반응해야 해 낙관적 반영. */
+export function useReorderOptions(boxId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (orderedIds: string[]) => reorderOptions(boxId, orderedIds),
+    onMutate: async (orderedIds) => {
+      await qc.cancelQueries({ queryKey: ['options', boxId] })
+      const prev = qc.getQueryData<OptionWithCounts[]>(['options', boxId])
+      if (prev) {
+        const byId = new Map(prev.map(o => [o.id, o]))
+        qc.setQueryData<OptionWithCounts[]>(['options', boxId], orderedIds.map(id => byId.get(id)).filter(Boolean) as OptionWithCounts[])
+      }
+      return { prev }
+    },
+    onError: (_e, _v, ctx) => { if (ctx?.prev) qc.setQueryData(['options', boxId], ctx.prev) },
+    onSettled: () => qc.invalidateQueries({ queryKey: ['options', boxId] }),
   })
 }
 

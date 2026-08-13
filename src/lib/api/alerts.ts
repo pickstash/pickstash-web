@@ -36,6 +36,12 @@ export async function getAlerts(limit = 100): Promise<AlertItem[]> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
 
+  // 타겟 알림(거절 등 — 참여 상자가 아닌 알림) 읽음 기준: 개인 alerts_seen_at(055).
+  // alerts_seen_at은 types.ts 미갱신 컬럼 — 저장소 관례대로 캐스팅.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: prof } = await (supabase.from('profiles') as any).select('alerts_seen_at').eq('id', user.id).maybeSingle()
+  const alertsSeenAt = prof?.alerts_seen_at ? new Date(prof.alerts_seen_at as string) : null
+
   const { data: participants } = await supabase
     .from('box_participants')
     .select('box_id, last_seen_at, joined_at, boxes(id, title)')
@@ -93,6 +99,14 @@ export async function getAlerts(limit = 100): Promise<AlertItem[]> {
     .limit(limit)
   const targetedRows = (targetedData ?? []) as unknown as ActRow[]
 
+  // 거절 알림의 상자 제목 — 참여 상자가 아니라 titleMap에 없다. 신청은 공개 상자에서 오므로
+  // boxes에서 바로 읽는다(참여자 아니어도 can_read_box로 공개 상자는 읽힌다). meta.box_title 의존 없이 채운다.
+  const missingTitleIds = [...new Set(targetedRows.map(a => a.box_id).filter(id => !titleMap.has(id)))]
+  if (missingTitleIds.length) {
+    const { data: boxRows } = await supabase.from('boxes').select('id, title').in('id', missingTitleIds)
+    for (const b of (boxRows ?? []) as { id: string; title: string }[]) titleMap.set(b.id, b.title)
+  }
+
   // 병합(중복 id 제거) → 최신순 → limit.
   const byId = new Map<string, ActRow>()
   for (const a of [...mineRows, ...targetedRows]) byId.set(a.id, a)
@@ -119,10 +133,21 @@ export async function getAlerts(limit = 100): Promise<AlertItem[]> {
         actorNickname: profile?.nickname ?? '누군가',
         meta,
         createdAt: a.created_at,
-        unseen: !lastSeen || new Date(a.created_at) > lastSeen,
+        // 참여 상자면 상자별 last_seen, 아니면(거절 등 타겟 알림) 개인 alerts_seen_at 기준.
+        unseen: lastSeen ? new Date(a.created_at) > lastSeen : (!alertsSeenAt || new Date(a.created_at) > alertsSeenAt),
         joinStatus: a.type === 'join_requested' ? (joinStatusMap.get(`${a.box_id}:${a.actor_id}`) ?? 'pending') : undefined,
       }
     })
+}
+
+/** 타겟 알림(참여 거절 등 — 참여 상자가 아닌 알림) 읽음 처리 — 개인 alerts_seen_at을 now로(055).
+ *  상자 단위 markBoxSeen으로는 못 지우는(참여자 아님) 알림을 위해 개인 timestamp를 갱신한다. */
+export async function markAlertsSeen(): Promise<void> {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabase.from('profiles') as any).update({ alerts_seen_at: new Date().toISOString() }).eq('id', user.id)
 }
 
 /** 한 상자의 알림을 읽음 처리 — 그 상자 last_seen_at을 now로. (seen은 상자 단위) */

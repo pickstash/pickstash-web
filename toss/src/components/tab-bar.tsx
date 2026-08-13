@@ -15,6 +15,10 @@ const TABS: { href: string; icon: IconName; label: string }[] = [
   { href: "/profile", icon: "user", label: "프로필" },
 ];
 
+// 최상위 탭 경로들 — App.tsx가 iOS 엣지 스와이프 OFF 판별에 쓴다(탭 루트는 앱 내 뒤로 갈 곳이 없어
+// 스와이프하면 토스로 앱이 종료돼버린다). 하위 화면은 정확 일치가 아니라 제외된다.
+export const TAB_HREFS = TABS.map(t => t.href);
+
 // 하위 화면 소속 탭 매핑. 상자 상세·서랍은 '상자' 탭 소속.
 function tabOf(p: string): string {
   if (p === "/") return "/";

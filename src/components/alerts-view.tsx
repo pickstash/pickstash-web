@@ -1,12 +1,12 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useNav } from '@/lib/nav/nav'
 import { Icon } from '@/components/icon'
 import { formatActivity, type BoxActivityType } from '@/lib/domain/activity-label'
 import { formatRelativeTime } from '@/lib/utils'
-import { markBoxSeen, type AlertItem } from '@/lib/api/alerts'
+import { markBoxSeen, markAlertsSeen, type AlertItem } from '@/lib/api/alerts'
 import { markAllSeen } from '@/lib/api/boxes'
 import { respondJoinRequest } from '@/lib/api/social'
 
@@ -19,6 +19,15 @@ export function AlertsView({ items, midBanner }: { items: AlertItem[]; midBanner
   const nav = useNav()
   const qc = useQueryClient()
   const hasUnseen = items.some(a => a.unseen)
+
+  // 알림함을 열면 타겟 알림(참여 거절 등 — 참여 상자가 아니라 상자 단위로 못 지우는 것)을 읽음 처리.
+  // 개인 alerts_seen_at을 now로 올려 재조회 시 안 뜨게 하고, 이번 표시도 낙관적으로 지운다.
+  useEffect(() => {
+    markAlertsSeen().catch(() => {})
+    qc.setQueryData<AlertItem[]>(['alerts'], old =>
+      old?.map(x => (x.type === 'join_rejected' || x.type === 'join_approved' ? { ...x, unseen: false } : x)))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // 탭 즉시 그 상자 알림을 읽음으로(낙관적 반영 → 돌아와도 읽음 유지) + 서버 last_seen 갱신 후 이동.
   function openAlert(a: AlertItem) {

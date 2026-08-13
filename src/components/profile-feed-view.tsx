@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { AppLink, useNav } from '@/lib/nav/nav'
@@ -9,12 +10,14 @@ import { ProfileBoxCard } from '@/components/profile-box-card'
 import { BioText } from '@/components/bio-text'
 import { getProfileFeed } from '@/lib/api/social'
 import { FollowButton } from '@/components/follow-button'
+import { ImageLightbox } from '@/components/image-lightbox'
 import type { PublicBoxCard } from '@/lib/api/social'
 
 // 인스타식 공개 프로필 — 헤더(핸들·소개·카운트·팔로우) + 공개 상자 그리드. handle로 조회.
 export function ProfileFeedView({ handle }: { handle: string }) {
   const nav = useNav()
   const queryClient = useQueryClient()
+  const [photoOpen, setPhotoOpen] = useState(false)
   const { data, isPending } = useQuery({
     queryKey: ['profile-feed', handle],
     queryFn: () => getProfileFeed(createClient(), handle),
@@ -33,14 +36,22 @@ export function ProfileFeedView({ handle }: { handle: string }) {
 
       <div className="px-5 pt-2">
         <div className="flex items-center gap-4">
-          <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-butter-tint text-[24px] font-extrabold text-ink">
-            {data.avatar_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
+          {data.avatar_url ? (
+            <button
+              type="button"
+              onClick={() => setPhotoOpen(true)}
+              aria-label="프로필 사진 크게 보기"
+              className="h-16 w-16 shrink-0 overflow-hidden rounded-full bg-butter-tint active:opacity-80"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={data.avatar_url} alt="" className="h-full w-full object-cover" />
-            ) : (
-              data.nickname?.[0] ?? '?'
-            )}
-          </div>
+            </button>
+          ) : (
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-butter-tint text-[24px] font-extrabold text-ink">
+              {data.nickname?.[0] ?? '?'}
+            </div>
+          )}
+          <ImageLightbox open={photoOpen} src={data.avatar_url ?? null} onClose={() => setPhotoOpen(false)} />
           <div className="flex flex-1 justify-around text-center">
             {([['공개', data.public_count, null], ['팔로워', data.followers, 'followers'], ['팔로잉', data.following, 'following']] as const).map(([k, val, tab]) => {
               const inner = (<><p className="text-[16px] font-extrabold text-ink">{val}</p><p className="text-[11px] text-ink-faint">{k}</p></>)

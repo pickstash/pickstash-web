@@ -121,7 +121,7 @@ function PublicBoxRow({ box }: { box: PublicBoxCard }) {
         <div className="mt-2 flex items-center justify-between text-[11.5px] text-ink-faint">
           <span className="min-w-0 truncate">
             by {box.author?.handle ? `@${box.author.handle}` : box.author?.nickname ?? '누군가'}
-            {box.participant_count > 0 && ` (${box.participant_count}명 참여중)`}
+            {box.participant_count > 1 && ` (외 ${box.participant_count - 1}명 참여중)`}
           </span>
           {box.save_count > 0 && (
             <span className="flex shrink-0 items-center gap-1"><Icon name="bookmark" size={12} />{box.save_count}</span>

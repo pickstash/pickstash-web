@@ -42,14 +42,23 @@ export async function uploadOptionImage(boxId: string, file: File): Promise<stri
 
 export async function getOptions(boxId: string): Promise<OptionWithCounts[]> {
   const supabase = createClient()
-  const { data, error } = await supabase
-    .from('options')
-    .select('*, comments(count)')
-    .eq('box_id', boxId)
+  // sort(056)는 types.ts 미갱신 컬럼 — order 대상으로 쓰려 캐스팅. sort 오름차, 동점은 created_at(기존 순서).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase.from('options').select('*, comments(count)').eq('box_id', boxId) as any)
+    .order('sort', { ascending: true })
     .order('created_at', { ascending: true })
   if (error) throw error
   const rows = (data ?? []) as unknown as (Option & { comments: { count: number }[] })[]
   return rows.map(({ comments, ...o }) => ({ ...o, comment_count: comments?.[0]?.count ?? 0 }))
+}
+
+/** 항목 순서 저장 — orderedIds 순서대로 options.sort 갱신(RPC, 참여자만). 모아보기 드래그 정렬용. */
+export async function reorderOptions(boxId: string, orderedIds: string[]): Promise<void> {
+  if (orderedIds.length === 0) return
+  const supabase = createClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase.rpc as any)('reorder_options', { p_box_id: boxId, p_ids: orderedIds })
+  if (error) throw error
 }
 
 export async function getOption(id: string): Promise<Option | null> {

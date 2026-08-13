@@ -10,8 +10,8 @@ import { defaultDeadline, formatKoreanDateTime } from '@/lib/utils'
 import type { DecisionMode, BoxMode } from '@/lib/api/boxes'
 
 const PURPOSES: { value: BoxMode; label: string; sub: string }[] = [
-  { value: 'decide', label: '결정하기', sub: '후보를 모아 몇가지를 정해요' },
-  { value: 'checklist', label: '모아보기', sub: '기억하고 싶은 것들을 모아둬요' },
+  { value: 'decide', label: '결정하기', sub: '투표로 정해요' },
+  { value: 'checklist', label: '모아보기', sub: '리스트로 정리해요' },
 ]
 
 const DECISION_MODES: { value: DecisionMode; label: string; sub: string }[] = [

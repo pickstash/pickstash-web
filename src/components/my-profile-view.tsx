@@ -7,6 +7,7 @@ import { AppLink } from '@/lib/nav/nav'
 import { Icon } from '@/components/icon'
 import { PullToRefresh } from '@/components/pull-to-refresh'
 import { ProfileBoxCard } from '@/components/profile-box-card'
+import { ImageLightbox } from '@/components/image-lightbox'
 import { BioText } from '@/components/bio-text'
 import { getMyProfile, getMyBookmarks, setBoxPin, setBoxVisibility, type PublicBoxCard } from '@/lib/api/social'
 import { shareInviteLink } from '@/lib/share/native-share'
@@ -23,6 +24,7 @@ export function MyProfileView() {
   const [tagEdit, setTagEdit] = useState<PublicBoxCard | null>(null)
   const [tagInput, setTagInput] = useState('')
   const [capError, setCapError] = useState(false)
+  const [photoOpen, setPhotoOpen] = useState(false)
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['my-profile'] })
   const pinMut = useMutation({
@@ -73,14 +75,22 @@ export function MyProfileView() {
 
       <div className="px-5 pt-3">
         <div className="flex items-center gap-4">
-          <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-butter-tint text-[24px] font-extrabold text-ink">
-            {profile.avatar_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
+          {profile.avatar_url ? (
+            <button
+              type="button"
+              onClick={() => setPhotoOpen(true)}
+              aria-label="프로필 사진 크게 보기"
+              className="h-16 w-16 shrink-0 overflow-hidden rounded-full bg-butter-tint active:opacity-80"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
-            ) : (
-              profile.nickname?.[0] ?? '?'
-            )}
-          </div>
+            </button>
+          ) : (
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-butter-tint text-[24px] font-extrabold text-ink">
+              {profile.nickname?.[0] ?? '?'}
+            </div>
+          )}
+          <ImageLightbox open={photoOpen} src={profile.avatar_url ?? null} onClose={() => setPhotoOpen(false)} />
           <div className="flex flex-1 justify-around text-center">
             {([['공개', profile.public_count, null], ['팔로워', profile.followers, 'followers'], ['팔로잉', profile.following, 'following']] as const).map(([k, v, tab]) => {
               const inner = (<><p className="text-[16px] font-extrabold text-ink">{v}</p><p className="text-[11px] text-ink-faint">{k}</p></>)

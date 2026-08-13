@@ -23,7 +23,6 @@ import { useBodyScrollLock } from '@/hooks/use-body-scroll-lock'
 import { DeadlineBottomSheet } from '@/components/deadline-bottom-sheet'
 import { OptionsSection } from '@/components/options-section'
 import { Icon } from '@/components/icon'
-import { ModeChip } from '@/components/mode-chip'
 import { AppDrawer } from '@/components/app-drawer'
 import { PageHeader } from '@/components/page-header'
 import { PencilCircle } from '@/components/pencil-circle'
@@ -737,19 +736,57 @@ export function BoxDetailClient({
       <div className={`flex-1 space-y-4 px-5 pt-1 ${options.length > 0 ? 'pb-28' : 'pb-5'}`}>
         {/* 히어로: 상태 · 질문 · 메모 · 메타 · 참여 */}
         <div className="space-y-3">
-          {/* 모드칩은 액션버튼(h-9) 줄 바닥에 붙여(items-end) 아래 공개 칩과 간격이 벌어지지 않게 한다. */}
-          <div className="flex items-end justify-between gap-2">
-            {/* 모드 라벨. 공개 여부·태그는 바로 아래 줄로. */}
-            <div className="flex min-w-0 items-center gap-1.5">
-              <ModeChip mode={isChecklist ? 'checklist' : 'decide'} />
+          {/* 모드 라벨이 있던 자리 = 공개 여부·태그. 좌측은 flex-wrap이라 우측 액션에 닿으면 태그가 줄바꿈된다.
+              items-start로 첫 줄을 위에 맞추고(여러 줄 태그 대응), 액션 버튼은 h-7로 줄여 칩 높이와 맞춘다
+              (h-9면 아이콘이 칩보다 아래·붕 떠 보였다). */}
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+              {isParticipant && (
+                <button
+                  onClick={() => setPublishOpen(true)}
+                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-[3px] text-xs font-bold active:bg-cream ${
+                    isPublic ? 'border border-line bg-paper text-ink-soft' : 'border border-dashed border-[#D9D6C2] text-ink-faint'
+                  }`}
+                >
+                  <span className={`h-1.5 w-1.5 rounded-full ${isPublic ? 'bg-leaf' : 'bg-ink-faint'}`} />
+                  {isPublic ? '공개중' : '비공개'}
+                </button>
+              )}
+              {isPublic && publicTags.map(t => (
+                isParticipant ? (
+                  <button
+                    key={t}
+                    onClick={() => setPublishOpen(true)}
+                    className="inline-flex items-center rounded-full border border-line bg-cream px-2.5 py-[3px] text-xs font-bold text-ink-soft active:bg-butter-tint/50"
+                  >
+                    <span className="mr-0.5 text-ink-faint">#</span>{t}
+                  </button>
+                ) : (
+                  <span
+                    key={t}
+                    className="inline-flex items-center rounded-full border border-line bg-cream px-2.5 py-[3px] text-xs font-bold text-ink-soft"
+                  >
+                    <span className="mr-0.5 text-ink-faint">#</span>{t}
+                  </span>
+                )
+              ))}
+              {isParticipant && isPublic && (
+                <button
+                  onClick={() => setPublishOpen(true)}
+                  className="inline-flex items-center gap-0.5 rounded-full border border-dashed border-[#D9D6C2] px-2.5 py-[3px] text-xs font-bold text-ink-faint active:bg-cream"
+                >
+                  <Icon name="plus" size={11} strokeWidth={2.4} />
+                  {publicTags.length > 0 ? '태그' : '태그 추가'}
+                </button>
+              )}
             </div>
-            {/* 상자 액션 — 헤더 대신 뱃지 줄로(토스 시스템 버튼 겹침 회피 + 긴 제목 폭 확보): 북마크·링크·편집. */}
+            {/* 상자 액션 — 북마크·공유·편집(우측 고정). */}
             {!editingTitle && (
               <div className="flex shrink-0 items-center gap-0.5">
                 <button
                   onClick={handleToggleFavorite}
                   aria-label="북마크"
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-transform active:scale-90"
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-transform active:scale-90"
                 >
                   <Icon
                     name="bookmark"
@@ -765,7 +802,7 @@ export function BoxDetailClient({
                 <button
                   onClick={copyInvite}
                   aria-label="공유하기"
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink-soft active:bg-butter-tint active:text-ink"
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-ink-soft active:bg-butter-tint active:text-ink"
                 >
                   <Icon name="share" size={19} />
                 </button>
@@ -773,7 +810,7 @@ export function BoxDetailClient({
                   <button
                     onClick={() => setMenuOpen(v => !v)}
                     aria-label="상자 메뉴"
-                    className="flex h-9 w-9 items-center justify-center rounded-full text-ink-soft active:bg-butter-tint active:text-ink"
+                    className="flex h-7 w-7 items-center justify-center rounded-full text-ink-soft active:bg-butter-tint active:text-ink"
                   >
                     <Icon name="more" size={20} />
                   </button>
@@ -826,50 +863,6 @@ export function BoxDetailClient({
             )}
           </div>
 
-          {/* 공개 여부 · 태그 — 모드칩 아래 한 줄(둘러보기 발견 메타데이터). 공개중/비공개 칩=공개 설정,
-              ＋태그=태그 편집. 참여자만 편집 진입, 뷰어는 공개 태그만 읽기. */}
-          {(isParticipant || (isPublic && publicTags.length > 0)) && (
-            <div className="-mt-1.5 flex flex-wrap items-center gap-1.5">
-              {isParticipant && (
-                <button
-                  onClick={() => setPublishOpen(true)}
-                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-[3px] text-xs font-bold active:bg-cream ${
-                    isPublic ? 'border border-line bg-paper text-ink-soft' : 'border border-dashed border-[#D9D6C2] text-ink-faint'
-                  }`}
-                >
-                  <span className={`h-1.5 w-1.5 rounded-full ${isPublic ? 'bg-leaf' : 'bg-ink-faint'}`} />
-                  {isPublic ? '공개중' : '비공개'}
-                </button>
-              )}
-              {isPublic && publicTags.map(t => (
-                isParticipant ? (
-                  <button
-                    key={t}
-                    onClick={() => setPublishOpen(true)}
-                    className="inline-flex items-center rounded-full border border-line bg-cream px-2.5 py-[3px] text-xs font-bold text-ink-soft active:bg-butter-tint/50"
-                  >
-                    <span className="mr-0.5 text-ink-faint">#</span>{t}
-                  </button>
-                ) : (
-                  <span
-                    key={t}
-                    className="inline-flex items-center rounded-full border border-line bg-cream px-2.5 py-[3px] text-xs font-bold text-ink-soft"
-                  >
-                    <span className="mr-0.5 text-ink-faint">#</span>{t}
-                  </span>
-                )
-              ))}
-              {isParticipant && isPublic && (
-                <button
-                  onClick={() => setPublishOpen(true)}
-                  className="inline-flex items-center gap-0.5 rounded-full border border-dashed border-[#D9D6C2] px-2.5 py-[3px] text-xs font-bold text-ink-faint active:bg-cream"
-                >
-                  <Icon name="plus" size={11} strokeWidth={2.4} />
-                  {publicTags.length > 0 ? '태그' : '태그 추가'}
-                </button>
-              )}
-            </div>
-          )}
 
           {editingTitle ? (
             <div className="flex items-end gap-2">

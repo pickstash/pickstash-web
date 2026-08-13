@@ -25,7 +25,7 @@ import { PublicBoxScreen } from "./screens/public-box-screen";
 import { ProfileViewScreen } from "./screens/profile-view-screen";
 import { FollowsScreen } from "./screens/follows-screen";
 import { BoxLinksScreen, OptionNewScreen, OptionEditScreen } from "./screens/reused-pages";
-import { TabBar } from "./components/tab-bar";
+import { TabBar, TAB_HREFS } from "./components/tab-bar";
 // 파라미터 없는 A형 페이지는 웹 페이지 컴포넌트를 그대로 라우팅(그대로 재사용).
 import NewBoxPage from "@/app/box/new/page";
 import WithdrawPage from "@/app/profile/withdraw/page";
@@ -97,7 +97,9 @@ function App() {
   // iOS 엣지 스와이프 뒤로가기는 홈·로그인에서만 OFF(실수로 앱이 종료되는 것 방지) — 나머지 화면은 ON(편의).
   //   홈 = 로그인 상태의 '/'. 로그인 = 세션 없음(초대 뷰어 제외, LoginScreen이 뜨는 조건). 둘 다 '/'에 있어도 안전.
   //   backEvent는 useHardwareBack(BackHandler)이 항상 처리 → 하위 화면 스와이프=navigate(-1), 홈=종료 확인.
-  const blockSwipeBack = (!session && !isInviteRoute) || pathname === "/";
+  // 홈뿐 아니라 모든 탭 루트(서랍·둘러보기·알림·프로필)에서 스와이프 OFF — 이 화면들은 앱 내 뒤로 갈 곳이
+  // 없어 스와이프가 토스로 앱을 종료시킨다. 하위 화면(상세·설정 등)은 정확 일치가 아니라 ON 유지.
+  const blockSwipeBack = (!session && !isInviteRoute) || TAB_HREFS.includes(pathname);
   useEffect(() => {
     try {
       void setIosSwipeGestureEnabled({ isEnabled: !blockSwipeBack });
