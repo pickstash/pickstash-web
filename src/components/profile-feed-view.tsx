@@ -6,6 +6,7 @@ import { AppLink, useNav } from '@/lib/nav/nav'
 import { Icon } from '@/components/icon'
 import { PullToRefresh } from '@/components/pull-to-refresh'
 import { ProfileBoxCard } from '@/components/profile-box-card'
+import { BioText } from '@/components/bio-text'
 import { getProfileFeed } from '@/lib/api/social'
 import { FollowButton } from '@/components/follow-button'
 import type { PublicBoxCard } from '@/lib/api/social'
@@ -55,14 +56,7 @@ export function ProfileFeedView({ handle }: { handle: string }) {
         <div className="mt-3">
           <p className="text-[14px] font-extrabold text-ink">{data.nickname}</p>
           {data.handle && <p className="text-[12px] text-ink-faint">@{data.handle}</p>}
-          {data.bio && <p className="mt-1 text-[12.5px] text-ink-soft">{data.bio}</p>}
-          {data.tags.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1">
-              {data.tags.map(t => (
-                <span key={t} className="rounded-full bg-cream px-2 py-0.5 text-[11px] font-medium text-ink-soft">#{t}</span>
-              ))}
-            </div>
-          )}
+          {data.bio && <BioText text={data.bio} className="mt-1 text-[12.5px] text-ink-soft" />}
         </div>
 
         <div className="mt-3">

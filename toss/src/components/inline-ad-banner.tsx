@@ -34,8 +34,8 @@ export function InlineAdBanner() {
   if (!AD_GROUP_ID) return null;
 
   return (
-    <div className="overflow-hidden rounded-card border-t border-line bg-black">
-      <div ref={containerRef} className="h-[72px] w-full" />
+    <div className="h-[72px] overflow-hidden rounded-card border-t border-line bg-black">
+      <div ref={containerRef} className="h-full w-full" />
     </div>
   );
 }

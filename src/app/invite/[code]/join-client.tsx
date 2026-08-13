@@ -30,7 +30,7 @@ export function JoinClient({ code, isLoggedIn }: JoinClientProps) {
     }
   }
 
-  const joinLabel = isLoggedIn ? '상자 참여하기' : nav.platform === 'toss' ? '토스로 참여하기' : '카카오로 참여하기'
+  const joinLabel = isLoggedIn ? '함께 정리하기' : nav.platform === 'toss' ? '토스로 함께 정리하기' : '카카오로 함께 정리하기'
 
   return (
     <button

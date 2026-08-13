@@ -274,12 +274,6 @@ export function OptionDetailClient({
       <div className="flex-1 space-y-4 px-5 pb-10 pt-1">
         {/* 히어로: 제목 · 생성자 · 생성일 · 좋아요 (정보성 데이터 상단 집중) */}
         <div className="space-y-3">
-          {checklist && option.group_label && (
-            <span className="inline-flex w-fit items-center rounded-full border border-line bg-cream px-2.5 py-0.5 text-[11px] font-bold text-ink-soft">
-              {option.group_label}
-            </span>
-          )}
-
           <div className="flex items-start justify-between gap-2">
             <div className="flex min-w-0 items-start gap-2.5">
               {checklist && checkable && (
@@ -347,11 +341,11 @@ export function OptionDetailClient({
             <span className="text-ink-faint">· {formatKoreanDate(option.created_at)}</span>
           </div>
 
-          {/* 좋아요(투표) — 체크형 상자는 투표 개념이 없어 생략 */}
+          {/* 좋아요(투표) — 체크형 상자는 투표 개념이 없어 생략. 우측 정렬. */}
           {!checklist && (
-            <div className="flex items-center gap-2">
-              <VoteButtons optionId={option.id} boxId={boxId} round={round} counts={counts} disabled={!canVote} />
+            <div className="flex items-center justify-end gap-2">
               {!canVote && <span className="text-[11.5px] text-ink-faint">정리된 상자에선 투표할 수 없어요</span>}
+              <VoteButtons optionId={option.id} boxId={boxId} round={round} counts={counts} disabled={!canVote} />
             </div>
           )}
         </div>
@@ -494,7 +488,7 @@ export function OptionDetailClient({
               onSubmit={body => createComment.mutate({ body }, { onSuccess: () => setComposerKey(k => k + 1) })}
             />
           ) : (
-            <p className="text-center text-[12px] text-ink-faint">함께하기를 누르면 댓글을 남길 수 있어요</p>
+            <p className="text-center text-[12px] text-ink-faint">함께 정리하기를 누르면 댓글을 남길 수 있어요</p>
           )}
         </div>
       </div>

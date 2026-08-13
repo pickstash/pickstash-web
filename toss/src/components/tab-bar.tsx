@@ -5,10 +5,11 @@ import { Icon, type IconName } from "@/components/icon";
 import { getAlerts } from "@/lib/api/alerts";
 
 // 토스 하단 탭바 — 상단 드로어(햄버거) 대체. 토스 시스템 버튼(···/X)과 겹치던 문제 해결.
-// 개편(인스타식) 5탭 — 홈(대시보드) / 상자(전체 관리) / 돋보기(탐색) / 알림 / 프로필. 서랍은 홈에 흡수.
+// 5탭 — 홈 / 서랍(상자·서랍 통합, 스마트 기본값) / 둘러보기 / 알림 / 프로필.
+// '상자'가 아니라 '서랍' 라벨: 이 탭은 서랍/상자 토글을 다 품고, 서랍이 있으면 서랍부터 연다(boxes-screen).
 const TABS: { href: string; icon: IconName; label: string }[] = [
   { href: "/", icon: "home", label: "홈" },
-  { href: "/boxes", icon: "box", label: "상자" },
+  { href: "/boxes", icon: "folder", label: "서랍" },
   { href: "/explore", icon: "search", label: "둘러보기" },
   { href: "/alerts", icon: "bell", label: "알림" },
   { href: "/profile", icon: "user", label: "프로필" },

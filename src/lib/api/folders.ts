@@ -204,3 +204,14 @@ export async function reorderBoxFolders(folderId: string, orderedBoxIds: string[
   const { error } = await (supabase.from('box_folders') as any).upsert(rows, { onConflict: 'folder_id,box_id,added_by' })
   if (error) throw error
 }
+
+/** 내 서랍(칩) 순서 저장. loadFolders가 이미 folder_members.sort로 읽으므로 이 mutation만 있으면 반영됨. */
+export async function reorderFolders(orderedFolderIds: string[]): Promise<void> {
+  const supabase = createClient()
+  if (orderedFolderIds.length === 0) return
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  const rows = orderedFolderIds.map((folderId, i) => ({ folder_id: folderId, user_id: user.id, sort: i }))
+  const { error } = await supabase.from('folder_members').upsert(rows, { onConflict: 'folder_id,user_id' })
+  if (error) throw error
+}

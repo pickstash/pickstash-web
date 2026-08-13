@@ -63,18 +63,26 @@ export function BoxSummaryCard({
   note,
   currentUserId,
   trailing,
+  isPrivate = false,
 }: {
   card: BoxCard
   note?: string
   currentUserId?: string
   /** 카드 안쪽 하단 줄(참여자 정보 옆)에 얹을 부가 컨트롤 — 예: 폴더의 나만보기 스위치(049). absolute 대신 플로우에 포함. */
   trailing?: ReactNode
+  /** 공유 서랍에서 '나만 보기'로 둔 상자(049) — 배경·테두리를 낮춰 한눈에 구분되게 + 자물쇠 표시. */
+  isPrivate?: boolean
 }) {
+  // 나만보기 = 차분한 크림 배경 + 잉크 테두리(기본 종이/연한 테두리와 즉시 구분).
+  const shell = isPrivate ? 'border-ink/20 bg-cream' : 'border-[#ECEADC] bg-paper'
   if (card.status === 'done') {
     return (
       <AppLink href={`/box/${card.id}`} className="block">
-        <div className="rounded-card border border-[#ECEADC] bg-paper/70 p-4 active:bg-butter-tint/40">
-          <h3 className="truncate text-[17px] font-extrabold leading-snug tracking-tight text-ink-soft">{card.title}</h3>
+        <div className={`rounded-card border p-4 shadow-[0_2px_10px_rgba(42,42,39,0.05)] active:bg-butter-tint/40 ${shell}`}>
+          <div className="flex items-start gap-1.5">
+            {isPrivate && <Icon name="lock" size={12} strokeWidth={2.4} className="mt-[3px] shrink-0 text-ink-faint" />}
+            <h3 className="min-w-0 flex-1 truncate text-[17px] font-extrabold leading-snug tracking-tight text-ink-soft">{card.title}</h3>
+          </div>
           {card.winnerName ? (
             <p className="mt-1.5 text-[13.5px] text-ink">
               <span className="font-extrabold [box-shadow:inset_0_-8px_0_#FFD84A]">{card.winnerName}</span>
@@ -101,8 +109,9 @@ export function BoxSummaryCard({
 
   return (
     <AppLink href={`/box/${box.id}`} className="block">
-      <div className="rounded-card border border-[#ECEADC] bg-paper p-4 shadow-[0_2px_10px_rgba(42,42,39,0.05)] active:bg-butter-tint/40">
+      <div className={`rounded-card border p-4 shadow-[0_2px_10px_rgba(42,42,39,0.05)] active:bg-butter-tint/40 ${shell}`}>
         <div className="flex items-start justify-between gap-2">
+          {isPrivate && <Icon name="lock" size={13} strokeWidth={2.4} className="mt-[3px] shrink-0 text-ink-faint" />}
           <h3 className="min-w-0 flex-1 truncate text-[17px] font-extrabold leading-snug tracking-tight text-ink">{box.title}</h3>
           {dday && (
             <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-extrabold ${ddayUrgent ? 'bg-tomato-tint text-tomato' : 'bg-cream text-ink-soft'}`}>
@@ -111,16 +120,16 @@ export function BoxSummaryCard({
           )}
         </div>
 
-        {box.mode === 'checklist' ? (
-          <p className="mt-2 text-[12.5px] font-bold text-ink-soft">항목 {box.total}개</p>
-        ) : box.leaders.length > 0 ? (
-          <div className="mt-2 flex min-w-0 items-center gap-1.5 text-[12.5px] font-extrabold text-ink">
-            <span className="shrink-0 rounded-full bg-butter px-[7px] py-0.5 text-[10.5px]">인기</span>
-            <span className="min-w-0 truncate">{leadersLabel(box.leaders)}</span>
-          </div>
-        ) : (
-          <p className="mt-2 text-[12.5px] font-bold text-ink-soft">선택지 {box.total}개</p>
-        )}
+        {/* 인기 리더(결정 신호)만 표시. '선택지/항목 N개' 텍스트는 제거하되, 리더가 없어도 딱 한 줄
+            높이(h-[18px])만 점유해 나중에 리더가 생겨도 카드 높이가 달라지지 않게 한다. */}
+        <div className="mt-2 flex h-[18px] min-w-0 items-center gap-1.5 text-[12.5px] font-extrabold text-ink">
+          {box.mode !== 'checklist' && box.leaders.length > 0 && (
+            <>
+              <span className="shrink-0 rounded-full bg-butter px-[7px] py-px text-[10.5px] leading-tight">인기</span>
+              <span className="min-w-0 truncate leading-tight">{leadersLabel(box.leaders)}</span>
+            </>
+          )}
+        </div>
 
         {(box.participants.length > 0 || trailing) && (
           <div className="mt-2 flex items-center justify-between gap-2">

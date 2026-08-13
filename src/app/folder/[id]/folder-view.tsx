@@ -7,13 +7,14 @@ import { useNav } from '@/lib/nav/nav'
 import { setPendingBoxFolder } from '@/lib/nav/pending-box-folder'
 import { PageHeader } from '@/components/page-header'
 import { BoxSummaryCard } from '@/components/box-summary-card'
+import { SortableList, SortableItem, lockX } from '@/components/sortable-list'
+import { verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { Icon } from '@/components/icon'
 import { ModeChip } from '@/components/mode-chip'
 import { ShareFolderLinkButton } from './share-folder-link-button'
 import {
   useRenameFolder,
   useLeaveFolder,
-  useRemoveBoxFromFolder,
   useReorderFolderBoxes,
   useBoxesNotInFolder,
   useAddBoxesToFolder,
@@ -21,6 +22,7 @@ import {
   useCoParticipantsForFolder,
   useInviteUsersToFolder,
 } from '@/hooks/use-folders'
+import { shareInviteLink, hasNativeShare } from '@/lib/share/native-share'
 import type { Box } from '@/lib/api/boxes'
 import type { BoxCard as BoxCardData } from '@/lib/domain/home'
 
@@ -80,10 +82,9 @@ export function FolderView({ folderId, folderName, inviteCode, currentUserId, me
   const nav = useNav()
   const [title, setTitle] = useState(folderName)
   const [items, setItems] = useState(initialBoxes)
-  const [editing, setEditing] = useState(false)
+  const [copied, setCopied] = useState(false)
   // 토스: 담기/무효화 후 쿼리가 새 initialBoxes를 넘기면 목록을 동기화(useState는 최초 1회라 prop만으론 안 바뀜).
-  // 편집(순서/제외) 중엔 로컬 편집을 덮지 않도록 스킵.
-  useEffect(() => { if (!editing) setItems(initialBoxes) }, [initialBoxes, editing])
+  useEffect(() => { setItems(initialBoxes) }, [initialBoxes])
   const [menuOpen, setMenuOpen] = useState(false)
   const [renaming, setRenaming] = useState(false)
   const [confirmLeave, setConfirmLeave] = useState(false)
@@ -102,7 +103,6 @@ export function FolderView({ folderId, folderName, inviteCode, currentUserId, me
 
   const rename = useRenameFolder()
   const leave = useLeaveFolder()
-  const removeBox = useRemoveBoxFromFolder()
   const reorder = useReorderFolderBoxes(folderId)
   const addBoxes = useAddBoxesToFolder(folderId)
   const setShared = useSetBoxFolderShared(folderId)
@@ -156,92 +156,72 @@ export function FolderView({ folderId, folderName, inviteCode, currentUserId, me
     doAdd()
   }
 
-  function move(index: number, dir: -1 | 1) {
-    setItems(prev => {
-      const next = [...prev]
-      const target = index + dir
-      if (target < 0 || target >= next.length) return prev
-      ;[next[index], next[target]] = [next[target], next[index]]
-      return next
-    })
+  // 토스: 네이티브 공유 시트, 웹: 링크 클립보드 복사(shareInviteLink가 플랫폼 분기).
+  async function shareFolder() {
+    const result = await shareInviteLink({ path: `/folder-invite/${inviteCode}` })
+    if (result === 'copied') {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1600)
+    }
   }
 
-  function exclude(boxId: string) {
-    setItems(prev => prev.filter(i => i.box.id !== boxId))
-    removeBox.mutate({ boxId, folderId })
-  }
-
-  function finishEdit() {
-    // 남이 담은(내 소관 아닌) 항목은 순서 저장 대상에서 제외 — 안 그러면 내 이름으로 새로 담아버리게 된다.
-    const mine = items.filter(i => i.addedByMe).map(i => i.box.id)
+  // 메인 목록에서 바로 드래그. 드롭 즉시 저장 — 남이 담은(내 소관 아닌) 항목은 순서 저장 대상에서
+  // 제외한다(안 그러면 내 이름으로 새로 담아버린다, 048).
+  function reorderMain(next: FolderBoxItem[]) {
+    setItems(next)
+    const mine = next.filter(i => i.addedByMe).map(i => i.box.id)
     if (mine.length > 0) reorder.mutate(mine)
-    setEditing(false)
   }
 
   return (
     <main className="flex min-h-dvh flex-col">
       <PageHeader title={title} />
 
-      {/* 컨텍스트 밴드 — '서랍 안'이라는 정체성(버터틴트). 멤버 영역 탭 → 초대 시트. 편집·이름변경·나가기는 ⋯ 하나로. */}
+      {/* 컨텍스트 밴드 — '서랍 안'이라는 정체성(버터틴트). 멤버 영역 탭 → 초대 시트. 공유·이름변경·나가기는 ⋯ 하나로.
+          순서 변경은 아래 목록을 바로 드래그(별도 편집 모드 없음). */}
       <div className="mx-5 mb-4 flex items-center justify-between gap-3 rounded-[16px] bg-butter-tint/70 px-4 py-3">
-        {editing ? (
-          <>
-            <p className="text-[12.5px] font-semibold text-ink-soft">순서를 바꾸거나 서랍에서 뺄 수 있어요.</p>
-            <button
-              onClick={finishEdit}
-              className="shrink-0 rounded-full bg-paper px-3.5 py-1.5 text-[12px] font-bold text-ink-soft active:bg-cream"
-            >
-              완료
-            </button>
-          </>
-        ) : (
-          <>
-            <button onClick={() => setMembersOpen(true)} className="flex min-w-0 items-center gap-2.5 active:opacity-70">
-              <MemberAvatars members={members} />
-              <span className="truncate text-[12.5px] font-bold text-ink">
-                {isShared ? `${members.length}명이 함께 정리 중` : '나만 보는 서랍'}
-              </span>
-              <Icon name="chevronRight" size={14} className="shrink-0 text-ink-faint" />
-            </button>
-            <div className="relative shrink-0">
-              <button
-                onClick={() => setMenuOpen(v => !v)}
-                aria-label="서랍 메뉴"
-                className="flex h-8 w-8 items-center justify-center rounded-full text-ink-soft active:bg-paper"
-              >
-                <Icon name="more" size={18} />
-              </button>
-              {menuOpen && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-                  <div className="absolute right-0 top-10 z-50 w-44 overflow-hidden rounded-[14px] border border-line bg-paper py-1 shadow-[0_10px_30px_rgba(42,42,39,0.18)]">
-                    {/* '링크로 초대'는 멤버 영역 탭으로 여는 시트와 중복이라 ⋯ 메뉴에선 제거(멤버 영역 탭으로 접근). */}
-                    {items.length > 0 && (
-                      <button
-                        onClick={() => { setMenuOpen(false); setEditing(true) }}
-                        className="flex w-full items-center gap-2 px-3.5 py-2.5 text-left text-[13.5px] font-semibold text-ink active:bg-cream"
-                      >
-                        <Icon name="menu" size={15} className="text-ink-soft" /> 상자 순서 편집
-                      </button>
-                    )}
-                    <button
-                      onClick={() => { setMenuOpen(false); setNameInput(title); setRenaming(true) }}
-                      className="flex w-full items-center gap-2 px-3.5 py-2.5 text-left text-[13.5px] font-semibold text-ink active:bg-cream"
-                    >
-                      <Icon name="edit" size={15} className="text-ink-soft" /> 이름 변경
-                    </button>
-                    <button
-                      onClick={() => { setMenuOpen(false); setAlsoLeaveBoxes(false); setConfirmLeave(true) }}
-                      className="flex w-full items-center gap-2 px-3.5 py-2.5 text-left text-[13.5px] font-semibold text-tomato active:bg-tomato-tint"
-                    >
-                      <Icon name="trash" size={15} /> {isShared ? '서랍 나가기' : '서랍 삭제'}
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          </>
-        )}
+        <button onClick={() => setMembersOpen(true)} className="flex min-w-0 items-center gap-2.5 active:opacity-70">
+          <MemberAvatars members={members} />
+          <span className="truncate text-[12.5px] font-bold text-ink">
+            {isShared ? `${members.length}명이 함께 정리 중` : '나만 보는 서랍'}
+          </span>
+          <Icon name="chevronRight" size={14} className="shrink-0 text-ink-faint" />
+        </button>
+        <div className="relative shrink-0">
+          <button
+            onClick={() => setMenuOpen(v => !v)}
+            aria-label="서랍 메뉴"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-ink-soft active:bg-paper"
+          >
+            <Icon name="more" size={18} />
+          </button>
+          {menuOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+              <div className="absolute right-0 top-10 z-50 w-44 overflow-hidden rounded-[14px] border border-line bg-paper py-1 shadow-[0_10px_30px_rgba(42,42,39,0.18)]">
+                {/* '링크로 초대'는 멤버 영역 탭으로 여는 시트와 중복이라 ⋯ 메뉴에선 제거(멤버 영역 탭으로 접근). */}
+                <button
+                  onClick={() => { setMenuOpen(false); shareFolder() }}
+                  className="flex w-full items-center gap-2 px-3.5 py-2.5 text-left text-[13.5px] font-semibold text-ink active:bg-cream"
+                >
+                  <Icon name="share" size={15} className="text-ink-soft" /> {hasNativeShare() ? '서랍 공유하기' : '공유 링크 복사'}
+                </button>
+                <button
+                  onClick={() => { setMenuOpen(false); setNameInput(title); setRenaming(true) }}
+                  className="flex w-full items-center gap-2 px-3.5 py-2.5 text-left text-[13.5px] font-semibold text-ink active:bg-cream"
+                >
+                  <Icon name="edit" size={15} className="text-ink-soft" /> 이름 변경
+                </button>
+                <button
+                  onClick={() => { setMenuOpen(false); setAlsoLeaveBoxes(false); setConfirmLeave(true) }}
+                  className="flex w-full items-center gap-2 px-3.5 py-2.5 text-left text-[13.5px] font-semibold text-tomato active:bg-tomato-tint"
+                >
+                  <Icon name="trash" size={15} /> {isShared ? '서랍 나가기' : '서랍 삭제'}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="flex-1 space-y-2.5 px-5 pb-32">
@@ -250,44 +230,9 @@ export function FolderView({ folderId, folderName, inviteCode, currentUserId, me
             <p className="text-[13.5px] font-bold text-ink">이 서랍은 비어 있어요</p>
             <p className="mt-1 text-[12px] text-ink-soft">상자 상세의 &lsquo;서랍에 담기&rsquo;에서 이 서랍으로 담아보세요.</p>
           </div>
-        ) : editing ? (
-          items.map((item, i) => (
-            <div
-              key={item.box.id}
-              className="flex items-center gap-2 rounded-card border border-[#ECEADC] bg-paper px-3 py-3"
-            >
-              <span className="min-w-0 flex-1 truncate text-[14px] font-bold text-ink">{item.box.title}</span>
-              <button
-                onClick={() => move(i, -1)}
-                disabled={i === 0}
-                aria-label="위로"
-                className="flex h-8 w-8 items-center justify-center rounded-full text-ink-soft disabled:opacity-30 active:bg-cream"
-              >
-                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" /></svg>
-              </button>
-              <button
-                onClick={() => move(i, 1)}
-                disabled={i === items.length - 1}
-                aria-label="아래로"
-                className="flex h-8 w-8 items-center justify-center rounded-full text-ink-soft disabled:opacity-30 active:bg-cream"
-              >
-                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-              </button>
-              {item.addedByMe ? (
-                <button
-                  onClick={() => exclude(item.box.id)}
-                  aria-label="서랍에서 빼기"
-                  className="flex h-8 w-8 items-center justify-center rounded-full text-tomato active:bg-tomato-tint"
-                >
-                  <Icon name="close" size={17} strokeWidth={2.4} />
-                </button>
-              ) : (
-                <span className="w-8 shrink-0 text-center text-[10px] font-bold text-ink-faint">공유됨</span>
-              )}
-            </div>
-          ))
         ) : (
-          items.map(item => {
+          <SortableList items={items} getId={i => i.box.id} strategy={verticalListSortingStrategy} modifiers={[lockX]} onReorder={reorderMain}>
+            {item => {
             const card = cardById.get(item.box.id)
             if (!card) return null
             // 049: 공유 폴더에서 상자별 공유/나만 토글 — 나 혼자 쓰는 상자에서만. 참여자 2명+인 상자는
@@ -297,44 +242,45 @@ export function FolderView({ folderId, folderName, inviteCode, currentUserId, me
             // 다른 내용 높이와 겹쳐서, BoxSummaryCard의 trailing으로 넘겨 카드 안쪽 패딩·플로우를 탄다.
             const showShareToggle = isShared && item.participants.length <= 1 && item.addedByMe
             return (
-              <BoxSummaryCard
-                key={item.box.id}
-                card={card}
-                currentUserId={currentUserId}
-                trailing={
-                  showShareToggle ? (
-                    <button
-                      type="button"
-                      onClick={e => { e.preventDefault(); e.stopPropagation(); toggleShared(item.box.id, item.shared) }}
-                      disabled={setShared.isPending}
-                      aria-pressed={!item.shared}
-                      className="flex shrink-0 items-center gap-1.5 text-[10.5px] font-extrabold text-ink-soft"
-                    >
-                      나만보기
-                      <span className={`relative h-4 w-7 shrink-0 rounded-full transition-colors ${!item.shared ? 'bg-ink' : 'bg-[#D9D6C2]'}`}>
-                        <span className={`absolute top-0.5 h-3 w-3 rounded-full bg-paper shadow-sm transition-all ${!item.shared ? 'left-[14px]' : 'left-0.5'}`} />
-                      </span>
-                    </button>
-                  ) : undefined
-                }
-              />
+              <SortableItem key={item.box.id} id={item.box.id}>
+                <BoxSummaryCard
+                  card={card}
+                  currentUserId={currentUserId}
+                  isPrivate={showShareToggle && !item.shared}
+                  trailing={
+                    showShareToggle ? (
+                      <button
+                        type="button"
+                        onClick={e => { e.preventDefault(); e.stopPropagation(); toggleShared(item.box.id, item.shared) }}
+                        disabled={setShared.isPending}
+                        aria-pressed={!item.shared}
+                        className="flex shrink-0 items-center gap-1.5 text-[10.5px] font-extrabold text-ink-soft"
+                      >
+                        나만보기
+                        <span className={`relative h-4 w-7 shrink-0 rounded-full transition-colors ${!item.shared ? 'bg-ink' : 'bg-[#D9D6C2]'}`}>
+                          <span className={`absolute top-0.5 h-3 w-3 rounded-full bg-paper shadow-sm transition-all ${!item.shared ? 'left-[14px]' : 'left-0.5'}`} />
+                        </span>
+                      </button>
+                    ) : undefined
+                  }
+                />
+              </SortableItem>
             )
-          })
+          }}
+          </SortableList>
         )}
       </div>
 
-      {/* 하단 CTA — 이 서랍에 바로 담기는 상자를 만든다. 딥페이지라 bottom-0(탭바 없음). 편집 중엔 숨김. */}
-      {!editing && (
-        <div className="fixed inset-x-0 bottom-[var(--app-nav-h,0px)] z-20 bg-cream px-5 pt-3 pb-[calc(var(--app-cta-safe,env(safe-area-inset-bottom))+0.75rem)] xl:inset-x-auto xl:bottom-10 xl:left-1/2 xl:w-[430px] xl:-translate-x-1/2 xl:rounded-b-[30px]">
-          <button
-            onClick={() => { setPicked(new Set()); setAddOpen(true) }}
-            className="flex w-full items-center justify-center gap-2 rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80"
-          >
-            <Icon name="plus" size={17} strokeWidth={2.4} />
-            상자 추가하기
-          </button>
-        </div>
-      )}
+      {/* 하단 CTA — 이 서랍에 바로 담기는 상자를 만든다. 딥페이지라 bottom-0(탭바 없음). */}
+      <div className="fixed inset-x-0 bottom-[var(--app-nav-h,0px)] z-20 bg-cream px-5 pt-3 pb-[calc(var(--app-cta-safe,env(safe-area-inset-bottom))+0.75rem)] xl:inset-x-auto xl:bottom-10 xl:left-1/2 xl:w-[430px] xl:-translate-x-1/2 xl:rounded-b-[30px]">
+        <button
+          onClick={() => { setPicked(new Set()); setAddOpen(true) }}
+          className="flex w-full items-center justify-center gap-2 rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80"
+        >
+          <Icon name="plus" size={17} strokeWidth={2.4} />
+          상자 추가하기
+        </button>
+      </div>
 
       {/* 상자 추가 시트 — 새 상자 만들기 + 기존 상자 담기(다중 선택). */}
       {addOpen && createPortal(
@@ -614,6 +560,14 @@ export function FolderView({ folderId, folderName, inviteCode, currentUserId, me
               </button>
             </div>
           </div>
+        </div>,
+        document.body,
+      )}
+
+      {/* 링크 복사 토스트 (웹) */}
+      {copied && createPortal(
+        <div className="fixed inset-x-0 bottom-10 z-[70] flex justify-center px-8">
+          <span className="rounded-full bg-ink px-4 py-2 text-[12.5px] font-bold text-cream shadow-lg">공유 링크 복사됨!</span>
         </div>,
         document.body,
       )}

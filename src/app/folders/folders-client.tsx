@@ -8,8 +8,10 @@ import { PageHeader } from '@/components/page-header'
 import { AppDrawer } from '@/components/app-drawer'
 import { Icon } from '@/components/icon'
 import { CreateFab } from '@/components/create-fab'
+import { SortableList, SortableItem } from '@/components/sortable-list'
+import { rectSortingStrategy } from '@dnd-kit/sortable'
 import { shareInviteLink, hasNativeShare } from '@/lib/share/native-share'
-import { useCreateFolder, useRenameFolder, useLeaveFolder } from '@/hooks/use-folders'
+import { useCreateFolder, useRenameFolder, useLeaveFolder, useReorderFolders } from '@/hooks/use-folders'
 
 export interface FolderCard {
   id: string
@@ -45,7 +47,9 @@ function MemberAvatars({ members, max = 4 }: { members: FolderCard['members']; m
 
 type Me = { id: string; nickname: string; avatar_url: string | null }
 
-export function FoldersClient({ initialFolders, nickname, me }: { initialFolders: FolderCard[]; nickname: string; me: Me }) {
+// embedded: 토스 '서랍' 탭이 상자/서랍 토글 아래에 끼워 쓸 때 자체 PageHeader·안내문을 생략하고
+// 바깥 <main> 안에 들어갈 <div>로 렌더한다(웹 /folders는 embedded=false 그대로).
+export function FoldersClient({ initialFolders, nickname, me, embedded = false }: { initialFolders: FolderCard[]; nickname: string; me: Me; embedded?: boolean }) {
   const [folders, setFolders] = useState(initialFolders)
   // refetch(무효화)로 새 initialFolders가 오면 목록 동기화 — useState는 최초 1회라 prop만으론 안 바뀜
   // (서랍 담기·상자수 변화가 새로고침 없이 반영되게).
@@ -63,6 +67,12 @@ export function FoldersClient({ initialFolders, nickname, me }: { initialFolders
   const createFolder = useCreateFolder()
   const rename = useRenameFolder()
   const leave = useLeaveFolder()
+  const reorderFolders = useReorderFolders()
+
+  function onReorder(next: FolderCard[]) {
+    setFolders(next)
+    reorderFolders.mutate(next.map(f => f.id))
+  }
 
   function handleCreate(e: React.FormEvent) {
     e.preventDefault()
@@ -113,16 +123,21 @@ export function FoldersClient({ initialFolders, nickname, me }: { initialFolders
     })
   }
 
+  const Tag = embedded ? 'div' : 'main'
   return (
-    <main className="flex min-h-dvh flex-col">
-      <PageHeader
-        title="서랍"
-        right={<AppDrawer nickname={nickname} />}
-      />
+    <Tag className={embedded ? 'flex flex-1 flex-col' : 'flex min-h-dvh flex-col'}>
+      {!embedded && (
+        <PageHeader
+          title="서랍"
+          right={<AppDrawer nickname={nickname} />}
+        />
+      )}
 
-      <p className="px-5 pb-3 text-[13px] leading-relaxed text-ink-soft">
-        주제로 상자를 묶고, 링크로 함께 정리할 사람을 초대해요.
-      </p>
+      {!embedded && (
+        <p className="px-5 pb-3 text-[13px] leading-relaxed text-ink-soft">
+          주제로 상자를 묶고, 링크로 함께 정리할 사람을 초대해요.
+        </p>
+      )}
 
       <div className="grid flex-1 grid-cols-2 content-start gap-2.5 px-5 pb-28">
         {folders.length === 0 ? (
@@ -134,10 +149,11 @@ export function FoldersClient({ initialFolders, nickname, me }: { initialFolders
             <p className="mt-1 text-[12px] text-ink-soft">여행·집들이처럼 주제로 상자를 묶어보세요.</p>
           </div>
         ) : (
-          folders.map(f => {
+          <SortableList items={folders} getId={f => f.id} strategy={rectSortingStrategy} onReorder={onReorder}>
+            {f => {
             const isShared = f.members.length > 1
             return (
-              <div key={f.id} className="relative">
+              <SortableItem key={f.id} id={f.id} className="relative">
                 <AppLink
                   href={`/folder/${f.id}`}
                   className="flex flex-col rounded-[18px] border border-butter-dark/25 bg-butter-tint/50 p-4 active:bg-butter-tint"
@@ -168,9 +184,10 @@ export function FoldersClient({ initialFolders, nickname, me }: { initialFolders
                 >
                   <Icon name="more" size={18} />
                 </button>
-              </div>
+              </SortableItem>
             )
-          })
+          }}
+          </SortableList>
         )}
       </div>
 
@@ -293,6 +310,6 @@ export function FoldersClient({ initialFolders, nickname, me }: { initialFolders
         </div>,
         document.body,
       )}
-    </main>
+    </Tag>
   )
 }

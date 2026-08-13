@@ -7,6 +7,7 @@ import { useNav, AppLink } from '@/lib/nav/nav'
 import { requestAppReview } from '@/lib/review/native-review'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { updateNickname, updateAvatarUrl, uploadAvatar, getMyBioTags, updateProfileBio } from '@/lib/api/profile'
+import { extractTags } from '@/lib/domain/hashtags'
 import { claimHandle } from '@/lib/api/social'
 import { createClient } from '@/lib/supabase/client'
 import { signOut } from '@/lib/api/auth'
@@ -53,27 +54,20 @@ export function ProfileClient({ userId, nickname, avatarUrl, kakaoAvatarUrl }: P
     onError: (e: unknown) => setHandleError(e instanceof Error ? e.message : '설정에 실패했어요'),
   })
 
-  // 한줄소개 + 관심 태그 — 부모 로더 밖에서 조회. 편집 중 refetch가 덮지 않게 최초 1회만 시드.
+  // 한줄소개 — 부모 로더 밖에서 조회. 편집 중 refetch가 덮지 않게 최초 1회만 시드.
+  // 관심 태그는 별도 입력 없이 소개 안 #해시태그에서 뽑는다(인스타식).
   const { data: bioTags } = useQuery({ queryKey: ['my-bio-tags', userId], queryFn: getMyBioTags })
   const [bioValue, setBioValue] = useState('')
-  const [tagsInput, setTagsInput] = useState('')
   const [bioSeeded, setBioSeeded] = useState(false)
   const [bioSaved, setBioSaved] = useState(false)
   useEffect(() => {
     if (bioTags && !bioSeeded) {
       setBioValue(bioTags.bio)
-      setTagsInput(bioTags.tags.join(', ')) // 상자 공개설정과 동일하게 쉼표 구분(# 없이)
       setBioSeeded(true)
     }
   }, [bioTags, bioSeeded])
   const updateBioMutation = useMutation({
-    mutationFn: () => {
-      // "#여행 #맛집" / "여행, 맛집" 모두 허용 → # · 공백 · 쉼표 정리, 중복 제거, 최대 8개.
-      const tags = [...new Set(
-        tagsInput.split(/[\s,]+/).map(t => t.trim().replace(/^#+/, '')).filter(Boolean),
-      )].slice(0, 8)
-      return updateProfileBio(bioValue.trim(), tags)
-    },
+    mutationFn: () => updateProfileBio(bioValue.trim(), extractTags(bioValue)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-bio-tags', userId] })
       queryClient.invalidateQueries({ queryKey: ['my-profile'] })
@@ -321,7 +315,7 @@ export function ProfileClient({ userId, nickname, avatarUrl, kakaoAvatarUrl }: P
           )}
         </div>
 
-        {/* 소개 + 관심 태그 — 공개 프로필에 표시, 사람 검색(둘러보기)에 태그로 노출된다. */}
+        {/* 소개 — 공개 프로필에 표시. 안에 쓴 #해시태그가 관심 분야 태그가 되고 사람 검색에도 노출된다. */}
         <div className="space-y-3 rounded-card border border-[#ECEADC] bg-paper p-5">
           <h2 className="text-[13.5px] font-extrabold text-ink">소개</h2>
           <div className="space-y-1">
@@ -331,19 +325,10 @@ export function ProfileClient({ userId, nickname, avatarUrl, kakaoAvatarUrl }: P
               onChange={e => setBioValue(e.target.value)}
               maxLength={80}
               rows={2}
-              placeholder="나를 한 줄로 소개해 주세요"
+              placeholder="예: 주말엔 카페 투어 #여행 #맛집"
               className="w-full resize-none rounded-field border border-line bg-paper px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-ink focus:outline-none"
             />
-          </div>
-          <div className="space-y-1">
-            <label className="text-[12px] font-semibold text-ink-soft">관심 태그 (쉼표로 구분, 최대 8개)</label>
-            <input
-              value={tagsInput}
-              onChange={e => setTagsInput(e.target.value)}
-              placeholder="예: 여행, 맛집, 데이트"
-              className="w-full rounded-field border border-line bg-paper px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-ink focus:outline-none"
-            />
-            <p className="text-[11px] text-ink-faint">이 태그로도 사람 검색에 뜹니다.</p>
+            <p className="text-[11px] text-ink-faint">#여행 처럼 쓰면 관심 분야 태그가 되고, 사람 검색에도 떠요.</p>
           </div>
           <button
             onClick={() => updateBioMutation.mutate()}

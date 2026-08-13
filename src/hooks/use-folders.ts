@@ -12,6 +12,7 @@ import {
   setBoxFolders,
   removeBoxFromFolder,
   reorderBoxFolders,
+  reorderFolders,
   getMyBoxesNotInFolder,
   addBoxesToFolder,
   setBoxFolderShared,
@@ -160,6 +161,16 @@ export function useReorderFolderBoxes(folderId: string) {
   const nav = useNav()
   return useMutation({
     mutationFn: (orderedBoxIds: string[]) => reorderBoxFolders(folderId, orderedBoxIds),
+    onSuccess: () => invalidateFolderViews(queryClient, nav),
+  })
+}
+
+/** 홈 서랍 레일 칩 순서 저장(folder_members.sort). */
+export function useReorderFolders() {
+  const queryClient = useQueryClient()
+  const nav = useNav()
+  return useMutation({
+    mutationFn: (orderedFolderIds: string[]) => reorderFolders(orderedFolderIds),
     onSuccess: () => invalidateFolderViews(queryClient, nav),
   })
 }

@@ -15,7 +15,6 @@ import { BoxesScreen } from "./screens/boxes-screen";
 import { BoxDetailScreen } from "./screens/box-detail-screen";
 import { OptionDetailScreen } from "./screens/option-detail-screen";
 import { FolderScreen } from "./screens/folder-screen";
-import { FoldersScreen } from "./screens/folders-screen";
 import { BoxInviteScreen } from "./screens/box-invite-screen";
 import { FolderInviteScreen } from "./screens/folder-invite-screen";
 import { ProfileScreen } from "./screens/profile-screen";
@@ -152,8 +151,8 @@ function App() {
       <Route path="/box/:id/option/:optionId" element={<OptionDetailScreen />} />
       <Route path="/box/:id/option/:optionId/edit" element={<OptionEditScreen />} />
 
-      {/* 폴더 */}
-      <Route path="/folders" element={<FoldersScreen />} />
+      {/* 폴더 — 서랍 목록은 '서랍' 탭(/boxes 서랍 뷰)이 정본. 홈 '새 서랍' 등 /folders 진입은 거기로 통일. */}
+      <Route path="/folders" element={<Navigate to="/boxes?view=folder" replace />} />
       <Route path="/folder/:id" element={<FolderScreen />} />
 
       {/* 공유 링크 뷰어(딥링크 intoss://pickstash/invite|folder-invite/<code>) — 비멤버 열람+참여 */}

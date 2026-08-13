@@ -68,6 +68,9 @@ export async function loadHomeView(
       .order('created_at', { ascending: false })
     for (const a of acts ?? []) {
       if (latestByBox.has(a.box_id)) continue // desc 정렬이라 첫 번째가 최신
+      // 결정 확정/자동마감은 '정했어요' 소관 — 되살린(reopen) 상자에 stale하게 남은 close 이벤트가
+      // '들썩이는 상자'로 뜨는 걸 막는다. 그 상자에 이전 다른 활동이 있으면 그게 대신 뜬다.
+      if (a.type === 'box_closed' || a.type === 'box_closed_auto') continue
       if (a.type === 'join_requested' && resolvedReq.has(`${a.box_id}:${a.actor_id}`)) continue // 처리된 신청은 스킵
       const profile = a.profiles as unknown as { nickname: string } | null
       latestByBox.set(a.box_id, {
@@ -127,9 +130,14 @@ export async function loadHomeView(
       .filter(c => c.status === 'done')
   }
 
+  // 안전장치: 들썩임(열림)과 최근 결정(닫힘)은 closed_at 상태로 이미 분리돼 겹칠 수 없지만,
+  // 혹시 로직이 바뀌어도 같은 상자가 두 섹션에 동시에 뜨지 않도록 구조적으로 막는다.
+  const doneIds = new Set(recentDone.map(c => c.id))
+  const dedupedShaking = shaking.filter(s => !doneIds.has(s.card.id))
+
   return {
     nickname: profile?.nickname ?? '',
-    brief: { recentDone, shaking },
+    brief: { recentDone, shaking: dedupedShaking },
     openCount: openBoxes.length,
     doneCount,
   }

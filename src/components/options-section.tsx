@@ -1,13 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { AppLink } from '@/lib/nav/nav'
 import { useOptions, useToggleOptionChecked } from '@/hooks/use-options'
 import { useBoxVotes } from '@/hooks/use-votes'
 import { useRealtimeVotes } from '@/hooks/use-realtime-votes'
 import { useRealtimeOptions } from '@/hooks/use-realtime-options'
 import { useInfiniteReveal } from '@/hooks/use-infinite-reveal'
-import { sortOptions, groupOptions, OPTION_SORT_MODES, OPTION_SORT_LABELS, type OptionSortMode } from '@/lib/domain/option-sort'
+import { sortOptions, OPTION_SORT_MODES, OPTION_SORT_LABELS, type OptionSortMode } from '@/lib/domain/option-sort'
 import { parseBlocks, getOptionPreview } from '@/lib/domain/option-content'
 import { getLeaderKey } from '@/lib/domain/winner'
 import { proxiedImageUrl } from '@/lib/api/unfurl'
@@ -30,9 +30,11 @@ interface OptionsSectionProps {
   checklist?: boolean
   /** 모아보기 중 '항목 체크 사용'(044) — true일 때만 항목에 체크박스를 그린다. 기본 false */
   checkable?: boolean
+  /** 헤더('항목/선택지 N개') 오른쪽 끝에 얹을 컨트롤 — 예: 체크형의 '항목별 체크박스' 토글. */
+  headerAction?: ReactNode
 }
 
-export function OptionsSection({ boxId, round, initialOptions, canVote, showLikes = true, linksHref, checklist = false, checkable = false }: OptionsSectionProps) {
+export function OptionsSection({ boxId, round, initialOptions, canVote, showLikes = true, linksHref, checklist = false, checkable = false, headerAction }: OptionsSectionProps) {
   const { data: options = initialOptions } = useOptions(boxId)
   const { data: votes = {} } = useBoxVotes(boxId, round)
   const [sortMode, setSortMode] = useState<OptionSortMode>('latest')
@@ -41,9 +43,9 @@ export function OptionsSection({ boxId, round, initialOptions, canVote, showLike
   useRealtimeVotes(boxId, round)
   useRealtimeOptions(boxId)
 
-  // 체크형은 좋아요 정렬 개념이 없어 그룹(라벨)순으로 고정 정렬한다.
-  const sorted = (checklist ? groupOptions(options) : sortOptions(options, votes, sortMode)) as OptionWithCounts[]
-  const { visibleCount, sentinelRef, hasMore } = useInfiniteReveal(sorted.length, PAGE_SIZE, checklist ? 'group' : sortMode)
+  // 체크형은 좋아요 정렬·그룹 묶기 없이 담은 순서 그대로.
+  const sorted = (checklist ? options : sortOptions(options, votes, sortMode)) as OptionWithCounts[]
+  const { visibleCount, sentinelRef, hasMore } = useInfiniteReveal(sorted.length, PAGE_SIZE, checklist ? 'flat' : sortMode)
   const visible = sorted.slice(0, visibleCount)
 
   // '인기' 강조: 좋아요 최다가 단독 + 임계값(2개) 이상일 때만 그 하나. 동점·1개는 강조 없음(참고 신호 취지).
@@ -82,6 +84,7 @@ export function OptionsSection({ boxId, round, initialOptions, canVote, showLike
             ))}
           </div>
         )}
+        {headerAction}
       </div>
 
       {options.length === 0 ? (
@@ -98,22 +101,15 @@ export function OptionsSection({ boxId, round, initialOptions, canVote, showLike
         </AppLink>
       ) : (
         <div className="space-y-2.5">
-          {visible.map((option, i) => {
+          {visible.map((option) => {
             const counts = votes[option.id] ?? { like: 0, dislike: 0, myVote: null }
             const preview = getOptionPreview(parseBlocks(option.content))
             const isLead = leaderIds.has(option.id)
             // 체크 사용(checkable)이 꺼지면 취소선·체크도 즉시 사라지게 — checked_at 초기화 전파와
             // 무관하게 표시를 확정한다(스위치 끈 뒤 체크된 글씨가 남던 문제).
             const checked = checkable && !!option.checked_at
-            const groupLabel = option.group_label?.trim() || null
-            const showGroupHeader = checklist && groupLabel && groupLabel !== (visible[i - 1]?.group_label?.trim() || null)
             return (
               <div key={option.id}>
-                {showGroupHeader && (
-                  <p className="mb-1.5 mt-3 px-0.5 text-[11px] font-extrabold uppercase tracking-wide text-ink-faint first:mt-0">
-                    {groupLabel}
-                  </p>
-                )}
                 <div
                   className={`relative rounded-[18px] border p-3.5 ${
                     checklist

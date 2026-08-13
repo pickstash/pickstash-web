@@ -30,7 +30,6 @@ import { PencilCircle } from '@/components/pencil-circle'
 import { shareInviteLink, hasNativeShare } from '@/lib/share/native-share'
 import { getBoxStatus, isDoneStatus } from '@/lib/domain/box-status'
 import { parseBlocks, linkBlocksOf } from '@/lib/domain/option-content'
-import { getLeaderKey } from '@/lib/domain/winner'
 import { setBoxVisibility, requestToJoin } from '@/lib/api/social'
 import { formatDeadlineCompact, defaultDeadline, formatKoreanDate } from '@/lib/utils'
 import type { BoxWithParticipants, BoxParticipant, DecisionMode } from '@/lib/api/boxes'
@@ -250,11 +249,8 @@ export function BoxDetailClient({
   const decidedOptions = options.filter(o => o.decided_at)
   const likeOf = (id: string) => votes[id]?.like ?? 0
   const maxLikes = options.reduce((m, o) => Math.max(m, likeOf(o.id)), 0)
-  // 결정 시트 미리선택용 — 좋아요 최다(동점 포함) 전부. (표시용 '인기'와 별개: 미리선택은 관대하게)
+  // 결정 시트 미리선택용 — 좋아요 최다(동점 포함) 전부.
   const leaderIds = maxLikes > 0 ? options.filter(o => likeOf(o.id) === maxLikes).map(o => o.id) : []
-  // 표시용 '인기' — 최다가 단독 + 임계값(2개) 이상일 때만. 동점·1개는 표시 안 함.
-  const displayLeaderKey = getLeaderKey(options.map(o => ({ key: o.id, like: likeOf(o.id) })))
-  const displayLeaderName = displayLeaderKey ? options.find(o => o.id === displayLeaderKey)?.name ?? null : null
 
   const inviteButton = (
     <div className="flex h-7 items-center gap-0.5 rounded-full border-2 border-cream bg-butter pl-1.5 pr-2.5 text-[12px] font-extrabold text-ink shadow-[0_1px_0_#E3B93A]">
@@ -749,14 +745,9 @@ export function BoxDetailClient({
         {/* 히어로: 상태 · 질문 · 메모 · 메타 · 참여 */}
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-2">
-            {/* 모드 라벨 + 공개중 배지(공개 상자일 때). ModeChip은 어디서나 동일 스타일. */}
+            {/* 모드 라벨. 공개 여부·태그는 바로 아래 줄로. */}
             <div className="flex min-w-0 items-center gap-1.5">
               <ModeChip mode={isChecklist ? 'checklist' : 'decide'} />
-              {isPublic && (
-                <span className="inline-flex items-center gap-1 rounded-full border border-line bg-paper px-2.5 py-0.5 text-xs font-bold text-ink-soft">
-                  <span className="h-1.5 w-1.5 rounded-full bg-leaf" />공개중
-                </span>
-              )}
             </div>
             {/* 상자 액션 — 헤더 대신 뱃지 줄로(토스 시스템 버튼 겹침 회피 + 긴 제목 폭 확보): 북마크·링크·편집. */}
             {!editingTitle && (
@@ -774,14 +765,15 @@ export function BoxDetailClient({
                     style={isFavorite ? { fill: 'var(--color-butter)', stroke: 'var(--color-butter-dark)' } : undefined}
                   />
                 </button>
-                {hasLinks && (
-                  <AppLink
-                    href={`/box/${box.id}/links`}
-                    aria-label="링크 모아보기"
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink active:bg-butter-tint"
+                {/* 공유하기 — 초대 안 된 사람도 읽기전용으로 열람(＋참여) 가능한 /invite 링크를 공유·복사. */}
+                {isParticipant && (
+                  <button
+                    onClick={copyInvite}
+                    aria-label="공유하기"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink-soft active:bg-butter-tint active:text-ink"
                   >
-                    <Icon name="paperclip" size={20} />
-                  </AppLink>
+                    <Icon name="share" size={19} />
+                  </button>
                 )}
                 {isParticipant && <div className="relative">
                   <button
@@ -795,19 +787,23 @@ export function BoxDetailClient({
                     <>
                       <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
                       <div className="absolute right-0 top-full z-50 mt-1.5 w-36 overflow-hidden rounded-[14px] border border-line bg-paper py-1 shadow-[0_8px_24px_rgba(42,42,39,0.16)]">
-                        {/* '링크로 초대'는 참여자 영역 탭으로 여는 시트와 중복이라 ⋯ 메뉴에선 제거(참여자 아바타 탭으로 접근). */}
-                        <button
-                          onClick={() => { setMenuOpen(false); setEditingTitle(true); setTitleInput(box.title) }}
-                          className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-ink active:bg-cream"
-                        >
-                          제목 수정
-                        </button>
-                        <button
-                          onClick={() => { setMenuOpen(false); setEditingMemo(true); setMemoInput(box.memo ?? '') }}
-                          className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-ink active:bg-cream"
-                        >
-                          {box.memo ? '메모 수정' : '메모 추가'}
-                        </button>
+                        {/* 제목은 히어로 연필, 메모 수정도 히어로 연필. 메모 '추가'(빈 상태)만 여기서. */}
+                        {!box.memo && (
+                          <button
+                            onClick={() => { setMenuOpen(false); setEditingMemo(true); setMemoInput('') }}
+                            className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-ink active:bg-cream"
+                          >
+                            메모 추가
+                          </button>
+                        )}
+                        {hasLinks && (
+                          <button
+                            onClick={() => { setMenuOpen(false); nav.push(`/box/${box.id}/links`) }}
+                            className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-[13px] font-semibold text-ink active:bg-cream"
+                          >
+                            <Icon name="paperclip" size={15} className="text-ink-soft" /> 링크 모아보기
+                          </button>
+                        )}
                         {!isDone && !isChecklist && (
                           <button
                             onClick={() => { setMenuOpen(false); openModeModal(box.decision_mode as DecisionMode) }}
@@ -823,12 +819,6 @@ export function BoxDetailClient({
                           서랍에 담기
                         </button>
                         <button
-                          onClick={() => { setMenuOpen(false); setPublishOpen(true) }}
-                          className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-ink active:bg-cream"
-                        >
-                          {isPublic ? '공개 설정 · 공개중' : '공개 설정'}
-                        </button>
-                        <button
                           onClick={() => { setMenuOpen(false); setConfirmLeave(true) }}
                           className="block w-full border-t border-line px-4 py-2.5 text-left text-[13px] font-semibold text-tomato active:bg-tomato-tint"
                         >
@@ -842,6 +832,51 @@ export function BoxDetailClient({
             )}
           </div>
 
+          {/* 공개 여부 · 태그 — 모드칩 아래 한 줄(둘러보기 발견 메타데이터). 공개중/비공개 칩=공개 설정,
+              ＋태그=태그 편집. 참여자만 편집 진입, 뷰어는 공개 태그만 읽기. */}
+          {(isParticipant || (isPublic && publicTags.length > 0)) && (
+            <div className="-mt-1.5 flex flex-wrap items-center gap-1.5">
+              {isParticipant && (
+                <button
+                  onClick={() => setPublishOpen(true)}
+                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-[3px] text-[11.5px] font-bold active:bg-cream ${
+                    isPublic ? 'border border-line bg-paper text-ink-soft' : 'border border-dashed border-[#D9D6C2] text-ink-faint'
+                  }`}
+                >
+                  <span className={`h-1.5 w-1.5 rounded-full ${isPublic ? 'bg-leaf' : 'bg-ink-faint'}`} />
+                  {isPublic ? '공개중' : '비공개'}
+                </button>
+              )}
+              {isPublic && publicTags.map(t => (
+                isParticipant ? (
+                  <button
+                    key={t}
+                    onClick={() => setPublishOpen(true)}
+                    className="inline-flex items-center rounded-full border border-line bg-cream px-2.5 py-[3px] text-[11.5px] font-bold text-ink-soft active:bg-butter-tint/50"
+                  >
+                    <span className="mr-0.5 text-ink-faint">#</span>{t}
+                  </button>
+                ) : (
+                  <span
+                    key={t}
+                    className="inline-flex items-center rounded-full border border-line bg-cream px-2.5 py-[3px] text-[11.5px] font-bold text-ink-soft"
+                  >
+                    <span className="mr-0.5 text-ink-faint">#</span>{t}
+                  </span>
+                )
+              ))}
+              {isParticipant && isPublic && (
+                <button
+                  onClick={() => setPublishOpen(true)}
+                  className="inline-flex items-center gap-0.5 rounded-full border border-dashed border-[#D9D6C2] px-2.5 py-[3px] text-[11.5px] font-bold text-ink-faint active:bg-cream"
+                >
+                  <Icon name="plus" size={11} strokeWidth={2.4} />
+                  {publicTags.length > 0 ? '태그' : '태그 추가'}
+                </button>
+              )}
+            </div>
+          )}
+
           {editingTitle ? (
             <div className="flex items-end gap-2">
               <input
@@ -853,26 +888,29 @@ export function BoxDetailClient({
                 autoFocus
                 className="min-w-0 flex-1 border-b-[1.5px] border-butter-dark bg-transparent pb-1 text-[22px] font-extrabold leading-tight text-ink focus:outline-none"
               />
-              <button
-                onClick={handleSaveTitle}
-                disabled={updateTitle.isPending}
-                className="shrink-0 pb-1 text-sm font-bold text-ink"
-              >
-                저장
+              <button onClick={() => setEditingTitle(false)} aria-label="취소" className="shrink-0 pb-1 text-ink-faint active:text-ink">
+                <Icon name="close" size={18} strokeWidth={2.4} />
+              </button>
+              <button onClick={handleSaveTitle} disabled={updateTitle.isPending} aria-label="저장" className="shrink-0 pb-1 text-ink disabled:opacity-40">
+                <Icon name="check" size={18} strokeWidth={2.6} />
               </button>
             </div>
           ) : (
-            <h1 className="text-[22px] font-extrabold leading-tight tracking-tight text-ink">{box.title}</h1>
-          )}
-
-          {/* 공개 상자 해시태그 — 공개 설정에서 단 태그. 둘러보기 검색에 쓰인다. */}
-          {isPublic && publicTags.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {publicTags.map(t => (
-                <span key={t} className="rounded-full bg-cream px-2 py-0.5 text-[11px] font-medium text-ink-soft">#{t}</span>
-              ))}
+            <div className="flex items-start gap-1.5">
+              <h1 className="min-w-0 flex-1 text-[22px] font-extrabold leading-tight tracking-tight text-ink">{box.title}</h1>
+              {isParticipant && (
+                <button
+                  onClick={() => { setEditingTitle(true); setTitleInput(box.title) }}
+                  aria-label="제목 수정"
+                  className="mt-1 shrink-0 text-ink-faint active:text-ink"
+                >
+                  <Icon name="edit" size={16} />
+                </button>
+              )}
             </div>
           )}
+
+          <p className="text-[11.5px] text-ink-faint">만든 날 {formatKoreanDate(box.created_at)}</p>
 
           {editingMemo ? (
             <div className="space-y-1.5">
@@ -886,23 +924,31 @@ export function BoxDetailClient({
                 className="w-full resize-none rounded-[14px] border-[1.5px] border-butter-dark bg-paper px-3 py-2.5 text-[12.5px] text-ink placeholder:text-ink-faint focus:outline-none"
               />
               <div className="flex justify-end gap-3">
-                <button onClick={() => setEditingMemo(false)} className="text-[12px] font-bold text-ink-soft">
-                  취소
+                <button onClick={() => setEditingMemo(false)} aria-label="취소" className="text-ink-faint active:text-ink">
+                  <Icon name="close" size={17} strokeWidth={2.4} />
                 </button>
-                <button onClick={handleSaveMemo} disabled={updateMemo.isPending} className="text-[12px] font-bold text-ink disabled:opacity-50">
-                  저장
+                <button onClick={handleSaveMemo} disabled={updateMemo.isPending} aria-label="저장" className="text-ink disabled:opacity-40">
+                  <Icon name="check" size={17} strokeWidth={2.6} />
                 </button>
               </div>
             </div>
           ) : box.memo ? (
-            <p className="rounded-[14px] border border-dashed border-[#D9D6C2] bg-paper px-3 py-2.5 text-[12.5px] text-ink-soft">
-              ✏️ {box.memo}
-            </p>
+            <div className="flex items-start gap-2 rounded-[14px] border border-dashed border-[#D9D6C2] bg-paper px-3 py-2.5">
+              <p className="min-w-0 flex-1 text-[12.5px] text-ink-soft">{box.memo}</p>
+              {isParticipant && (
+                <button
+                  onClick={() => { setEditingMemo(true); setMemoInput(box.memo ?? '') }}
+                  aria-label="메모 수정"
+                  className="mt-0.5 shrink-0 text-ink-faint active:text-ink"
+                >
+                  <Icon name="edit" size={14} />
+                </button>
+              )}
+            </div>
           ) : null}
 
           {/* 마감(마감 투표만) + 참여자. 공유는 참여자 탭 → 초대 시트로 일원화(뷰어=초대 같은 링크). */}
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <span className="text-[11.5px] text-ink-faint">만든 날 {formatKoreanDate(box.created_at)}</span>
             {deadlineNode}
             {participantsNode}
           </div>
@@ -958,34 +1004,6 @@ export function BoxDetailClient({
 
         {/* 참여 신청 수락/거절은 알림함(alerts-view)에서 처리 — 상자 상세엔 두지 않는다. */}
 
-        {/* 인기 (진행 중 · 여럿·결정형 상자) — 좋아요 최다 단독+2개↑일 때만. 체크형은 제외. */}
-        {!isChecklist && !isDone && showLikes && displayLeaderName && (
-          <p className="text-[12.5px] font-bold text-ink-soft">
-            인기 · <span className="text-ink">{displayLeaderName}</span>
-          </p>
-        )}
-
-        {/* 항목 체크 사용 토글 — 모아보기·진행중·참여자일 때. 생성 후에도 껐다 켤 수 있다(낙관적 반영). */}
-        {isChecklist && !isDone && isParticipant && (
-          <button
-            type="button"
-            onClick={() => {
-              const next = !checkable
-              setBox(prev => ({ ...prev, checkable: next }))
-              updateCheckable.mutate(next, { onError: () => setBox(prev => ({ ...prev, checkable: !next })) })
-            }}
-            aria-pressed={checkable}
-            className="flex w-full items-center justify-between gap-3 rounded-field border border-line bg-paper px-4 py-3 text-left"
-          >
-            <span className="min-w-0">
-              <span className="block text-sm font-bold text-ink">항목별 체크박스 사용</span>
-            </span>
-            <span className={`relative h-6 w-10 shrink-0 rounded-full transition-colors ${checkable ? 'bg-ink' : 'bg-[#D9D6C2]'}`}>
-              <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-paper shadow-sm transition-all ${checkable ? 'left-[18px]' : 'left-0.5'}`} />
-            </span>
-          </button>
-        )}
-
         <OptionsSection
           boxId={box.id}
           round={box.current_round}
@@ -994,6 +1012,24 @@ export function BoxDetailClient({
           showLikes={showLikes}
           checklist={isChecklist}
           checkable={checkable}
+          headerAction={isChecklist && !isDone && isParticipant ? (
+            // 항목 체크 사용 토글 — '항목 N개' 오른쪽 끝. 생성 후에도 껐다 켤 수 있다(낙관적 반영).
+            <button
+              type="button"
+              onClick={() => {
+                const next = !checkable
+                setBox(prev => ({ ...prev, checkable: next }))
+                updateCheckable.mutate(next, { onError: () => setBox(prev => ({ ...prev, checkable: !next })) })
+              }}
+              aria-pressed={checkable}
+              className="flex shrink-0 items-center gap-1.5 text-[11.5px] font-bold text-ink-soft active:text-ink"
+            >
+              체크박스 사용
+              <span className={`relative h-4 w-7 shrink-0 rounded-full transition-colors ${checkable ? 'bg-ink' : 'bg-[#D9D6C2]'}`}>
+                <span className={`absolute top-0.5 h-3 w-3 rounded-full bg-paper shadow-sm transition-all ${checkable ? 'left-[14px]' : 'left-0.5'}`} />
+              </span>
+            </button>
+          ) : undefined}
         />
       </div>
 
@@ -1006,10 +1042,10 @@ export function BoxDetailClient({
             className="w-full rounded-field bg-ink py-4 text-sm font-bold text-cream active:opacity-80 disabled:opacity-50"
           >
             {canInstantJoin
-              ? (joinBox.isPending ? '참여하는 중…' : '함께하기')
+              ? (joinBox.isPending ? '참여하는 중…' : '함께 정리하기')
               : requested
                 ? '신청됨 · 승인 대기'
-                : (requestBusy ? '신청하는 중…' : '함께하기 신청')}
+                : (requestBusy ? '신청하는 중…' : '함께 정리하기 신청')}
           </button>
         </div>
       ) : options.length > 0 && (
@@ -1145,6 +1181,13 @@ export function BoxDetailClient({
               {inviteCopied ? '링크 복사됨!' : hasNativeShare() ? '새로운 사람 초대하기' : '링크로 초대하기'}
             </button>
           </div>
+        </div>
+      )}
+
+      {/* 공유 링크 복사 토스트(웹) — 토스는 네이티브 공유 시트가 뜨므로 이 토스트는 웹 복사 시에만 의미. */}
+      {inviteCopied && (
+        <div className="fixed inset-x-0 bottom-10 z-[70] flex justify-center px-8">
+          <span className="rounded-full bg-ink px-4 py-2 text-[12.5px] font-bold text-cream shadow-lg">공유 링크 복사됨!</span>
         </div>
       )}
     </main>

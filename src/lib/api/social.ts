@@ -13,6 +13,7 @@ export interface PublicBoxCard {
   mode: 'decide' | 'checklist'
   tags: string[]
   published_at: string | null
+  pinned_at: string | null
   closed_at: string | null
   winner: string | null
   checked: number
@@ -92,6 +93,13 @@ export async function setBoxVisibility(boxId: string, isPublic: boolean, tags: s
     p_public: isPublic,
     p_tags: tags,
   })
+  if (error) throw error
+}
+
+// 프로필 상단 고정/해제 — 본인 공개 상자만, 최대 3개(초과 시 error.message에 'PIN_LIMIT').
+export async function setBoxPin(boxId: string, pinned: boolean): Promise<void> {
+  const supabase = createClient()
+  const { error } = await (supabase.rpc as any)('set_box_pin', { p_box_id: boxId, p_pinned: pinned })
   if (error) throw error
 }
 

@@ -48,11 +48,6 @@ export function OptionViewer({
 
       <div className="mx-auto w-full max-w-[430px] flex-1 space-y-4 px-5 pb-10 pt-4">
         <div className="space-y-3">
-          {isChecklist && option.group_label && (
-            <span className="inline-flex w-fit items-center rounded-full border border-line bg-cream px-2.5 py-0.5 text-[11px] font-bold text-ink-soft">
-              {option.group_label}
-            </span>
-          )}
 
           <h1 className="text-[22px] font-extrabold leading-tight tracking-tight text-ink">{option.name}</h1>
 

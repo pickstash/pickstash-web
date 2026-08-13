@@ -1,10 +1,14 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { uploadOptionImage } from '@/lib/api/options'
 import { fetchLinkPreview, proxiedImageUrl } from '@/lib/api/unfurl'
 import { peekClipboardIfAllowed } from '@/lib/clipboard/native-clipboard'
 import { RichTextEditor } from '@/components/rich-text-editor'
+import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core'
+import { SortableContext, arrayMove, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { useDragSensors, lockX } from '@/components/sortable-list'
 import {
   cleanBlocks,
   linkHref,
@@ -40,6 +44,20 @@ function newId(): string {
   return `${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`
 }
 
+// 본문 블록 드래그 래퍼 — 핸들(그립)에만 listeners를 붙이도록 render-prop으로 넘긴다.
+// 블록 본체는 contentEditable·입력이라 전체를 드래그로 잡으면 타이핑·선택이 막힌다.
+function SortableBlock({ id, children }: { id: string; children: (handle: ReturnType<typeof useSortable>['listeners']) => ReactNode }) {
+  const { setNodeRef, transform, transition, isDragging, listeners } = useSortable({ id })
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 10 : undefined }}
+    >
+      {children(listeners)}
+    </div>
+  )
+}
+
 export function OptionForm({
   boxId,
   initialName = '',
@@ -50,12 +68,12 @@ export function OptionForm({
   submitLabel = '저장',
   offerClipboardLink = false,
   checklist = false,
-  existingGroups = [],
   initialGroupLabel = null,
 }: OptionFormProps) {
   const [name, setName] = useState(initialName)
   const [blocks, setBlocks] = useState<OptionBlock[]>(initialContent)
-  const [groupLabel, setGroupLabel] = useState(initialGroupLabel ?? '')
+  // 그룹 설정 UI는 보류(제거). group_label은 편집 시 초기값만 그대로 보존해 제출한다.
+  const groupLabel = initialGroupLabel ?? ''
   const [uploading, setUploading] = useState(false)
   const [imageError, setImageError] = useState<string | null>(null)
   const [linkLoading, setLinkLoading] = useState<Record<string, boolean>>({})
@@ -116,13 +134,16 @@ export function OptionForm({
     setBlocks(prev => prev.filter(b => b.id !== id))
   }
 
-  function moveBlock(index: number, dir: -1 | 1) {
+  // 본문 블록 드래그 순서변경 — 핸들(그립)로만 시작해 에디터 타이핑·선택을 방해하지 않는다.
+  const blockSensors = useDragSensors()
+  function onBlockDragEnd(e: DragEndEvent) {
+    const { active, over } = e
+    if (!over || active.id === over.id) return
     setBlocks(prev => {
-      const next = [...prev]
-      const target = index + dir
-      if (target < 0 || target >= next.length) return prev
-      ;[next[index], next[target]] = [next[target], next[index]]
-      return next
+      const from = prev.findIndex(b => b.id === active.id)
+      const to = prev.findIndex(b => b.id === over.id)
+      if (from < 0 || to < 0) return prev
+      return arrayMove(prev, from, to)
     })
   }
 
@@ -335,36 +356,7 @@ export function OptionForm({
         </div>
       </div>
 
-      {/* 그룹(선택적 카테고리) — 체크형 상자 전용. 강제 아님, 비워두면 flat 목록. */}
-      {checklist && (
-        <div>
-          <label className="mb-1.5 block text-[13px] font-semibold text-ink-soft">그룹 (선택)</label>
-          <input
-            type="text"
-            value={groupLabel}
-            onChange={e => setGroupLabel(e.target.value)}
-            placeholder="예) 면세점"
-            maxLength={30}
-            className="w-full rounded-field border-[1.5px] border-line bg-paper px-4 py-3 text-sm text-ink placeholder:text-ink-faint focus:border-butter-dark focus:outline-none focus:ring-[3px] focus:ring-butter-tint"
-          />
-          {existingGroups.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {existingGroups.map(g => (
-                <button
-                  key={g}
-                  type="button"
-                  onClick={() => setGroupLabel(g)}
-                  className={`rounded-full border-[1.5px] px-3 py-1 text-[12px] font-bold active:bg-cream ${
-                    groupLabel === g ? 'border-butter-dark bg-butter-tint text-ink' : 'border-line bg-paper text-ink-soft'
-                  }`}
-                >
-                  {g}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      {/* 그룹(카테고리) 설정은 보류 — UI 제거. group_label은 편집 시 기존값만 그대로 제출해 보존한다. */}
 
       {/* 본문 블록 */}
       <div>
@@ -375,9 +367,13 @@ export function OptionForm({
             글·사진·링크를 자유롭게 배치하세요.
           </p>
         ) : (
+          <DndContext sensors={blockSensors} collisionDetection={closestCenter} modifiers={[lockX]} onDragEnd={onBlockDragEnd}>
+          <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
           <div className="space-y-2.5">
-            {blocks.map((block, i) => (
-              <div key={block.id} className="rounded-[16px] border border-line bg-paper p-3">
+            {blocks.map(block => (
+              <SortableBlock key={block.id} id={block.id}>
+                {handle => (
+              <div className="rounded-[16px] border border-line bg-paper p-3">
                 {/* 블록 컨트롤 */}
                 <div className="mb-2 flex items-center justify-between">
                   <span className="flex items-center gap-1.5 text-[11px] font-bold text-ink-faint">
@@ -391,21 +387,11 @@ export function OptionForm({
                   <div className="flex items-center gap-0.5">
                     <button
                       type="button"
-                      onClick={() => moveBlock(i, -1)}
-                      disabled={i === 0}
-                      aria-label="위로"
-                      className="flex h-7 w-7 items-center justify-center rounded-full text-ink-soft disabled:opacity-30 active:bg-cream"
+                      {...handle}
+                      aria-label="드래그해서 순서 변경"
+                      className="flex h-7 w-7 cursor-grab touch-none items-center justify-center rounded-full text-ink-soft active:cursor-grabbing active:bg-cream"
                     >
-                      <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" /></svg>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => moveBlock(i, 1)}
-                      disabled={i === blocks.length - 1}
-                      aria-label="아래로"
-                      className="flex h-7 w-7 items-center justify-center rounded-full text-ink-soft disabled:opacity-30 active:bg-cream"
-                    >
-                      <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                      <svg width="15" height="15" fill="currentColor" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.5" /><circle cx="9" cy="12" r="1.5" /><circle cx="9" cy="18" r="1.5" /><circle cx="15" cy="6" r="1.5" /><circle cx="15" cy="12" r="1.5" /><circle cx="15" cy="18" r="1.5" /></svg>
                     </button>
                     <button
                       type="button"
@@ -496,8 +482,12 @@ export function OptionForm({
                   </div>
                 )}
               </div>
+                )}
+              </SortableBlock>
             ))}
           </div>
+          </SortableContext>
+          </DndContext>
         )}
 
         {/* 블록 추가 버튼 */}

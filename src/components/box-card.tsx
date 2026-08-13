@@ -1,5 +1,5 @@
 import { AppLink } from '@/lib/nav/nav'
-import { formatKoreanDate, formatDeadline } from '@/lib/utils'
+import { formatDeadline } from '@/lib/utils'
 import { Icon } from '@/components/icon'
 import { ModeChip } from '@/components/mode-chip'
 import type { Box } from '@/lib/api/boxes'
@@ -74,10 +74,9 @@ export function BoxCard({ box, participants, winnerName, isFavorite }: BoxCardPr
           </p>
         )}
 
-        <div className="mt-2 space-y-0.5 text-[11.5px] leading-relaxed text-ink-faint">
-          <p>생성일 {formatKoreanDate(box.created_at)}</p>
-          {isAuto && <p>마감일 {formatDeadline(box.deadline_at)}</p>}
-        </div>
+        {isAuto && (
+          <p className="mt-2 text-[11.5px] leading-relaxed text-ink-faint">마감일 {formatDeadline(box.deadline_at)}</p>
+        )}
 
         {participants && participants.length > 0 && (
           participants.length === 1 ? (

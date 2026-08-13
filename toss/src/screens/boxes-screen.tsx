@@ -1,89 +1,40 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { createClient } from "@/lib/supabase/client";
-import { loadAllBoxCards } from "@/lib/api/box-list";
+import { loadAllBoxCards, reorderMyBoxes } from "@/lib/api/box-list";
 import { loadFolders } from "@/lib/api/folders-list";
-import { AppLink } from "@/lib/nav/nav";
 import { CreateFab } from "@/components/create-fab";
 import { BoxSummaryCard } from "@/components/box-summary-card";
-import { Icon } from "@/components/icon";
+import { SortableList, SortableItem, lockX } from "@/components/sortable-list";
 import { Spinner } from "@/components/spinner";
-import type { FolderCard } from "@/app/folders/folders-client";
+import { FoldersClient } from "@/app/folders/folders-client";
+import type { BoxCard } from "@/lib/domain/home";
 
-// '상자' 탭 — 상자 전체 목록 + 서랍 목록을 한 탭 안에서 상위 토글로 분리. 탭바에 서랍 전용 탭을
-// 새로 안 넣는 이유: 자리 부족(토스는 하단 탭바가 유일한 1차 내비, 햄버거 드로어 없음). 대신
-// 서랍을 상자 종류(전체/결정/체크)와 나란한 칩으로 두면 "종류"처럼 보여 어색해서, 아예 다른
-// 레벨의 토글(상자/서랍)로 분리하고 상자 모드에서만 그 아래 종류 칩이 나온다.
-// 서랍 카드 디자인은 실제 /folders 페이지(folders-client.tsx)와 톤 통일(2열 그리드·버터틴트 카드·
-// 아바타/혼자쓰는서랍 표기) — 관리(이름변경·나가기·초대)는 그 페이지가 전담이라 여긴 보기+이동만.
+// '서랍' 탭 — 상자 전체 목록 + 서랍을 한 탭 안에서 상위 토글로 분리. 탭바에 서랍 전용 탭을
+// 따로 안 넣는 이유: 자리 부족(토스는 하단 탭바가 유일한 1차 내비, 햄버거 드로어 없음).
+// 서랍을 상자 종류(전체/결정/체크) 칩과 나란히 두면 "종류"처럼 보여 어색해서, 다른 레벨의
+// 토글(서랍/상자)로 분리하고 상자 모드에서만 그 아래 종류 칩이 나온다.
+// 서랍 뷰는 홈 '새 서랍'이 가는 /folders와 같은 FoldersClient를 그대로 임베드한다(embedded) —
+// 예전 읽기전용 복제 그리드는 폐기. 이제 어느 진입점이든 생성·이름변경·나가기·초대가 동일하게 된다.
 type View = "box" | "folder";
 type TypeFilter = "all" | "decide" | "checklist";
 const TYPE_CHIPS: { key: TypeFilter; label: string }[] = [
   { key: "all", label: "전체" },
-  { key: "decide", label: "결정형" },
+  { key: "decide", label: "결정하기" },
   { key: "checklist", label: "모아보기" },
 ];
-
-function FolderMemberAvatars({ members, max = 3 }: { members: FolderCard["members"]; max?: number }) {
-  const shown = members.slice(0, max);
-  const extra = members.length - shown.length;
-  return (
-    <div className="flex -space-x-1.5">
-      {shown.map(m => (
-        <div key={m.id} className="flex h-[22px] w-[22px] items-center justify-center overflow-hidden rounded-full border border-paper bg-butter-tint text-[9px] font-bold text-ink">
-          {m.avatar_url ? (
-            <img src={m.avatar_url} alt="" className="h-full w-full object-cover" />
-          ) : (
-            m.nickname?.[0] ?? "?"
-          )}
-        </div>
-      ))}
-      {extra > 0 && (
-        <div className="flex h-[22px] w-[22px] items-center justify-center rounded-full border border-paper bg-cream text-[9px] font-extrabold text-ink-soft">
-          +{extra}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function FolderGridCard({ folder }: { folder: FolderCard }) {
-  const isShared = folder.members.length > 1;
-  return (
-    <AppLink
-      href={`/folder/${folder.id}`}
-      className="flex flex-col rounded-[18px] border border-butter-dark/25 bg-butter-tint/50 p-4 active:bg-butter-tint"
-    >
-      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-paper text-ink-soft">
-        <Icon name="folder" size={18} />
-      </span>
-      <h3 className="mt-2.5 line-clamp-2 min-h-[2.5em] text-[15px] font-extrabold leading-tight tracking-tight text-ink">{folder.name}</h3>
-      <div className="mt-2 space-y-1 text-[12px] font-semibold text-ink-soft">
-        <div className="tabular-nums">상자 {folder.boxCount}개</div>
-        {isShared ? (
-          <div className="flex items-center gap-1.5">
-            <FolderMemberAvatars members={folder.members} />
-            <span>{folder.members.length}명</span>
-          </div>
-        ) : (
-          <div className="flex items-center gap-1">
-            <Icon name="folder" size={12} />
-            혼자 쓰는 서랍
-          </div>
-        )}
-      </div>
-    </AppLink>
-  );
-}
 
 export function BoxesScreen() {
   // 상자/서랍 상위 토글은 URL 쿼리로 — 서랍 목록에서 폴더 상세로 들어갔다 뒤로가면 이 화면이
   // 리마운트되면서 useState라면 "상자"로 리셋된다. history에 실린 URL로 복원해야 토글이 유지된다.
   const [searchParams, setSearchParams] = useSearchParams();
-  const view: View = searchParams.get("view") === "folder" ? "folder" : "box";
+  const explicitView = searchParams.get("view"); // "folder" | "box" | null(=아직 안 고름)
+  const hasExplicit = explicitView === "folder" || explicitView === "box";
+  // 토글을 누르면 항상 명시적으로 기록(box도) — 안 그러면 스마트 기본값이 다시 서랍으로 튄다.
   function setView(next: View) {
-    setSearchParams(next === "box" ? {} : { view: next }, { replace: true });
+    setSearchParams({ view: next }, { replace: true });
   }
   const [type, setType] = useState<TypeFilter>("all");
 
@@ -99,6 +50,7 @@ export function BoxesScreen() {
     },
   });
 
+  // 서랍은 스마트 기본값 판단(서랍 있으면 서랍부터)에도 필요해 항상 불러온다.
   const { data: folderData, isPending: folderPending, error: folderError } = useQuery({
     queryKey: ["folders-page"],
     queryFn: async () => {
@@ -107,20 +59,48 @@ export function BoxesScreen() {
       if (!user) throw new Error("세션이 없어요");
       return loadFolders(supabase, user.id);
     },
-    enabled: view === "folder",
   });
 
-  const items = (cards ?? []).filter(c => type === "all" || c.mode === type);
+  // 낙관적 전체 순서 — 서버 목록(활동순 리셋 포함)이 바뀌면 다시 동기화(렌더 중 파생, effect 없음).
+  const fullCards = cards ?? [];
+  const cardsKey = fullCards.map(c => c.id).join(",");
+  const [ord, setOrd] = useState<{ key: string; list: BoxCard[] }>({ key: cardsKey, list: fullCards });
+  if (ord.key !== cardsKey) setOrd({ key: cardsKey, list: fullCards });
+  const fullOrder = ord.list;
+
+  const queryClient = useQueryClient();
+  const reorder = useMutation({
+    mutationFn: (orderedBoxIds: string[]) => reorderMyBoxes(orderedBoxIds),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["box-list"] }),
+  });
+
+  const items = fullOrder.filter(c => type === "all" || c.mode === type);
   const folders = folderData?.cards ?? [];
+
+  // 필터 상태에서도 드래그 — 보이는(필터된) 항목만 재정렬하고, 숨은 항목은 원래 슬롯에 그대로 두어
+  // 전체 순서에 끼워 넣은 뒤 저장(box_participants.sort는 개인별 절대 순서라 부분 목록만 저장하면 꼬인다).
+  function onReorder(nextVisible: BoxCard[]) {
+    const visibleIds = new Set(nextVisible.map(c => c.id));
+    let vi = 0;
+    const nextFull = fullOrder.map(c => (visibleIds.has(c.id) ? nextVisible[vi++] : c));
+    setOrd({ key: cardsKey, list: nextFull });
+    reorder.mutate(nextFull.map(c => c.id));
+  }
+
+  // 스마트 기본값: 토글을 안 건드렸으면 서랍이 1개라도 있을 때 서랍부터, 없으면 상자부터.
+  // 서랍 로딩 중엔 확정 못 하니 대기(상자→서랍 깜빡임 방지).
+  const resolving = !hasExplicit && folderPending;
+  const view: View = hasExplicit ? (explicitView as View) : (folders.length > 0 ? "folder" : "box");
 
   return (
     <main className="flex min-h-dvh flex-col">
       <header className="sticky top-0 z-20 bg-cream/95 px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-3 backdrop-blur-sm">
-        <h1 className="text-[17px] font-extrabold tracking-tight text-ink">상자</h1>
+        <h1 className="text-[17px] font-extrabold tracking-tight text-ink">서랍</h1>
 
-        {/* 상위 토글 — 상자/서랍은 종류가 아니라 서로 다른 보기라 칩과 분리된 큰 세그먼트로 */}
+        {/* 상위 토글 — 상자/서랍은 종류가 아니라 서로 다른 보기라 칩과 분리된 큰 세그먼트로.
+            탭 이름이 '서랍'이라 서랍을 왼쪽(먼저)에 둔다. */}
         <div className="mt-3 grid grid-cols-2 gap-1 rounded-full bg-[#EDEBDD] p-1">
-          {([["box", "상자"], ["folder", "서랍"]] as const).map(([key, label]) => (
+          {([["folder", "서랍"], ["box", "상자"]] as const).map(([key, label]) => (
             <button
               key={key}
               onClick={() => setView(key)}
@@ -133,7 +113,7 @@ export function BoxesScreen() {
           ))}
         </div>
 
-        {view === "box" && (
+        {!resolving && view === "box" && (
           <div className="mt-3 flex gap-1.5">
             {TYPE_CHIPS.map(c => (
               <button
@@ -150,24 +130,18 @@ export function BoxesScreen() {
         )}
       </header>
 
-      <div className="flex-1 px-5 pb-28 pt-1">
-        {view === "folder" ? (
+      {/* 서랍 뷰는 FoldersClient가 자체 px-5·pb-28·FAB을 들고 오므로 이 래퍼 패딩을 빼야 이중 들여쓰기가 안 난다 */}
+      <div className={view === "folder" && !resolving ? "flex flex-1 flex-col pt-1" : "flex-1 px-5 pb-28 pt-1"}>
+        {resolving ? (
+          <Spinner className="py-10" />
+        ) : view === "folder" ? (
           folderPending ? (
             <Spinner className="py-10" />
-          ) : folderError ? (
+          ) : folderError || !folderData ? (
             <p className="py-10 text-center text-[13px] text-tomato">서랍을 불러오지 못했어요</p>
-          ) : folders.length > 0 ? (
-            <div className="grid grid-cols-2 gap-2.5">
-              {folders.map(f => <FolderGridCard key={f.id} folder={f} />)}
-            </div>
           ) : (
-            <div className="rounded-card border border-dashed border-[#D9D6C2] bg-paper/60 px-6 py-14 text-center">
-              <span className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-butter-tint text-ink">
-                <Icon name="folder" size={20} />
-              </span>
-              <p className="text-[13.5px] font-bold text-ink">아직 서랍이 없어요</p>
-              <p className="mt-1 text-[12px] text-ink-soft">여행·집들이처럼 주제로 상자를 묶어보세요.</p>
-            </div>
+            // 홈 '새 서랍'(/folders)과 동일한 관리 화면을 헤더만 빼고 임베드 — 생성·이름변경·나가기·초대 전부 여기서.
+            <FoldersClient embedded initialFolders={folders} nickname={folderData.nickname} me={folderData.me} />
           )
         ) : (
           <div className="space-y-2.5">
@@ -176,7 +150,13 @@ export function BoxesScreen() {
             ) : boxError ? (
               <p className="py-10 text-center text-[13px] text-tomato">목록을 불러오지 못했어요</p>
             ) : items.length > 0 ? (
-              items.map(card => <BoxSummaryCard key={card.id} card={card} />)
+              <SortableList items={items} getId={c => c.id} strategy={verticalListSortingStrategy} modifiers={[lockX]} onReorder={onReorder}>
+                {card => (
+                  <SortableItem key={card.id} id={card.id}>
+                    <BoxSummaryCard card={card} />
+                  </SortableItem>
+                )}
+              </SortableList>
             ) : (
               <div className="rounded-card border border-dashed border-[#D9D6C2] bg-paper/60 px-6 py-14 text-center">
                 <p className="text-[13.5px] font-bold text-ink">상자가 없어요</p>
@@ -187,11 +167,8 @@ export function BoxesScreen() {
         )}
       </div>
 
-      {view === "folder" ? (
-        <CreateFab href="/folders" label="새 서랍" />
-      ) : (
-        <CreateFab href="/box/new" label="새 상자" />
-      )}
+      {/* 서랍 뷰 FAB은 FoldersClient가 자체 제공(만들기 시트). 상자 뷰만 여기서 새 상자 FAB. */}
+      {!resolving && view === "box" && <CreateFab href="/box/new" label="새 상자" />}
     </main>
   );
 }

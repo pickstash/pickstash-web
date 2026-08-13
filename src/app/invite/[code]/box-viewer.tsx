@@ -33,7 +33,6 @@ export function BoxViewer({
   const decidedOptions = view.options.filter(o => o.decided_at)
   // '인기' — 참여자 화면과 동일한 임계값 규칙(단독 + 2개 이상)을 domain 함수로 그대로 재사용.
   const leaderKey = showLikes ? getLeaderKey(view.options.map(o => ({ key: o.id, like: o.like_count }))) : null
-  const leaderName = leaderKey ? view.options.find(o => o.id === leaderKey)?.name ?? null : null
 
   return (
     <main className="flex min-h-dvh flex-col bg-cream">
@@ -57,9 +56,14 @@ export function BoxViewer({
 
           <h1 className="text-[22px] font-extrabold leading-tight tracking-tight text-ink">{view.title}</h1>
 
+          <p className="text-[11.5px] text-ink-faint">
+            만든 날 {formatKoreanDate(view.created_at)}
+            {view.decision_mode === 'auto_deadline' && !isDone && ` · 마감 ${formatDeadline(view.deadline_at)}`}
+          </p>
+
           {view.memo && (
             <p className="rounded-[14px] border border-dashed border-[#D9D6C2] px-3 py-2.5 text-[13px] text-ink-soft">
-              ✏️ {view.memo}
+              {view.memo}
             </p>
           )}
 
@@ -90,10 +94,6 @@ export function BoxViewer({
             </div>
           )}
 
-          <p className="text-[11.5px] text-ink-faint">
-            만든 날 {formatKoreanDate(view.created_at)}
-            {view.decision_mode === 'auto_deadline' && !isDone && ` · 마감 ${formatDeadline(view.deadline_at)}`}
-          </p>
         </section>
 
         {/* 결정 결과 (정리완료) — 참여자 화면과 동일한 PencilCircle 스탬프. */}
@@ -115,12 +115,6 @@ export function BoxViewer({
           </section>
         )}
 
-        {/* 인기 (진행 중 · 여럿·결정형 상자) — 참여자 화면과 동일 문구·임계값. */}
-        {!isChecklist && !isDone && showLikes && leaderName && (
-          <p className="text-[12.5px] font-bold text-ink-soft">
-            인기 · <span className="text-ink">{leaderName}</span>
-          </p>
-        )}
 
         {/* 선택지 목록 — 참여자 화면(OptionsSection)과 같은 미리보기 카드. 탭하면 전체 본문·댓글 페이지로. */}
         <section className="space-y-2.5">
@@ -160,12 +154,6 @@ export function BoxViewer({
                           )}
                           <span className="min-w-0 truncate text-[14.5px] font-extrabold text-ink">{option.name}</span>
                         </div>
-
-                        {isChecklist && option.group_label && (
-                          <span className="inline-flex w-fit items-center rounded-full border border-line bg-cream px-2 py-0.5 text-[10.5px] font-bold text-ink-soft">
-                            {option.group_label}
-                          </span>
-                        )}
 
                         <p className="line-clamp-2 whitespace-pre-line text-xs leading-relaxed text-ink-soft">
                           {preview.snippet || ' '}
