@@ -122,12 +122,14 @@ export function BoxDetailClient({
   const [publicOn, setPublicOn] = useState(((box as unknown as { visibility?: string }).visibility) === 'public')
   const [tagInput, setTagInput] = useState(((box as unknown as { tags?: string[] }).tags ?? []).join(', '))
   const [publishBusy, setPublishBusy] = useState(false)
+  const [publishError, setPublishError] = useState<string | null>(null) // 공개 실패 사유(예: 아이디 미설정)
   const isPublic = ((box as unknown as { visibility?: string }).visibility) === 'public'
   const publicTags = ((box as unknown as { tags?: string[] }).tags ?? [])
 
   async function savePublish() {
     if (publishBusy) return
     setPublishBusy(true)
+    setPublishError(null)
     const tags = tagInput.split(',').map(t => t.trim().replace(/^#/, '')).filter(Boolean).slice(0, 8)
     try {
       await setBoxVisibility(box.id, publicOn, tags)
@@ -139,8 +141,9 @@ export function BoxDetailClient({
       queryClient.invalidateQueries({ queryKey: ['my-profile'], refetchType: 'all' })
       queryClient.invalidateQueries({ queryKey: ['profile-feed'], refetchType: 'all' })
       nav.refresh()
-    } catch {
-      /* 실패 시 시트 유지 */
+    } catch (e) {
+      // 예: '공개하려면 아이디(@handle)를 먼저 설정해주세요'(057) — 시트 유지 + 사유 표시.
+      setPublishError(e instanceof Error ? e.message : '저장에 실패했어요. 다시 시도해주세요.')
     } finally {
       setPublishBusy(false)
     }
@@ -569,10 +572,19 @@ export function BoxDetailClient({
               </div>
             )}
 
+            {publishError && (
+              <p className="mt-3 text-[12.5px] font-semibold text-tomato">
+                {publishError}
+                {publishError.includes('아이디') && (
+                  <AppLink href="/profile/settings" onClick={() => setPublishOpen(false)} className="ml-1 underline">아이디 설정하러 가기</AppLink>
+                )}
+              </p>
+            )}
+
             <button
               onClick={savePublish}
               disabled={publishBusy}
-              className="mt-5 w-full rounded-field bg-ink py-3.5 text-sm font-bold text-cream active:opacity-80 disabled:opacity-50"
+              className="mt-4 w-full rounded-field bg-ink py-3.5 text-sm font-bold text-cream active:opacity-80 disabled:opacity-50"
             >
               {publishBusy ? '저장 중...' : '저장'}
             </button>
