@@ -50,6 +50,10 @@ export function ProfileClient({ userId, nickname, avatarUrl, kakaoAvatarUrl }: P
       setHandleError(null)
       setEditingHandle(false)
       queryClient.invalidateQueries({ queryKey: ['my-handle', userId] })
+      // 프로필 화면(인스타식)은 ['my-profile']을 보므로 같이 무효화해야 @아이디가 바로 뜬다.
+      queryClient.invalidateQueries({ queryKey: ['my-profile'] })
+      queryClient.invalidateQueries({ queryKey: ['profile', userId] })
+      nav.refresh()
     },
     onError: (e: unknown) => setHandleError(e instanceof Error ? e.message : '설정에 실패했어요'),
   })

@@ -758,16 +758,16 @@ export function BoxDetailClient({
                     style={isFavorite ? { fill: 'var(--color-butter)', stroke: 'var(--color-butter-dark)' } : undefined}
                   />
                 </button>
-                {/* 공유하기 — 초대 안 된 사람도 읽기전용으로 열람(＋참여) 가능한 /invite 링크를 공유·복사. */}
-                {isParticipant && (
-                  <button
-                    onClick={copyInvite}
-                    aria-label="공유하기"
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink-soft active:bg-butter-tint active:text-ink"
-                  >
-                    <Icon name="share" size={19} />
-                  </button>
-                )}
+                {/* 공유하기 — 초대 안 된 사람도 읽기전용으로 열람(＋참여) 가능한 /invite 링크를 공유·복사.
+                    읽기 전용 조회자(비참여자)도 쓸 수 있게 게이트 없음(북마크 오른쪽). box.invite_code는
+                    로더가 select('*')로 넘겨 공개 상자 뷰어도 보유. */}
+                <button
+                  onClick={copyInvite}
+                  aria-label="공유하기"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink-soft active:bg-butter-tint active:text-ink"
+                >
+                  <Icon name="share" size={19} />
+                </button>
                 {isParticipant && <div className="relative">
                   <button
                     onClick={() => setMenuOpen(v => !v)}

@@ -206,13 +206,19 @@ export async function reorderBoxFolders(folderId: string, orderedBoxIds: string[
   if (error) throw error
 }
 
-/** 내 서랍(칩) 순서 저장. loadFolders가 이미 folder_members.sort로 읽으므로 이 mutation만 있으면 반영됨. */
+/** 내 서랍(칩) 순서 저장. loadFolders가 이미 folder_members.sort로 읽으므로 이 mutation만 있으면 반영됨.
+ *  upsert는 쓰지 않는다 — folder_members INSERT 정책의 folder_is_empty 체크가 upsert의 INSERT WITH CHECK에
+ *  걸려 '비어있지 않은 서랍' 재정렬이 42501로 실패했다. 이미 멤버인 내 행의 sort만 UPDATE(정책: user_id=auth.uid()). */
 export async function reorderFolders(orderedFolderIds: string[]): Promise<void> {
   const supabase = createClient()
   if (orderedFolderIds.length === 0) return
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
-  const rows = orderedFolderIds.map((folderId, i) => ({ folder_id: folderId, user_id: user.id, sort: i }))
-  const { error } = await supabase.from('folder_members').upsert(rows, { onConflict: 'folder_id,user_id' })
-  if (error) throw error
+  const results = await Promise.all(
+    orderedFolderIds.map((folderId, i) =>
+      supabase.from('folder_members').update({ sort: i }).eq('folder_id', folderId).eq('user_id', user.id),
+    ),
+  )
+  const failed = results.find(r => r.error)
+  if (failed?.error) throw failed.error
 }
