@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { AppLink, useNav } from '@/lib/nav/nav'
@@ -11,20 +11,29 @@ import { BioText } from '@/components/bio-text'
 import { getProfileFeed } from '@/lib/api/social'
 import { FollowButton } from '@/components/follow-button'
 import { ImageLightbox } from '@/components/image-lightbox'
+import { useCurrentUserId } from '@/hooks/use-profile'
 import type { PublicBoxCard } from '@/lib/api/social'
 
 // 인스타식 공개 프로필 — 헤더(핸들·소개·카운트·팔로우) + 공개 상자 그리드. handle로 조회.
 export function ProfileFeedView({ handle }: { handle: string }) {
   const nav = useNav()
   const queryClient = useQueryClient()
+  const currentUserId = useCurrentUserId()
   const [photoOpen, setPhotoOpen] = useState(false)
   const { data, isPending } = useQuery({
     queryKey: ['profile-feed', handle],
     queryFn: () => getProfileFeed(createClient(), handle),
   })
 
+  // 검색·링크로 내 프로필에 들어오면 팔로우 버튼이 있는 남 프로필 대신 탭바의 '프로필'(관리 화면)로.
+  const isSelf = !!data && !!currentUserId && data.id === currentUserId
+  useEffect(() => {
+    if (isSelf) nav.replace('/profile')
+  }, [isSelf, nav])
+
   if (isPending) return <p className="p-8 text-center text-[13px] text-ink-soft">불러오는 중…</p>
   if (!data) return <p className="p-8 text-center text-[13px] text-ink-soft">없는 프로필이에요.</p>
+  if (isSelf) return null
 
   return (
     <PullToRefresh onRefresh={() => queryClient.invalidateQueries({ queryKey: ['profile-feed', handle] })}>
