@@ -344,7 +344,6 @@ export function OptionDetailClient({
           {/* 좋아요(투표) — 체크형 상자는 투표 개념이 없어 생략. 우측 정렬. */}
           {!checklist && (
             <div className="flex items-center justify-end gap-2">
-              {!canVote && <span className="text-[11.5px] text-ink-faint">정리된 상자에선 투표할 수 없어요</span>}
               <VoteButtons optionId={option.id} boxId={boxId} round={round} counts={counts} disabled={!canVote} />
             </div>
           )}

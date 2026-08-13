@@ -737,7 +737,8 @@ export function BoxDetailClient({
       <div className={`flex-1 space-y-4 px-5 pt-1 ${options.length > 0 ? 'pb-28' : 'pb-5'}`}>
         {/* 히어로: 상태 · 질문 · 메모 · 메타 · 참여 */}
         <div className="space-y-3">
-          <div className="flex items-center justify-between gap-2">
+          {/* 모드칩은 액션버튼(h-9) 줄 바닥에 붙여(items-end) 아래 공개 칩과 간격이 벌어지지 않게 한다. */}
+          <div className="flex items-end justify-between gap-2">
             {/* 모드 라벨. 공개 여부·태그는 바로 아래 줄로. */}
             <div className="flex min-w-0 items-center gap-1.5">
               <ModeChip mode={isChecklist ? 'checklist' : 'decide'} />
@@ -832,7 +833,7 @@ export function BoxDetailClient({
               {isParticipant && (
                 <button
                   onClick={() => setPublishOpen(true)}
-                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-[3px] text-[11.5px] font-bold active:bg-cream ${
+                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-[3px] text-xs font-bold active:bg-cream ${
                     isPublic ? 'border border-line bg-paper text-ink-soft' : 'border border-dashed border-[#D9D6C2] text-ink-faint'
                   }`}
                 >
@@ -845,14 +846,14 @@ export function BoxDetailClient({
                   <button
                     key={t}
                     onClick={() => setPublishOpen(true)}
-                    className="inline-flex items-center rounded-full border border-line bg-cream px-2.5 py-[3px] text-[11.5px] font-bold text-ink-soft active:bg-butter-tint/50"
+                    className="inline-flex items-center rounded-full border border-line bg-cream px-2.5 py-[3px] text-xs font-bold text-ink-soft active:bg-butter-tint/50"
                   >
                     <span className="mr-0.5 text-ink-faint">#</span>{t}
                   </button>
                 ) : (
                   <span
                     key={t}
-                    className="inline-flex items-center rounded-full border border-line bg-cream px-2.5 py-[3px] text-[11.5px] font-bold text-ink-soft"
+                    className="inline-flex items-center rounded-full border border-line bg-cream px-2.5 py-[3px] text-xs font-bold text-ink-soft"
                   >
                     <span className="mr-0.5 text-ink-faint">#</span>{t}
                   </span>
@@ -861,7 +862,7 @@ export function BoxDetailClient({
               {isParticipant && isPublic && (
                 <button
                   onClick={() => setPublishOpen(true)}
-                  className="inline-flex items-center gap-0.5 rounded-full border border-dashed border-[#D9D6C2] px-2.5 py-[3px] text-[11.5px] font-bold text-ink-faint active:bg-cream"
+                  className="inline-flex items-center gap-0.5 rounded-full border border-dashed border-[#D9D6C2] px-2.5 py-[3px] text-xs font-bold text-ink-faint active:bg-cream"
                 >
                   <Icon name="plus" size={11} strokeWidth={2.4} />
                   {publicTags.length > 0 ? '태그' : '태그 추가'}

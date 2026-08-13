@@ -1,6 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/supabase/types'
-import { getBoxStatus } from '@/lib/domain/box-status'
 
 type OptionRow = Database['public']['Tables']['options']['Row']
 type Participant = { id: string; nickname: string; avatar_url: string | null }
@@ -64,7 +63,7 @@ export async function loadOptionDetail(
     option,
     creator,
     round: box.current_round,
-    canVote: isParticipant && getBoxStatus(box) === 'OPEN',
+    canVote: isParticipant, // 좋아요=참고 신호라 정리완료(RESOLVED) 후에도 참여자는 투표 가능(목록과 동일).
     checklist: box.mode === 'checklist',
     checkable: box.mode === 'checklist' && ((box as unknown as { checkable?: boolean }).checkable ?? false),
     myNickname: me?.nickname ?? '',

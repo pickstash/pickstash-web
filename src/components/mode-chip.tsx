@@ -4,7 +4,7 @@ export function ModeChip({ mode }: { mode: 'decide' | 'checklist' }) {
   const checklist = mode === 'checklist'
   return (
     <span
-      className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-bold ${
+      className={`inline-block rounded-full px-2.5 py-1 text-xs font-bold ${
         checklist ? 'bg-leaf-tint text-[#37714A]' : 'bg-tangerine-tint text-[#B85E28]'
       }`}
     >

@@ -23,12 +23,15 @@ export function ImageLightbox({
   const closeSide = nav.platform === 'toss' ? 'left-4' : 'right-4'
   return createPortal(
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-ink/90" onClick={onClose}>
+      {/* 라벨 있는 닫기 알약 — 토스 인앱은 우상단 시스템 X를 사진 닫기로 착각해 누르는 불만이 있어
+          우리 버튼을 '사진 닫기' 텍스트로 명확히 한다(텍스트가 아이콘 왼쪽). */}
       <button
         onClick={onClose}
-        aria-label="닫기"
-        className={`absolute ${closeSide} top-[calc(env(safe-area-inset-top,0px)+12px)] flex h-9 w-9 items-center justify-center rounded-full bg-ink/50 text-white`}
+        aria-label="사진 닫기"
+        className={`absolute ${closeSide} top-[calc(env(safe-area-inset-top,0px)+12px)] flex items-center gap-1.5 rounded-full bg-ink/60 py-1.5 pl-3.5 pr-2.5 text-[13px] font-bold text-white`}
       >
-        <Icon name="close" size={20} />
+        사진 닫기
+        <Icon name="close" size={18} />
       </button>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
