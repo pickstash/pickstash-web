@@ -17,7 +17,9 @@ export default defineConfig({
   },
   // 토스 네이티브 내비게이션 바(흰 바)를 투명화 + 제목/버튼 숨김 → 크림 배경이 비쳐
   // 우리 자체 헤더(캐릭터·이름·햄버거)와 이중 헤더가 되지 않게 한다.
-  // 홈은 루트라 뒤로가기 없음. theme:dark = 크림 위 어두운 버튼/상태바 톤.
+  // 네이티브 내비바 버튼은 전부 숨긴다 — 뒤로가기는 앱 자체 헤더(PageHeader) 버튼이 담당한다.
+  //   (withBackButton을 켜면 글로벌이라 탭 화면에도 뜨고 자체 헤더와 겹친다.)
+  //   iOS 스와이프는 App.tsx에서 전 화면 OFF(단일 WebView라 스와이프=미니앱 종료). theme:dark = 크림 위 어두운 상태바 톤.
   navigationBar: {
     withBackButton: false,
     withHomeButton: false,

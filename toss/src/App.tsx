@@ -25,7 +25,7 @@ import { PublicBoxScreen } from "./screens/public-box-screen";
 import { ProfileViewScreen } from "./screens/profile-view-screen";
 import { FollowsScreen } from "./screens/follows-screen";
 import { BoxLinksScreen, OptionNewScreen, OptionEditScreen } from "./screens/reused-pages";
-import { TabBar, TAB_HREFS } from "./components/tab-bar";
+import { TabBar } from "./components/tab-bar";
 // 파라미터 없는 A형 페이지는 웹 페이지 컴포넌트를 그대로 라우팅(그대로 재사용).
 import NewBoxPage from "@/app/box/new/page";
 import WithdrawPage from "@/app/profile/withdraw/page";
@@ -94,12 +94,10 @@ function App() {
   // 광고는 홈·둘러보기·알림 모두 인라인 배너(각 View의 midBanner 슬롯)라 하단 고정 예약 자리가 없다.
   // (--app-banner-h는 프로필에 남은 고정 AdBanner가 참조하므로 0으로 유지.)
 
-  // iOS 엣지 스와이프 뒤로가기는 홈·로그인에서만 OFF(실수로 앱이 종료되는 것 방지) — 나머지 화면은 ON(편의).
-  //   홈 = 로그인 상태의 '/'. 로그인 = 세션 없음(초대 뷰어 제외, LoginScreen이 뜨는 조건). 둘 다 '/'에 있어도 안전.
-  //   backEvent는 useHardwareBack(BackHandler)이 항상 처리 → 하위 화면 스와이프=navigate(-1), 홈=종료 확인.
-  // 홈뿐 아니라 모든 탭 루트(서랍·둘러보기·알림·프로필)에서 스와이프 OFF — 이 화면들은 앱 내 뒤로 갈 곳이
-  // 없어 스와이프가 토스로 앱을 종료시킨다. 하위 화면(상세·설정 등)은 정확 일치가 아니라 ON 유지.
-  const blockSwipeBack = (!session && !isInviteRoute) || TAB_HREFS.includes(pathname);
+  // iOS 엣지 스와이프는 전 화면 OFF. 단일 WebView 미니앱이라 네이티브 스와이프=미니앱 종료로 동작하고
+  // (react-router 클라 히스토리를 네이티브가 몰라 가로챌 수 없다), 어느 화면에서 스와이프해도 토스로 나가버린다.
+  // 앱 내 뒤로가기는 각 화면의 자체 헤더(PageHeader) 뒤로 버튼 + 안드로이드 물리 뒤로(backEvent)가 담당한다.
+  const blockSwipeBack = true;
   useEffect(() => {
     try {
       void setIosSwipeGestureEnabled({ isEnabled: !blockSwipeBack });
