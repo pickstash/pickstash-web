@@ -31,6 +31,7 @@ import { shareInviteLink, hasNativeShare } from '@/lib/share/native-share'
 import { getBoxStatus, isDoneStatus } from '@/lib/domain/box-status'
 import { parseBlocks, linkBlocksOf } from '@/lib/domain/option-content'
 import { setBoxVisibility, requestToJoin } from '@/lib/api/social'
+import { setBoxFolderShared } from '@/lib/api/folders'
 import { formatDeadlineCompact, defaultDeadline, formatKoreanDate } from '@/lib/utils'
 import type { BoxWithParticipants, BoxParticipant, DecisionMode } from '@/lib/api/boxes'
 import type { Option } from '@/lib/api/options'
@@ -186,7 +187,10 @@ export function BoxDetailClient({
   const joinBox = useJoinBox(box.id)
   const toggleFavorite = useToggleFavorite(box.id)
   const { data: folders = [] } = useFolders()
-  const { data: myFolderIds = [] } = useMyBoxFolders(box.id)
+  const { data: myBoxFolders = [] } = useMyBoxFolders(box.id)
+  const myFolderIds = myBoxFolders.map(f => f.folderId)
+  // 서버의 링크별 shared(공유/나만) — '나만보기' 스위치 초기값 시드용.
+  const sharedByFolderServer = new Map(myBoxFolders.map(f => [f.folderId, f.shared]))
   const setFolders = useSetBoxFolders(box.id)
   const createFolder = useCreateFolder()
   // 부분 초대(그때그때) — 초대 시트 열렸을 때만 '함께했던 사람' 후보 조회.
@@ -241,10 +245,14 @@ export function BoxDetailClient({
   }
 
   // 나만보기 스위치 변경 — 이미 담긴 서랍이면 멤버십은 유지한 채 공유 설정만 즉시 갱신한다.
+  // ⚠️ setBoxFolders(=setFolders)는 이미 있는 링크를 ignoreDuplicates로 건너뛰어 shared가 안 바뀐다.
+  //    반드시 전용 setBoxFolderShared로 갱신해야 실제 공개 여부가 서버에 반영된다(프라이버시).
   function setFolderPrivate(folderId: string, isPrivate: boolean) {
     setPrivateByFolder(prev => ({ ...prev, [folderId]: isPrivate }))
     if (myFolderIds.includes(folderId)) {
-      setFolders.mutate({ ids: myFolderIds, sharedByFolder: { [folderId]: !isPrivate } })
+      setBoxFolderShared(folderId, box.id, !isPrivate)
+        .then(() => queryClient.invalidateQueries({ queryKey: ['boxFolder', box.id] }))
+        .catch(() => setPrivateByFolder(prev => ({ ...prev, [folderId]: !isPrivate }))) // 실패 시 스위치 원복
     }
   }
 
@@ -588,7 +596,9 @@ export function BoxDetailClient({
               )}
               {folders.map(f => {
                 const checked = myFolderIds.includes(f.id)
-                const isPrivate = privateByFolder[f.id] ?? false
+                // 로컬 토글값이 있으면 그것(즉시 반영), 없으면 이미 담긴 서랍은 서버 shared에서 시드,
+                // 아직 안 담은 서랍은 기본 공개(false).
+                const isPrivate = privateByFolder[f.id] ?? (checked ? !(sharedByFolderServer.get(f.id) ?? true) : false)
                 // 나만보기는 함께 쓰는 서랍(2명+) + 혼자 상자일 때만 의미 있다.
                 const canPrivate = f.member_count > 1 && isSolo
                 return (

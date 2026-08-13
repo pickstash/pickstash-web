@@ -105,23 +105,17 @@ function Empty({ icon, title, subtitle }: { icon: IconName; title: string; subti
 // 결정 문구는 형광펜+얇은 접미사, 리더 없으면 "선택지 N개". PublicBoxCard는 participants/leaders/
 // deadline이 없는 대신 author·save_count가 있어 하단 줄만 그 데이터로 채운다.
 function PublicBoxRow({ box }: { box: PublicBoxCard }) {
-  const done = !!box.closed_at
   return (
     <AppLink href={`/box/${box.id}`} className="block">
-      <div className={`rounded-card border border-[#ECEADC] p-4 active:bg-butter-tint/40 ${done ? 'bg-paper/70' : 'bg-paper shadow-[0_2px_10px_rgba(42,42,39,0.05)]'}`}>
-        <h3 className={`truncate text-[17px] font-extrabold leading-snug tracking-tight ${done ? 'text-ink-soft' : 'text-ink'}`}>{box.title}</h3>
+      <div className="rounded-card border border-[#ECEADC] bg-paper/70 p-4 active:bg-butter-tint/40">
+        <h3 className="truncate text-[17px] font-extrabold leading-snug tracking-tight text-ink">{box.title}</h3>
 
-        {/* 항목/선택지 개수 대신 등록된 태그를 보여준다. 결정형은 결정 문구 유지.
-            태그가 없어도 이 슬롯은 min-h로 자리를 지켜(카드 높이 일정) 목록이 들쭉날쭉하지 않게 한다. */}
+        {/* 결정 문구는 생략하고 등록된 태그만 보여준다. 태그가 없으면 빈 슬롯 —
+            min-h로 자리를 지켜(카드 높이 일정) 목록이 들쭉날쭉하지 않게 한다. */}
         <div className="mt-2 min-h-[18px]">
-          {box.mode !== 'checklist' && box.winner ? (
-            <p className="truncate text-[13px] text-ink">
-              <span className="font-extrabold [box-shadow:inset_0_-8px_0_#FFD84A]">{box.winner}</span>
-              <span className="font-normal">(으)로 결정!</span>
-            </p>
-          ) : box.tags.length > 0 ? (
+          {box.tags.length > 0 && (
             <p className="truncate text-[12.5px] font-bold text-butter-deep">{box.tags.map(t => `#${t}`).join(' ')}</p>
-          ) : null}
+          )}
         </div>
 
         <div className="mt-2 flex items-center justify-between text-[11.5px] text-ink-faint">

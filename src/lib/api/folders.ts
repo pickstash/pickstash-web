@@ -77,14 +77,15 @@ export async function leaveFolder(folderId: string, leaveBoxes = false): Promise
 }
 
 /** 이 상자가 들어 있는, 내가 멤버인 폴더 id 목록 (내가 담은 링크만 — 048 added_by 스코프). */
-export async function getMyBoxFolderIds(boxId: string): Promise<string[]> {
+export async function getMyBoxFolderIds(boxId: string): Promise<{ folderId: string; shared: boolean }[]> {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
-  // added_by(048)는 types.ts 미갱신 컬럼 — 저장소 관례대로 캐스팅.
+  // added_by·shared(045/048)는 types.ts 미갱신 컬럼 — 저장소 관례대로 캐스팅.
+  // shared까지 반환해야 '나만보기' 스위치가 서버 상태를 반영할 수 있다(기본 true=공유).
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data } = await (supabase.from('box_folders') as any).select('folder_id').eq('box_id', boxId).eq('added_by', user.id)
-  return ((data ?? []) as { folder_id: string }[]).map(r => r.folder_id)
+  const { data } = await (supabase.from('box_folders') as any).select('folder_id, shared').eq('box_id', boxId).eq('added_by', user.id)
+  return ((data ?? []) as { folder_id: string; shared: boolean | null }[]).map(r => ({ folderId: r.folder_id, shared: r.shared ?? true }))
 }
 
 /**

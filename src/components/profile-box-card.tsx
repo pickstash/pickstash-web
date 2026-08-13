@@ -10,7 +10,6 @@ import type { PublicBoxCard } from '@/lib/api/social'
 // onLongPress: 본인 프로필에서만 전달 — 길게 누르면 고정/해제 시트(부모가 소유). 남 프로필은 배지만 보이고 조작 불가.
 // 049: 공개 상자는 /box/[id]가 비로그인 포함 읽기 전용으로 열려서(can_read_box) 항상 /box로 보낸다.
 export function ProfileBoxCard({ box, onLongPress }: { box: PublicBoxCard; onLongPress?: () => void }) {
-  const checklist = box.mode === 'checklist'
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const fired = useRef(false)
   const startXY = useRef<{ x: number; y: number } | null>(null)
@@ -43,16 +42,13 @@ export function ProfileBoxCard({ box, onLongPress }: { box: PublicBoxCard; onLon
       onClickCapture={onClickCapture}
     >
       <AppLink href={`/box/${box.id}`} className="block">
-        <div className="relative flex h-[104px] flex-col overflow-hidden rounded-[14px] border border-[#ECEADC] bg-paper p-3 active:bg-butter-tint/40">
+        <div className="relative flex h-[104px] flex-col overflow-hidden rounded-[14px] border border-[#ECEADC] bg-paper/70 p-3 active:bg-butter-tint/40">
           {box.pinned_at && (
             <span className="absolute right-2 top-2 text-butter-deep" aria-label="상단 고정됨">
               <Icon name="pin" size={13} />
             </span>
           )}
           <h4 className="line-clamp-2 pr-4 text-[13px] font-extrabold leading-snug text-ink">{box.title}</h4>
-          {!checklist && box.winner && (
-            <p className="mt-1 line-clamp-1 text-[11px] font-bold text-ink-soft">→ {box.winner}</p>
-          )}
           {/* 모드 라벨 대신 상자 태그 — mt-auto로 항상 바닥, 한 줄 넘치면 잘라냄. 태그 없으면 아무것도 안 보임. */}
           {box.tags.length > 0 && (
             <p className="mt-auto truncate pt-2 text-[11px] font-bold text-butter-deep">

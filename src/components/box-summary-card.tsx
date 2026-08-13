@@ -74,14 +74,14 @@ export function BoxSummaryCard({
   isPrivate?: boolean
 }) {
   // 나만보기 = 차분한 크림 배경 + 잉크 테두리(기본 종이/연한 테두리와 즉시 구분).
-  const shell = isPrivate ? 'border-ink/20 bg-cream' : 'border-[#ECEADC] bg-paper'
+  const shell = isPrivate ? 'border-ink/20 bg-cream' : 'border-[#ECEADC] bg-paper/70'
   if (card.status === 'done') {
     return (
       <AppLink href={`/box/${card.id}`} className="block">
-        <div className={`rounded-card border p-4 shadow-[0_2px_10px_rgba(42,42,39,0.05)] active:bg-butter-tint/40 ${shell}`}>
+        <div className={`rounded-card border p-4 active:bg-butter-tint/40 ${shell}`}>
           <div className="flex items-start gap-1.5">
             {isPrivate && <Icon name="lock" size={12} strokeWidth={2.4} className="mt-[3px] shrink-0 text-ink-faint" />}
-            <h3 className="min-w-0 flex-1 truncate text-[17px] font-extrabold leading-snug tracking-tight text-ink-soft">{card.title}</h3>
+            <h3 className="min-w-0 flex-1 truncate text-[17px] font-extrabold leading-snug tracking-tight text-ink">{card.title}</h3>
           </div>
           {card.winnerName ? (
             <p className="mt-1.5 text-[13.5px] text-ink">
@@ -109,7 +109,7 @@ export function BoxSummaryCard({
 
   return (
     <AppLink href={`/box/${box.id}`} className="block">
-      <div className={`rounded-card border p-4 shadow-[0_2px_10px_rgba(42,42,39,0.05)] active:bg-butter-tint/40 ${shell}`}>
+      <div className={`rounded-card border p-4 active:bg-butter-tint/40 ${shell}`}>
         <div className="flex items-start justify-between gap-2">
           {isPrivate && <Icon name="lock" size={13} strokeWidth={2.4} className="mt-[3px] shrink-0 text-ink-faint" />}
           <h3 className="min-w-0 flex-1 truncate text-[17px] font-extrabold leading-snug tracking-tight text-ink">{box.title}</h3>

@@ -47,7 +47,7 @@ export function BoxCard({ box, participants, winnerName, isFavorite }: BoxCardPr
 
   return (
     <AppLink href={`/box/${box.id}`} className="block">
-      <div className="rounded-card border border-[#ECEADC] bg-paper p-4 shadow-[0_2px_10px_rgba(42,42,39,0.05)] transition-colors active:bg-butter-tint/40">
+      <div className="rounded-card border border-[#ECEADC] bg-paper/70 p-4 transition-colors active:bg-butter-tint/40">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             {/* 모드 라벨 — 공유 ModeChip(정리중/정리완료 배지는 제거). */}
