@@ -68,16 +68,19 @@ export function TabBar() {
 
   const activeHref = tabOf(pathname);
 
-  // 앱인토스 브랜딩 가이드 "탭바는 토스와 동일한 플로팅 형태로 구현" — 토스 공식 TDS 피그마
-  // (TDS_Mobile_for_Apps_in_Toss, "Tab Bar" 마스터 컴포넌트, node 52732-11803/11804)를 직접 열어
-  // Inspect로 실측한 스펙 그대로 옮긴 것: 화면 좌우·하단에 완전히 붙는 전체 폭(마진으로 뜬 캡슐형이
-  // 아님 — 좌우 여백을 준 알약형은 이전에 잘못 짐작해 구현했던 오답), 위쪽 모서리만 24px 라운드
-  // (--radius-sheet), 배경 #FFFFFF(=bg-paper) + 위·좌·우 1px 보더 #001B37 10%(아래쪽은 보더 없음)
-  // + 배경 블러 32px(backdrop-blur, 콘텐츠가 그 아래로 스크롤될 때의 재질감). 드롭섀도는 스펙에 없다.
+  // 앱인토스 브랜딩 가이드 "탭바를 쓰려면 토스와 동일한 플로팅 형태로 구현"해야 한다.
+  // ⚠️ 한때 TDS 피그마(TDS_Mobile_for_Apps_in_Toss, "Tab Bar" 컴포넌트)를 edge-to-edge 독(dock)
+  // 형태로 그대로 옮긴 적이 있는데, 그 컴포넌트 설명("앱 하단에 고정되어… 홈, 혜택, 설정 등")은
+  // 토스 본체 앱 자신의 내비게이션을 가리키는 것이었다(미니앱 전용 스펙이 아님) — "혜택"은 토스
+  // 본체의 실제 탭 이름. 미니앱은 본체와 시각적으로 구분돼야 하므로, 화면 가장자리에 붙지 않고
+  // 좌우·하단에 여백을 두고 뜬 캡슐(pill) 형태로 구현한다.
   return (
-    <div ref={rootRef} className="fixed inset-x-0 bottom-0 z-40">
-      <nav className="rounded-t-sheet border border-b-0 border-[#001B37]/10 bg-paper backdrop-blur-[32px]">
-        <div className="flex h-[62px] items-center justify-around px-3">
+    <div
+      ref={rootRef}
+      className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-[calc(env(safe-area-inset-bottom)+12px)]"
+    >
+      <nav className="w-full max-w-[402px] rounded-full bg-paper shadow-[0_8px_24px_rgba(42,42,39,0.18)]">
+        <div className="flex h-[60px] items-center justify-around px-3">
           {TABS.map((t) => {
             const active = activeHref === t.href;
             return (
@@ -101,7 +104,6 @@ export function TabBar() {
             );
           })}
         </div>
-        <div style={{ height: "var(--app-safe-bottom, 0px)" }} />
       </nav>
     </div>
   );
