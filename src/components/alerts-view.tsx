@@ -15,7 +15,10 @@ import { respondJoinRequest } from '@/lib/api/social'
 // 실시간 구독(useRealtimeAlerts)은 여기서 하지 않는다 — 이 화면이 열려있을 때만 켜지면
 // 탭바 배지가 다른 탭에 있는 동안 갱신 안 됨. 앱 셸(toss/src/App.tsx)에서 항상 켠다.
 // midBanner: 헤더 바로 아래(리스트 최상단) 인라인 광고 — 토스 전용 슬롯.
-export function AlertsView({ items, midBanner }: { items: AlertItem[]; midBanner?: ReactNode }) {
+// pushBanner: 알림 받기 동의 CTA 카드 — 토스 전용 슬롯(웹은 별도 Web Push 배너를 씀, 여긴 안 건드림).
+//   설정 화면에 버튼만 두면 아무도 못 찾길래, 알림함을 열었을 때 바로 보이는 카드로도 노출한다 —
+//   단 클릭해야만 동의창이 뜬다(자동 트리거 아님, 앱인토스 다크패턴 정책 준수).
+export function AlertsView({ items, midBanner, pushBanner }: { items: AlertItem[]; midBanner?: ReactNode; pushBanner?: ReactNode }) {
   const nav = useNav()
   const qc = useQueryClient()
   const hasUnseen = items.some(a => a.unseen)
@@ -82,6 +85,7 @@ export function AlertsView({ items, midBanner }: { items: AlertItem[]; midBanner
       </header>
 
       <div className="flex-1 px-5 pb-[calc(var(--app-nav-h,7rem)+3.5rem)] pt-1">
+        {pushBanner && <div className="mb-3">{pushBanner}</div>}
         {midBanner && <div className="mb-3">{midBanner}</div>}
         {items.length === 0 ? (
           <div className="mt-2 rounded-card border border-dashed border-[#D9D6C2] bg-paper/60 px-6 py-14 text-center">
