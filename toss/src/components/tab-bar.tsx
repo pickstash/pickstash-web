@@ -74,10 +74,14 @@ export function TabBar() {
   // 토스 본체 앱 자신의 내비게이션을 가리키는 것이었다(미니앱 전용 스펙이 아님) — "혜택"은 토스
   // 본체의 실제 탭 이름. 미니앱은 본체와 시각적으로 구분돼야 하므로, 화면 가장자리에 붙지 않고
   // 좌우·하단에 여백을 두고 뜬 캡슐(pill) 형태로 구현한다.
+  // ⚠️ 하단 여백은 raw env(safe-area-inset-bottom)이 아니라 --app-safe-bottom(main.tsx)을 써야
+  // 한다 — 안드로이드 토스 웹뷰는 env(safe-area-inset-bottom)을 과다 보고해(웹 브라우저에선 0이라
+  // 문제가 안 보임) 갤럭시 실기기에서 하단 여백이 과하게 커지는 버그가 났었다. --app-safe-bottom은
+  // iOS에서만 실제 인셋을 채우고 안드로이드는 0으로 고정하는 안전장치가 이미 돼 있다.
   return (
     <div
       ref={rootRef}
-      className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-[calc(env(safe-area-inset-bottom)+12px)]"
+      className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-[calc(var(--app-safe-bottom,0px)+12px)]"
     >
       <nav className="w-full max-w-[402px] rounded-full bg-paper shadow-[0_8px_24px_rgba(42,42,39,0.18)]">
         <div className="flex h-[60px] items-center justify-around px-3">
