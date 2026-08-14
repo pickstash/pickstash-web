@@ -4,7 +4,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { Session } from "@supabase/supabase-js";
 import { setIosSwipeGestureEnabled } from "@apps-in-toss/web-framework";
 import { supabase } from "./lib/supabase";
-import { requestPushAgreementOnce } from "./lib/push-agreement";
 import { useRealtimeAlerts } from "@/hooks/use-realtime-alerts";
 import { LoginScreen } from "./screens/login-screen";
 import { ScreenLoading } from "./screens/screen-state";
@@ -47,20 +46,15 @@ function App() {
   const prevUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    // 알림 동의 바텀시트는 미니앱 접속 직후 바로 뜨면 안 된다(심사 반려 사유) — 단순 지연(3초)만으론
-    // 부족했다: 이미 로그인된 채로 재접속하는(가장 흔한) 경우 매번 "접속 직후"에 뜨는 게 문제였다.
-    // 그래서 세션 복원(재접속) 시점엔 아예 요청하지 않고, 사용자가 실제로 방금 로그인 버튼을 눌러
-    // 로그인을 완료한 경우(isActualSignIn)에만 — 그것도 화면을 좀 본 뒤 자연스럽게 — 요청한다.
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    function requestPushAgreementDelayed() {
-      timers.push(setTimeout(requestPushAgreementOnce, 3000));
-    }
-
+    // 알림 동의 바텀시트는 미니앱 접속 직후(로그인 직후 포함) 자동으로 뜨면 안 된다(심사 반려 사유,
+    // 3회 이상 반복). 지연(3초)만으론 부족했다 — 리뷰어의 가장 흔한 테스트 경로가 "로그인 버튼을
+    // 눌러 처음 로그인"인데, 그 몇 초 뒤에 자동으로 뜨는 것도 "접속 직후 노출"로 판정됐다.
+    // → 자동 트리거를 완전히 없애고, 사용자가 알림 설정 화면에서 직접 눌러야만 뜨게 한다
+    // (NotificationSettingsScreen의 명시적 버튼, requestPushAgreementOnce 재사용).
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setReady(true);
       prevUserIdRef.current = data.session?.user.id ?? null;
-      // 세션 복원(재접속)만으로는 요청하지 않는다 — 실제 로그인 행위(isActualSignIn) 때만 요청.
     });
     const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
@@ -70,12 +64,9 @@ function App() {
       // 로그인 직후엔 서버가 닉네임(실제 이름) 백필을 막 끝낸 상태 → 이전 세션의 캐시(예: '토스 사용자')를
       // 버리고 새로 불러온다. 로그아웃 시에도 남의 데이터가 남지 않게 정리.
       if (isActualSignIn || event === "SIGNED_OUT") queryClient.clear();
-      // 로그인 시 푸시 알림 동의 요청(미동의 유저는 스마트발송에서 제외됨). 내부에서 1회만.
-      if (isActualSignIn) requestPushAgreementDelayed();
     });
     return () => {
       sub.subscription.unsubscribe();
-      timers.forEach(clearTimeout);
     };
   }, [queryClient]);
 

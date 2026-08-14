@@ -7,13 +7,20 @@ import { requestNotificationAgreement } from "@apps-in-toss/web-framework";
 const FLAG = "toss_push_agreed";
 const TEMPLATE = import.meta.env.VITE_TOSS_NOTI_TEMPLATE as string | undefined;
 
-export function requestPushAgreementOnce(): void {
-  if (!TEMPLATE) return; // 템플릿 코드 미설정 환경(웹/개발)에선 no-op
+// 이미 동의 완료했는지 — 알림 설정 화면이 버튼 대신 '이미 켜져 있어요' 상태를 보여줄 때 씀.
+export function isPushAgreed(): boolean {
   try {
-    if (localStorage.getItem(FLAG) === "1") return;
+    return localStorage.getItem(FLAG) === "1";
   } catch {
-    /* 스토리지 접근 불가 → 그냥 진행 */
+    return false;
   }
+}
+
+// ⚠️ 반드시 사용자가 직접 누른 액션(예: 알림 설정 화면의 버튼)에서만 호출할 것 — 앱 진입·로그인
+// 직후 자동으로 호출하면 "미니앱 접속 직후 바텀시트 노출" 다크패턴으로 반려된다(3회 이상 반복됨).
+export function requestPushAgreementOnce(onDone?: () => void): void {
+  if (!TEMPLATE) { onDone?.(); return; } // 템플릿 코드 미설정 환경(웹/개발)에선 no-op
+  if (isPushAgreed()) { onDone?.(); return; }
   try {
     const cleanup = requestNotificationAgreement({
       options: { templateCode: TEMPLATE },
@@ -23,14 +30,17 @@ export function requestPushAgreementOnce(): void {
           try { localStorage.setItem(FLAG, "1"); } catch { /* noop */ }
         }
         cleanup();
+        onDone?.();
       },
       onError: (e) => {
         // 구버전 토스앱·미지원 환경 등 — 조용히 무시(푸시는 다음 기회에).
         console.warn("[push] agreement error", e);
         cleanup();
+        onDone?.();
       },
     });
   } catch (e) {
     console.warn("[push] agreement threw", e);
+    onDone?.();
   }
 }

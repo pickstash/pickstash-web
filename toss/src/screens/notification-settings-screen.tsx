@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/page-header";
 import {
@@ -7,6 +8,7 @@ import {
   type NotifType,
   type NotificationPrefs,
 } from "@/lib/api/notifications";
+import { requestPushAgreementOnce, isPushAgreed } from "../lib/push-agreement";
 
 const TYPES: { key: NotifType; label: string; desc: string }[] = [
   { key: "comment", label: "새 댓글", desc: "내 상자에 댓글이 달리면" },
@@ -36,6 +38,18 @@ function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void 
 export function NotificationSettingsScreen() {
   const qc = useQueryClient();
   const { data: prefs = NOTIF_DEFAULTS } = useQuery({ queryKey: ["notif-prefs"], queryFn: getMyNotificationPrefs });
+  const [agreed, setAgreed] = useState(isPushAgreed);
+  const [requesting, setRequesting] = useState(false);
+
+  // 사용자가 이 버튼을 직접 눌렀을 때만 동의창을 띄운다(자동 트리거 금지 — App.tsx 주석 참고).
+  function handleEnablePush() {
+    if (requesting || agreed) return;
+    setRequesting(true);
+    requestPushAgreementOnce(() => {
+      setRequesting(false);
+      setAgreed(isPushAgreed());
+    });
+  }
 
   const toggle = useMutation({
     mutationFn: ({ key, on }: { key: NotifType; on: boolean }) => setNotificationPref(key, on),
@@ -54,14 +68,27 @@ export function NotificationSettingsScreen() {
     <main className="min-h-dvh bg-cream pb-[calc(var(--app-safe-bottom,0px)+3rem)]">
       <PageHeader title="알림 설정" />
       <div className="mx-auto max-w-[430px] space-y-5 px-5 pt-2">
-        {/* 마스터 — 앱 알림 on/off는 토스 앱 설정에서만 가능. 토스 SDK엔 OS 권한 재요청·상태확인·설정창 열기 API가 없어
-            (Notification.requestAgreement는 최초 1회만 동의창을 띄우고 이후 alreadyAgreed로 조용히 끝남),
-            '알림 켜기' 버튼은 이미 동의된 상태에선 아무 일도 못 한다 → 버튼 대신 켜고 끄는 경로만 안내. */}
+        {/* 마스터 — 앱 알림 동의는 이 버튼을 눌러야만 뜬다(자동 트리거 금지). 이미 동의했으면
+            버튼 대신 안내만(재동의 API가 없어 눌러도 조용히 알려진 상태로 끝남). */}
         <section className="rounded-card border border-line bg-paper p-4">
           <p className="text-[14px] font-extrabold text-ink">앱 알림 받기</p>
           <p className="mt-1 text-[12px] leading-relaxed text-ink-soft">
-            결정창고 알림은 토스에 로그인하면 자동으로 켜져요.<br/>알림이 오지 않는다면 아래에서 켜져 있는지 확인해요.
+            켜면 댓글·참여 등 결정창고 소식을 토스 알림으로 받아요.
           </p>
+          {agreed ? (
+            <div className="mt-3 rounded-field bg-cream px-3.5 py-3">
+              <p className="text-[12px] font-bold text-ink">알림 받는 중이에요</p>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={handleEnablePush}
+              disabled={requesting}
+              className="mt-3 w-full rounded-field bg-ink py-3 text-[13px] font-bold text-cream disabled:opacity-50"
+            >
+              {requesting ? "확인 중…" : "알림 받기"}
+            </button>
+          )}
           <div className="mt-3 rounded-field bg-cream px-3.5 py-3">
             <p className="text-[12px] font-bold text-ink">알림 켜기·끄기</p>
             <p className="mt-1 text-[11.5px] leading-relaxed text-ink-soft">
