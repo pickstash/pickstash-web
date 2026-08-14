@@ -47,8 +47,10 @@ function App() {
   const prevUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    // 알림 동의 바텀시트는 미니앱 접속 직후 바로 뜨면 안 된다(심사 반려 사유) — 첫 화면을
-    // 어느 정도 보고 난 뒤에 자연스럽게 뜨도록 지연시킨다. 언마운트 시 취소.
+    // 알림 동의 바텀시트는 미니앱 접속 직후 바로 뜨면 안 된다(심사 반려 사유) — 단순 지연(3초)만으론
+    // 부족했다: 이미 로그인된 채로 재접속하는(가장 흔한) 경우 매번 "접속 직후"에 뜨는 게 문제였다.
+    // 그래서 세션 복원(재접속) 시점엔 아예 요청하지 않고, 사용자가 실제로 방금 로그인 버튼을 눌러
+    // 로그인을 완료한 경우(isActualSignIn)에만 — 그것도 화면을 좀 본 뒤 자연스럽게 — 요청한다.
     const timers: ReturnType<typeof setTimeout>[] = [];
     function requestPushAgreementDelayed() {
       timers.push(setTimeout(requestPushAgreementOnce, 3000));
@@ -58,8 +60,7 @@ function App() {
       setSession(data.session);
       setReady(true);
       prevUserIdRef.current = data.session?.user.id ?? null;
-      // 이미 로그인된 채 재실행 → 아직 동의 안 받았으면 이때 요청(내부에서 1회 가드).
-      if (data.session) requestPushAgreementDelayed();
+      // 세션 복원(재접속)만으로는 요청하지 않는다 — 실제 로그인 행위(isActualSignIn) 때만 요청.
     });
     const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
