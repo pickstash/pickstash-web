@@ -78,10 +78,14 @@ export function TabBar() {
   // 한다 — 안드로이드 토스 웹뷰는 env(safe-area-inset-bottom)을 과다 보고해(웹 브라우저에선 0이라
   // 문제가 안 보임) 갤럭시 실기기에서 하단 여백이 과하게 커지는 버그가 났었다. --app-safe-bottom은
   // iOS에서만 실제 인셋을 채우고 안드로이드는 0으로 고정하는 안전장치가 이미 돼 있다.
+  // 여백을 safe-bottom에 그냥 더하면(+12px) iOS(홈 인디케이터 인셋 ~34px)에서 도합 46px나 떠서
+  // 탭바가 눈에 띄게 높이 붕 뜬다 — max()로 "안드로이드는 최소 12px, iOS는 인셋 위에 살짝(6px)만"
+  // 얹는다.
   return (
     <div
       ref={rootRef}
-      className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-[calc(var(--app-safe-bottom,0px)+12px)]"
+      className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-4"
+      style={{ paddingBottom: "max(12px, calc(var(--app-safe-bottom, 0px) + 6px))" }}
     >
       <nav className="w-full max-w-[402px] rounded-full bg-paper shadow-[0_8px_24px_rgba(42,42,39,0.18)]">
         <div className="flex h-[60px] items-center justify-around px-3">

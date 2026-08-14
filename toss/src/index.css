@@ -33,6 +33,15 @@ main {
   padding-bottom: var(--app-nav-h);
 }
 
+html, body {
+  /* iOS WKWebView가 문서 최상단에서 더 위로 당기면(rubber-band) 흰 배경이 드러나며 웹뷰 자체를
+     새로고침하는 네이티브 pull-to-refresh 제스처로 이어진다 — 우리 자체 PullToRefresh(터치 이벤트
+     기반, 프로필 등에서 사용)와 겹쳐 "당기면 앱이 통째로 리로드되는" 버그로 보였다(iOS만 재현,
+     안드로이드 웹뷰는 이 바운스 자체가 없어 무해). overscroll-behavior로 문서 레벨 바운스를 죽여
+     네이티브 리로드가 아예 발동하지 않게 막는다 — 우리 컴포넌트는 touch 이벤트라 영향 없음. */
+  overscroll-behavior-y: none;
+}
+
 body {
   margin: 0;
   min-width: 320px;
