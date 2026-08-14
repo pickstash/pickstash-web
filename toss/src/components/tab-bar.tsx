@@ -68,13 +68,15 @@ export function TabBar() {
 
   const activeHref = tabOf(pathname);
 
-  // 토스 TDS 피그마 "Tab Bar Master Component" 실측(확대 crop): 좌우·하단은 화면에 완전히 붙고
-  // 위 모서리만 둥근 독(dock) 형태다 — 언뜻 알약처럼 보이지만 아래쪽 모서리는 직각이었다(내가 착각했던 부분).
-  // 탭 행 자체 높이는 62px(iOS 세이프에어리어 제외 스펙) — 세이프에어리어는 그 아래 별도 여백으로 덧붙인다
-  // (탭 행 높이를 안 줄이고, 흰 카드 배경만 세이프에어리어까지 이어지게).
+  // 앱인토스 브랜딩 가이드 "탭바는 토스와 동일한 플로팅 형태로 구현" — 토스 공식 TDS 피그마
+  // (TDS_Mobile_for_Apps_in_Toss, "Tab Bar" 마스터 컴포넌트, node 52732-11803/11804)를 직접 열어
+  // Inspect로 실측한 스펙 그대로 옮긴 것: 화면 좌우·하단에 완전히 붙는 전체 폭(마진으로 뜬 캡슐형이
+  // 아님 — 좌우 여백을 준 알약형은 이전에 잘못 짐작해 구현했던 오답), 위쪽 모서리만 24px 라운드
+  // (--radius-sheet), 배경 #FFFFFF(=bg-paper) + 위·좌·우 1px 보더 #001B37 10%(아래쪽은 보더 없음)
+  // + 배경 블러 32px(backdrop-blur, 콘텐츠가 그 아래로 스크롤될 때의 재질감). 드롭섀도는 스펙에 없다.
   return (
     <div ref={rootRef} className="fixed inset-x-0 bottom-0 z-40">
-      <nav className="rounded-t-sheet bg-paper shadow-[0_-6px_20px_rgba(42,42,39,0.1)]">
+      <nav className="rounded-t-sheet border border-b-0 border-[#001B37]/10 bg-paper backdrop-blur-[32px]">
         <div className="flex h-[62px] items-center justify-around px-3">
           {TABS.map((t) => {
             const active = activeHref === t.href;
