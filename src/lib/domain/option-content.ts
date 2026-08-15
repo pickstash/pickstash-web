@@ -256,11 +256,18 @@ export function getOptionPreview(blocks: OptionBlock[], maxLen = 60): OptionPrev
     if (!snippet) {
       if (b.type === 'text' && b.text.trim()) {
         snippet = truncate(stripTextFormatting(b.text), maxLen)
-      } else if (b.type === 'link' && b.title) {
-        snippet = truncate(b.title, maxLen)
-        // 링크에서 스니펫이 왔을 때만 그 링크의 메모(라벨)를 함께 노출. 제목과 같으면 중복이라 생략.
+      } else if (b.type === 'link') {
+        const title = b.title?.trim()
         const label = b.label.trim()
-        if (label && label !== b.title.trim()) memo = truncate(label, maxLen)
+        if (title) {
+          snippet = truncate(title, maxLen)
+          // 같은 링크의 메모(라벨)도 함께 노출. 제목과 같으면 중복이라 생략.
+          if (label && label !== title) memo = truncate(label, maxLen)
+        } else if (label) {
+          // 이 링크는 아직 제목(OG)이 없지만 메모는 있다 — 뒤 블록(다음 링크의 제목 등)으로
+          // 넘어가지 않고 이 메모를 스니펫으로 쓴다(블록 순서상 앞선 링크가 우선).
+          snippet = truncate(label, maxLen)
+        }
       }
     }
     if (snippet) break
