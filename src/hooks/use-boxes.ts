@@ -12,6 +12,7 @@ import {
   updateBoxCheckable,
   decideBox,
   reopenBox,
+  switchBoxMode,
   autoDecideBox,
   deleteBox,
   leaveBox,
@@ -20,6 +21,7 @@ import {
   getShakingBoxes,
   type CreateBoxInput,
   type DecisionMode,
+  type BoxMode,
 } from '@/lib/api/boxes'
 import { setBoxFolders } from '@/lib/api/folders'
 import type { Option } from '@/lib/api/options'
@@ -223,6 +225,21 @@ export function useReopenBox(boxId: string) {
       invalidateBoxViews(queryClient, boxId)
       queryClient.invalidateQueries({ queryKey: ['options', boxId] })  // 번복 시 decided_at 해제 반영
       // 홈·목록은 서버 컴포넌트라 TanStack 무효화로는 안 갱신됨. Router Cache를 비워 뒤로가기 stale 방지.
+      nav.refresh()
+    },
+  })
+}
+
+/** 상자 종류(결정하기/모아보기) 상호 변경 — 결정·체크·좋아요 기록 전부 초기화(058). */
+export function useSwitchBoxMode(boxId: string) {
+  const nav = useNav()
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (mode: BoxMode) => switchBoxMode(boxId, mode),
+    onSuccess: () => {
+      invalidateBoxViews(queryClient, boxId)
+      queryClient.invalidateQueries({ queryKey: ['options', boxId], refetchType: 'all' })
+      queryClient.invalidateQueries({ queryKey: ['votes', boxId], refetchType: 'all' })
       nav.refresh()
     },
   })

@@ -13,6 +13,7 @@ import {
   useLeaveBox,
   useReopenBox,
   useJoinBox,
+  useSwitchBoxMode,
 } from '@/hooks/use-boxes'
 import { useToggleFavorite } from '@/hooks/use-favorites'
 import { useFolders, useMyBoxFolders, useSetBoxFolders, useCreateFolder } from '@/hooks/use-folders'
@@ -115,6 +116,7 @@ export function BoxDetailClient({
   const [switchingToAuto, setSwitchingToAuto] = useState(false)
   const [confirmLeave, setConfirmLeave] = useState(false)
   const [confirmReopen, setConfirmReopen] = useState(false)
+  const [confirmSwitchMode, setConfirmSwitchMode] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [folderModal, setFolderModal] = useState(false)
   // 공개 설정(개편) — 타입 미생성이라 캐스팅. box.visibility/tags는 037 이후 존재.
@@ -177,7 +179,7 @@ export function BoxDetailClient({
   const [deciding, setDeciding] = useState(false)
   useBodyScrollLock(
     membersOpen || inviteOpen || folderModal || modeModal || deadlineSheet || deciding ||
-    confirmLeave || confirmReopen || publishOpen,
+    confirmLeave || confirmReopen || confirmSwitchMode || publishOpen,
   )
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
@@ -206,6 +208,7 @@ export function BoxDetailClient({
   const decideBox = useDecideBox(box.id)
   const leaveBox = useLeaveBox()
   const reopenBox = useReopenBox(box.id)
+  const switchMode = useSwitchBoxMode(box.id)
   const joinBox = useJoinBox(box.id)
   const toggleFavorite = useToggleFavorite(box.id)
   const { data: folders = [] } = useFolders()
@@ -426,6 +429,17 @@ export function BoxDetailClient({
     })
   }
 
+  // 종류 변경(결정하기 ↔ 모아보기, 058): 결정·체크·좋아요 기록 전부 초기화 + 정리완료 해제.
+  function handleSwitchMode() {
+    const nextMode = isChecklist ? 'decide' : 'checklist'
+    switchMode.mutate(nextMode, {
+      onSuccess: () => {
+        setBox(prev => ({ ...prev, mode: nextMode, checkable: false, decision_mode: 'manual', deadline_at: null, closed_at: null } as unknown as typeof prev))
+        setConfirmSwitchMode(false)
+      },
+    })
+  }
+
   // 결정: 선택지 1개 이상 골라 확정
   function openDecide() {
     setSelected(new Set(leaderIds))   // 좋아요 1위 미리 선택
@@ -554,6 +568,39 @@ export function BoxDetailClient({
             >
               {updateDecisionMode.isPending ? '적용 중...' : '확인'}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* 종류 변경 확인 (058) — 결정·체크·좋아요 기록이 전부 초기화되는 되돌릴 수 없는 작업이라 확인받는다. */}
+      {confirmSwitchMode && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center px-8">
+          <div className="absolute inset-0 bg-ink/40" onClick={() => setConfirmSwitchMode(false)} />
+          <div className="relative w-full max-w-[320px] rounded-[20px] bg-paper p-5 shadow-[0_16px_40px_rgba(42,42,39,0.25)]">
+            <p className="text-[15px] font-extrabold text-ink">
+              {isChecklist ? '결정하기' : '모아보기'}(으)로 바꿀까요?
+            </p>
+            <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-soft">
+              {isChecklist
+                ? '체크한 항목이 전부 해제돼요.'
+                : '좋아요·결정 기록이 전부 사라져요.'}{' '}
+              정리완료 상태도 풀려요. 되돌릴 수 없어요.
+            </p>
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={() => setConfirmSwitchMode(false)}
+                className="flex-1 rounded-field border border-line py-3 text-[13px] font-bold text-ink-soft"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleSwitchMode}
+                disabled={switchMode.isPending}
+                className="flex-1 rounded-field bg-tomato py-3 text-[13px] font-bold text-white disabled:opacity-50"
+              >
+                {switchMode.isPending ? '바꾸는 중...' : '바꾸기'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -906,6 +953,12 @@ export function BoxDetailClient({
                           className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-ink active:bg-cream"
                         >
                           서랍에 담기
+                        </button>
+                        <button
+                          onClick={() => { setMenuOpen(false); setConfirmSwitchMode(true) }}
+                          className="block w-full px-4 py-2.5 text-left text-[13px] font-semibold text-ink active:bg-cream"
+                        >
+                          {isChecklist ? '결정하기로 바꾸기' : '모아보기로 바꾸기'}
                         </button>
                         <button
                           onClick={() => { setMenuOpen(false); setConfirmLeave(true) }}

@@ -151,6 +151,18 @@ export async function reopenBox(id: string): Promise<void> {
   if (error) throw error
 }
 
+/**
+ * 상자 종류(결정하기/모아보기) 상호 변경 (058, 참여자 누구나). 결정·체크·좋아요 기록이 전부
+ * 초기화되고 정리완료 상태도 해제된다 — 되돌릴 수 없음, 호출 전 프론트에서 확인받을 것.
+ */
+export async function switchBoxMode(id: string, mode: BoxMode): Promise<void> {
+  const supabase = createClient()
+  // types.ts 미갱신 RPC(058) — 저장소 관례대로 캐스팅.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase.rpc as any)('switch_box_mode', { p_box_id: id, p_mode: mode })
+  if (error) throw error
+}
+
 /** 마감 투표 자동 결정 (lazy commit용). 조건 안 맞으면 서버에서 no-op. */
 export async function autoDecideBox(id: string): Promise<void> {
   const supabase = createClient()
