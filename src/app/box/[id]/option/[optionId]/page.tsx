@@ -30,6 +30,7 @@ export default async function OptionDetailPage({
       myNickname={r.myNickname}
       participants={r.participants}
       isParticipant={r.isParticipant}
+      isPublic={r.isPublic}
     />
   )
 }

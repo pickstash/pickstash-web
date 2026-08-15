@@ -1,6 +1,6 @@
 'use client'
 
-import { AppLink } from '@/lib/nav/nav'
+import { AppLink, useNav } from '@/lib/nav/nav'
 import { useState } from 'react'
 import { VoteButtons } from '@/components/vote-buttons'
 import { PageHeader } from '@/components/page-header'
@@ -54,6 +54,8 @@ interface OptionDetailClientProps {
   participants: Participant[]
   /** 048: 서랍 접근으로 읽기 전용 조회 중이면 false — 편집·댓글 작성 등 쓰기 UI를 숨긴다. */
   isParticipant: boolean
+  /** 공개(visibility='public') 상자면 비참여자도 로그인만 하면 댓글을 달 수 있다(게스트로 표시). */
+  isPublic: boolean
 }
 
 export function OptionDetailClient({
@@ -68,7 +70,22 @@ export function OptionDetailClient({
   myNickname,
   participants,
   isParticipant,
+  isPublic,
 }: OptionDetailClientProps) {
+  const nav = useNav()
+  const isLoggedIn = !!currentUserId
+  // 공개 상자는 참여자가 아니어도 로그인만 하면 댓글을 달 수 있다(게스트) — 서랍 읽기전용 등
+  // 비공개 경로의 비참여자는 여전히 불가(그쪽은 '함께하기'로 참여해야 함, 048).
+  const canComment = isParticipant || (isPublic && isLoggedIn)
+  function isGuestComment(userId: string) {
+    return !participants.some(p => p.id === userId)
+  }
+  // 049: 비로그인 방문자가 댓글을 달려고 하면 그때 로그인으로 유도.
+  function requireLogin(): boolean {
+    if (isLoggedIn) return true
+    if (nav.platform === 'toss' && nav.login) { nav.login() } else { nav.push(`/login?next=/box/${boxId}/option/${initialOption.id}`) }
+    return false
+  }
   // 서버에서 받은 초기값으로 시작하되, 수정 직후 이동해와도 최신 이름·본문이 보이도록 라이브 쿼리로 덮어쓴다.
   const { data: fetchedOption } = useOption(initialOption.id)
   const option = fetchedOption ?? initialOption
@@ -125,10 +142,10 @@ export function OptionDetailClient({
         <CommentLikeButton
           count={like.count}
           likedByMe={like.likedByMe}
-          onToggle={isParticipant ? () => toggleCommentLike.mutate({ commentId: comment.id, likedByMe: like.likedByMe }) : undefined}
+          onToggle={canComment ? () => toggleCommentLike.mutate({ commentId: comment.id, likedByMe: like.likedByMe }) : undefined}
           onShowLikers={() => setLikersComment(comment.id)}
         />
-        {isParticipant && (
+        {canComment && (
           <button
             onClick={() => {
               setReplyingTo({
@@ -144,7 +161,7 @@ export function OptionDetailClient({
             답글
           </button>
         )}
-        {isParticipant && comment.user_id === currentUserId && (
+        {canComment && comment.user_id === currentUserId && (
           <>
             <button
               onClick={() => { setEditingId(comment.id); setReplyingTo(null) }}
@@ -195,6 +212,9 @@ export function OptionDetailClient({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             <span className="text-xs font-bold text-ink">{comment.profiles?.nickname}</span>
+            {isGuestComment(comment.user_id) && (
+              <span className="rounded-full bg-cream px-1.5 py-0.5 text-[10px] font-bold text-ink-faint">게스트</span>
+            )}
             <span className="text-[11px] text-ink-faint">
               {formatRelativeTime(comment.created_at)}
               {comment.edited_at && ' · 수정됨'}
@@ -475,7 +495,7 @@ export function OptionDetailClient({
             })}
           </div>
 
-          {isParticipant ? (
+          {canComment ? (
             <CommentComposer
               key={composerKey}
               participants={participants}
@@ -486,6 +506,14 @@ export function OptionDetailClient({
               compact
               onSubmit={body => createComment.mutate({ body }, { onSuccess: () => setComposerKey(k => k + 1) })}
             />
+          ) : isPublic ? (
+            <button
+              type="button"
+              onClick={requireLogin}
+              className="w-full rounded-field border border-line bg-cream py-3 text-center text-[12.5px] font-bold text-ink-soft active:bg-butter-tint/40"
+            >
+              로그인하고 댓글 남기기
+            </button>
           ) : (
             <p className="text-center text-[12px] text-ink-faint">함께 정리하기를 누르면 댓글을 남길 수 있어요</p>
           )}

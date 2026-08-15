@@ -35,6 +35,7 @@ export function OptionDetailScreen() {
       myNickname={data.r.myNickname}
       participants={data.r.participants}
       isParticipant={data.r.isParticipant}
+      isPublic={data.r.isPublic}
     />
   );
 }

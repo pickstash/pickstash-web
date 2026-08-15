@@ -19,6 +19,8 @@ export type OptionDetailData =
       myNickname: string
       participants: Participant[]
       isParticipant: boolean
+      /** 공개(visibility='public') 상자면 비참여자도 로그인만 하면 댓글을 달 수 있다(게스트로 표시). */
+      isPublic: boolean
     }
   | { status: 'not_found' }
 
@@ -69,5 +71,6 @@ export async function loadOptionDetail(
     myNickname: me?.nickname ?? '',
     participants,
     isParticipant,
+    isPublic: (box as unknown as { visibility?: string }).visibility === 'public',
   }
 }
