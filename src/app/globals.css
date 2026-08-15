@@ -64,6 +64,15 @@ body {
   color: var(--foreground);
 }
 
+/* Pretendard Variable 번들엔 진짜 이탤릭 서체가 없다(모든 @font-face가 font-style:normal) — em(글
+   블록 기울임 서식)이 브라우저의 "가짜 기울임 합성"에 기대야 하는데, 데스크톱은 되지만 안드로이드
+   웹뷰(토스 앱)는 합성을 안 해줘서 저장 후 보면 안 기울어져 보이는 문제가 있었다. 합성에 기대지 않고
+   각도를 직접 지정하면(oblique) 폰트에 이탤릭이 없어도 플랫폼 상관없이 항상 똑같이 기울어진다.
+   에디터(Tiptap Italic)·읽기 전용 뷰(rich-text.tsx) 둘 다 <em>으로 렌더하므로 이 한 줄로 같이 잡힌다. */
+em {
+  font-style: oblique 10deg;
+}
+
 /* PC(≥1280) 폰 프레임: 페이지가 100dvh 대신 프레임(부모) 높이를 채우도록 */
 @media (min-width: 1280px) {
   .app-frame > * {

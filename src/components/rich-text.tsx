@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { parseRichDoc, type RichTextNode } from '@/lib/domain/option-content'
 
 interface RichTextProps {
@@ -9,9 +10,12 @@ interface RichTextProps {
 
 function renderInlines(nodes: RichTextNode[] | undefined) {
   return (nodes ?? []).map((n, i) => {
-    if (n.marks?.some(m => m.type === 'bold')) return <strong key={i}>{n.text}</strong>
-    if (n.marks?.some(m => m.type === 'italic')) return <em key={i}>{n.text}</em>
-    return <span key={i}>{n.text}</span>
+    // 굵게만 있으면 기울임 검사를 안 하고 바로 반환했던 게 버그 — 굵게+기울임을 같이 쓴 글자는
+    // 저장 후 기울임이 사라져 보였다(<strong>만 씌우고 <em>은 그냥 버려짐). 두 마크를 겹쳐 씌운다.
+    let node: ReactNode = n.text
+    if (n.marks?.some(m => m.type === 'italic')) node = <em>{node}</em>
+    if (n.marks?.some(m => m.type === 'bold')) node = <strong>{node}</strong>
+    return <span key={i}>{node}</span>
   })
 }
 
@@ -25,7 +29,9 @@ export function RichText({ text, className, onToggleCheck }: RichTextProps) {
       {doc.content.map((block, i) => {
         if (block.type === 'paragraph') {
           const isEmpty = !block.content || block.content.length === 0
-          return <p key={i}>{isEmpty ? ' ' : renderInlines(block.content)}</p>
+          // 빈 문단(엔터로 만든 빈 줄)을 공백 문자로 채우면 브라우저가 "내용 없는 공백"으로 보고
+          // 줄 높이를 0으로 접어버려 편집기(브라우저가 <br>로 렌더)와 달리 뷰에서 사라져 보였다.
+          return <p key={i}>{isEmpty ? <br /> : renderInlines(block.content)}</p>
         }
         if (block.type === 'bulletList') {
           return (

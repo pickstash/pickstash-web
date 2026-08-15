@@ -94,7 +94,9 @@ export function OptionsSection({ boxId, round, initialOptions, canVote, showLike
               onClick={e => { e.preventDefault(); e.stopPropagation(); toggleChecked.mutate({ optionId: option.id, checked: !checked }) }}
               aria-pressed={checked}
               aria-label={checked ? '체크됨' : '체크 안 됨'}
-              className="relative z-10 -my-3.5 -ml-3.5 flex shrink-0 items-start self-stretch py-3.5 pl-3.5 pr-1 disabled:pointer-events-none"
+              // canCheck=false(읽기 전용 조회자)면 흐리게 — 안 눌리는 게 아니라 카드 링크로 폴백되는
+              // 것뿐인데 겉보기엔 멀쩡해서 "왜 안 눌리고 상세로 넘어가지" 혼란이 있었다(VoteButtons와 동일 처리).
+              className="relative z-10 -my-3.5 -ml-3.5 flex shrink-0 items-start self-stretch py-3.5 pl-3.5 pr-1 disabled:pointer-events-none disabled:opacity-40"
             >
               <span className={`mt-0.5 flex h-[18px] w-[18px] items-center justify-center rounded-[6px] border-[1.5px] ${
                 checked ? 'border-ink bg-ink text-cream' : 'border-line bg-paper'

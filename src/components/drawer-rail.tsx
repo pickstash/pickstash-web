@@ -28,11 +28,19 @@ interface DrawerRailProps {
 
 type FolderChip = { id: string; name: string; boxCount: number }
 
+// 모듈 스코프 — 상자 상세 등으로 나갔다가 홈으로 돌아오면 이 컴포넌트가 리마운트되는데, useState 기본값만
+// 쓰면 매번 '브리핑'으로 리셋된다. 마지막으로 고른 칩을 기억해 되돌아왔을 때 그대로 유지되게 한다.
+let lastSelectedFolder = 'all'
+
 // 서랍 레일 — "브리핑" 칩이 항상 첫 자리(기본 선택)로 고정돼 홈이 비지 않는다. 칩을 누르면
 // 하단에 그 서랍의 상자가 스태거 애니메이션으로 "꺼내진" 느낌으로 등장(별도 배경 래핑 없음).
 // 서랍 칩끼리 / 서랍 안 상자끼리는 드래그로 재정렬 가능(브리핑·"새 서랍" 칩은 고정).
 export function DrawerRail({ brief }: DrawerRailProps) {
-  const [selected, setSelected] = useState<string>('all')
+  const [selected, setSelectedState] = useState<string>(lastSelectedFolder)
+  function setSelected(next: string) {
+    lastSelectedFolder = next
+    setSelectedState(next)
+  }
   const sensors = useDragSensors()
   const reorderFolders = useReorderFolders()
 

@@ -1,5 +1,5 @@
 import { Suspense, useEffect, useRef, useState, type CSSProperties } from "react";
-import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation, useNavigationType } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Session } from "@supabase/supabase-js";
 import { setIosSwipeGestureEnabled } from "@apps-in-toss/web-framework";
@@ -71,10 +71,23 @@ function App() {
   }, [queryClient]);
 
   const { pathname } = useLocation();
-  // 화면 전환 시 스크롤 맨 위로 — MemoryRouter는 스크롤 복원이 없어, 이전 화면의 스크롤 위치가
-  // 새 화면(홈·상자 등)으로 새는 것을 막는다. (스크롤러는 document/body.)
+  const navigationType = useNavigationType(); // "PUSH" | "POP" | "REPLACE" — POP = 뒤로/앞으로가기
+  // 경로별 스크롤 위치를 계속 기록해뒀다가, 뒤로가기(POP)로 돌아온 화면은 그 위치로 복원한다.
+  // 새 화면으로 들어가는 거면(PUSH/REPLACE) 맨 위로 — MemoryRouter는 네이티브 스크롤 복원이 없어서
+  // 직접 구현해야 한다. 안 하면 홈 서랍 목록 스크롤하다 상자 열고 뒤로가기만 해도 매번 맨 위로 튄다.
+  const scrollPositions = useRef(new Map<string, number>());
   useEffect(() => {
-    window.scrollTo(0, 0);
+    const onScroll = () => scrollPositions.current.set(pathname, window.scrollY);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [pathname]);
+  useEffect(() => {
+    if (navigationType === "POP") {
+      window.scrollTo(0, scrollPositions.current.get(pathname) ?? 0);
+    } else {
+      window.scrollTo(0, 0);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- navigationType은 pathname과 함께 바뀌므로 pathname만으로 충분
   }, [pathname]);
   // 뒤로가기 통제(iOS 스와이프 OFF + 홈 종료 확인)는 BackHandler가 담당 — main.tsx에서 App 형제로 항상 마운트.
   // 초대 뷰어(공유 링크)는 비로그인도 열람 가능 — 로그인 게이트 예외. 참여 시 인라인 로그인(nav.login).
