@@ -71,6 +71,8 @@ export function AlertsView({ items, midBanner, pushBanner }: { items: AlertItem[
     <main className="flex min-h-dvh flex-col">
       <header className="sticky top-0 z-20 flex items-center gap-1.5 bg-cream/95 px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-3 backdrop-blur-sm">
         <h1 className="text-[17px] font-extrabold tracking-tight text-ink">알림</h1>
+        {/* 알림 설정은 토스 전용(/settings/notifications) — 웹은 라우트 없어 숨긴다(추후 웹 푸시 설정 붙이면 복원). */}
+        {nav.platform === 'toss' && (
         <button
           type="button"
           onClick={() => nav.push('/settings/notifications')}
@@ -82,6 +84,7 @@ export function AlertsView({ items, midBanner, pushBanner }: { items: AlertItem[
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
           </svg>
         </button>
+        )}
       </header>
 
       <div className="flex-1 px-5 pb-[calc(var(--app-nav-h,7rem)+3.5rem)] pt-1">

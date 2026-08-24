@@ -8,7 +8,7 @@ import { Icon } from '@/components/icon'
  */
 export function CreateFab({ href, onClick, label }: { href?: string; onClick?: () => void; label: string }) {
   const className =
-    'fixed right-5 z-30 flex items-center gap-1 rounded-full bg-ink py-3.5 pl-[15px] pr-[18px] text-sm font-extrabold text-cream shadow-[0_10px_24px_-6px_rgba(42,42,39,0.55)] active:opacity-85 bottom-[calc(var(--app-nav-h,0px)+var(--app-cta-safe,env(safe-area-inset-bottom))+1rem)] xl:right-[calc(50%-195px)] xl:bottom-12'
+    'fixed right-5 z-30 flex items-center gap-1 rounded-full bg-ink py-3.5 pl-[15px] pr-[18px] text-sm font-extrabold text-cream shadow-[0_10px_24px_-6px_rgba(42,42,39,0.55)] active:opacity-85 bottom-[calc(var(--app-nav-h,0px)+var(--app-cta-safe,env(safe-area-inset-bottom))+1rem)] xl:right-[calc(50%-195px)]'
   const inner = (
     <>
       <Icon name="plus" size={16} strokeWidth={2} />

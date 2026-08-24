@@ -88,8 +88,11 @@ export function AppDrawer({ nickname, isLoggedIn = true }: AppDrawerProps) {
     nav.replace('/login') // 로그아웃 후 앱으로 back하면 인증가드 리다이렉트 → 교체
   }
 
-  // 토스는 상단 우측을 토스 시스템 버튼(···/X)이 차지해 햄버거가 겹친다 → 드로어 숨기고 하단 탭바로 이동.
-  if (nav.platform === 'toss') return null
+  // 웹도 하단 탭바(TabBar) 도입으로 로그인 사용자에겐 햄버거를 숨긴다(토스와 동일한 크롬).
+  //  - 토스: 상단 우측이 토스 시스템 버튼(···/X) 자리라 애초에 숨김.
+  //  - 웹 로그인 사용자: 홈/서랍/프로필은 탭바가 대체. (PWA 설치는 임시로 빠짐 — 추후 복구.)
+  //  - 비로그인 게스트: 탭바가 안 뜨는 공개 상자 열람 등에서 유일한 로그인 진입이라 최소 드로어 유지.
+  if (nav.platform === 'toss' || isLoggedIn) return null
 
   return (
     <>
