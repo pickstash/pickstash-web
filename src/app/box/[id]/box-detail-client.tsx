@@ -48,6 +48,8 @@ interface BoxDetailClientProps {
   canInstantJoin: boolean
   /** 049: 비참여자가 이미 참여 신청을 넣었는지(승인제) */
   joinRequestStatus: JoinRequestStatus
+  /** 웹 전용 카카오 공유 버튼(초대 시트 안). 토스는 넘기지 않음(undefined) — 공유 코드에 process.env·Kakao 미포함 유지. */
+  kakaoInvite?: ReactNode
 }
 
 const DECISION_MODES: { value: DecisionMode; label: string; sub: string }[] = [
@@ -91,6 +93,7 @@ export function BoxDetailClient({
   isParticipant,
   canInstantJoin,
   joinRequestStatus,
+  kakaoInvite,
 }: BoxDetailClientProps) {
   const nav = useNav()
   const isLoggedIn = !!currentUserId
@@ -321,18 +324,12 @@ export function BoxDetailClient({
   }
 
   function inviteEntry(children: ReactNode, label: string) {
-    // 토스: 웹 전용 카카오 페이지로 이동하는 대신, 참여자 목록 + 초대 링크 시트를 연다.
-    if (nav.platform === 'toss') {
-      return (
-        <button onClick={() => setMembersOpen(true)} aria-label={label} className="inline-flex rounded-full active:opacity-70">
-          {children}
-        </button>
-      )
-    }
+    // 웹·토스 공통: 아바타/초대 탭 → 멤버 시트(참여자 목록 + 초대). 웹도 토스와 동일하게 통일.
+    // (기존 웹 전용 /box/[id]/invite 카카오 페이지 경유는 폐기 — 카카오 공유는 초대 시트 안으로 이동.)
     return (
-      <AppLink href={`/box/${box.id}/invite`} aria-label={label} className="inline-flex rounded-full active:opacity-70">
+      <button onClick={() => setMembersOpen(true)} aria-label={label} className="inline-flex rounded-full active:opacity-70">
         {children}
-      </AppLink>
+      </button>
     )
   }
 
@@ -1134,7 +1131,7 @@ export function BoxDetailClient({
 
       {/* 048/049: 읽기 전용 조회자는 편집 대신 참여 CTA. 서랍 접근이면 즉시 참여, 공개 상자면 승인제 신청. */}
       {!isParticipant ? (
-        <div className="fixed inset-x-0 bottom-[var(--app-nav-h,0px)] z-20 bg-cream px-5 pt-3 pb-[calc(var(--app-cta-safe,env(safe-area-inset-bottom))+0.75rem)] xl:inset-x-auto xl:bottom-10 xl:left-1/2 xl:w-[430px] xl:-translate-x-1/2 xl:rounded-b-[30px]">
+        <div className="fixed inset-x-0 bottom-[var(--app-nav-h,0px)] z-20 bg-cream px-5 pt-3 pb-[calc(var(--app-cta-safe,env(safe-area-inset-bottom))+0.75rem)] xl:inset-x-auto xl:left-1/2 xl:w-[430px] xl:-translate-x-1/2 xl:rounded-b-[30px]">
           <button
             onClick={handleJoinOrRequest}
             disabled={joinBox.isPending || requestBusy || (!canInstantJoin && requested)}
@@ -1151,7 +1148,7 @@ export function BoxDetailClient({
         /* 하단 고정 2단: ＋항목/선택지 추가하기 · 최종 결정하기(결정형)/정리완료로 표시(체크형).
            목록 안 내려도 상시 추가(스크롤 불편 해소). 액션 없을 때(정리완료)는 추가가 풀폭. 0개면 목록 빈상태 CTA가 대체.
            결정형은 마감투표(마감일)여도 '최종 결정하기'로 즉시 수동 마감 가능(521efda). */
-        <div className="fixed inset-x-0 bottom-[var(--app-nav-h,0px)] z-20 grid grid-cols-2 gap-2.5 bg-cream px-5 pt-3 pb-[calc(var(--app-cta-safe,env(safe-area-inset-bottom))+0.75rem)] xl:inset-x-auto xl:bottom-10 xl:left-1/2 xl:w-[430px] xl:-translate-x-1/2 xl:rounded-b-[30px]">
+        <div className="fixed inset-x-0 bottom-[var(--app-nav-h,0px)] z-20 grid grid-cols-2 gap-2.5 bg-cream px-5 pt-3 pb-[calc(var(--app-cta-safe,env(safe-area-inset-bottom))+0.75rem)] xl:inset-x-auto xl:left-1/2 xl:w-[430px] xl:-translate-x-1/2 xl:rounded-b-[30px]">
           {/* 결정형만 하단 1차 액션. 모아보기(리스트)는 '정리완료' 개념이 없어 버튼 없음 → 추가가 풀폭. */}
           {showPrimaryAction && !isChecklist && (
             <button
@@ -1271,6 +1268,9 @@ export function BoxDetailClient({
                 {inviteUsers.isPending ? '초대 중…' : `${invitePicked.size}명 초대하기`}
               </button>
             )}
+
+            {/* 웹: 카카오톡 원탭 공유(page.tsx가 주입). 토스: undefined → 아래 네이티브 공유 시트만. */}
+            {kakaoInvite}
 
             <button
               onClick={copyInvite}
