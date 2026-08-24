@@ -7,7 +7,9 @@ import { NextResponse, type NextRequest } from 'next/server'
 //   /api/toss/send: 푸시 발송(엣지 프록시가 x-internal-secret으로 자체 검증),
 //   /api/unfurl: 링크 미리보기(라우트가 Bearer/쿠키 자체 검증). 각 라우트가 스스로 인증하므로 공개해도 안전.
 // /terms·/privacy: 이용약관·개인정보처리방침. 토스 콘솔·비로그인 이용자가 열람 → 공개.
-const PUBLIC_ROUTES = ['/login', '/auth/callback', '/invite', '/group-invite', '/folder-invite', '/explore', '/p/', '/u/', '/api/toss/login', '/api/toss/unlink', '/api/toss/send', '/api/unfurl', '/terms', '/privacy']
+// /auth/toss: 자체 웹 토스 로그인 OAuth(start·callback). 비로그인 상태에서 도는 로그인 진입점이라 공개 필수
+//   (안 넣으면 '토스로 로그인' 클릭 → 미들웨어가 /login으로 되돌려 무한 바운스).
+const PUBLIC_ROUTES = ['/login', '/auth/callback', '/auth/toss', '/invite', '/group-invite', '/folder-invite', '/explore', '/p/', '/u/', '/api/toss/login', '/api/toss/unlink', '/api/toss/send', '/api/unfurl', '/terms', '/privacy']
 
 // 049: 상자/옵션 상세만 비로그인 허용(공개 상자 열람 — RLS의 can_read_box가 실제 접근을 가른다).
 // 같은 /box/ 아래라도 /option/new·/edit·/invite·/links 같은 쓰기 전용 하위 라우트는 로그인 필수 그대로.
