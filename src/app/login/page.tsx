@@ -1,7 +1,9 @@
 import Image from 'next/image'
 import { KakaoLoginButton } from './kakao-login-button'
+import { TossLoginButton } from './toss-login-button'
 
-export default function LoginPage() {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
+  const { next } = await searchParams
   return (
     <main className="flex min-h-dvh flex-col items-center px-6 py-12">
       <div className="flex w-full max-w-[340px] flex-1 flex-col items-center">
@@ -16,8 +18,9 @@ export default function LoginPage() {
           <h1 className="text-[26px] font-extrabold tracking-tight text-ink mt-4">결정창고</h1>
           <p className="text-[13px] text-ink-soft">대화는 흘러가도, 결정은 남도록</p>
         </div>
-        <div className="w-full pb-4">
+        <div className="w-full space-y-2.5 pb-4">
           <KakaoLoginButton />
+          <TossLoginButton next={next} />
         </div>
       </div>
     </main>
