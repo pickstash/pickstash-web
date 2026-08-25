@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { BoxDetailClient } from './box-detail-client'
-import { KakaoInviteButton } from './kakao-invite-button'
+// 카카오 공유는 일단 숨김(토스만) — 재도입 시 KakaoInviteButton 다시 주입(box-detail-client의 kakaoInvite prop).
 import { loadBoxDetail } from '@/lib/api/box-detail'
 
 // 웹 상자 상세 = 서버 껍데기: 공유 로더 호출 + 공유 client 렌더. 데이터·집계는 loadBoxDetail 공유(토스와 동일).
@@ -15,10 +15,6 @@ export default async function BoxDetailPage({ params }: { params: Promise<{ id: 
   const r = await loadBoxDetail(supabase, id, user?.id ?? null)
   if (r.status === 'not_found') notFound()
 
-  // 카카오 공유는 웹 전용 — 여기(서버 껍데기)서만 주입해 공유 client(box-detail-client)에 process.env·Kakao를 안 넣는다.
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://pickstash-web.vercel.app'
-  const inviteUrl = `${siteUrl}/invite/${r.box.invite_code}`
-
   return (
     <BoxDetailClient
       box={r.box}
@@ -28,7 +24,6 @@ export default async function BoxDetailPage({ params }: { params: Promise<{ id: 
       isParticipant={r.isParticipant}
       canInstantJoin={r.canInstantJoin}
       joinRequestStatus={r.joinRequestStatus}
-      kakaoInvite={<KakaoInviteButton url={inviteUrl} title={r.box.title} />}
     />
   )
 }
