@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import {
   DndContext,
   MouseSensor,
@@ -66,12 +66,24 @@ export function SortableList<T>({
  *  중첩 인터랙티브를 피한다 — 키보드 드래그 미지원(마우스/터치 전용). */
 export function SortableItem({ id, className, children }: { id: string; className?: string; children: ReactNode }) {
   const { listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  // 드래그 후 mouseup이 자식 링크로 click을 흘려 상세로 들어가는 문제 — 드래그가 있었으면 뒤따르는 click 한 번을 캡처 단계에서 삼킨다.
+  const draggedRef = useRef(false)
+  useEffect(() => {
+    if (isDragging) draggedRef.current = true
+  }, [isDragging])
   return (
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 10 : undefined }}
       className={className}
       {...listeners}
+      onClickCapture={e => {
+        if (draggedRef.current) {
+          e.preventDefault()
+          e.stopPropagation()
+          draggedRef.current = false
+        }
+      }}
     >
       {children}
     </div>
