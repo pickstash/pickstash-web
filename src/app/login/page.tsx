@@ -1,6 +1,7 @@
 import Image from 'next/image'
 // 카카오 로그인은 일단 숨김(토스 로그인만) — 재도입 시 KakaoLoginButton 다시 import.
 import { TossLoginButton } from './toss-login-button'
+import { TestLoginButtons } from './test-login-buttons'
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
   const { next } = await searchParams
@@ -20,6 +21,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         </div>
         <div className="w-full pb-4">
           <TossLoginButton next={next} />
+          {process.env.NODE_ENV === 'development' && <TestLoginButtons />}
         </div>
       </div>
     </main>
