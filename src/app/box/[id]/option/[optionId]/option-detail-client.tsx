@@ -291,7 +291,7 @@ export function OptionDetailClient({
         </div>
       )}
 
-      <div className="flex-1 space-y-4 px-5 pb-10 pt-1">
+      <div className="flex-1 space-y-4 px-5 pb-[calc(var(--app-nav-h,7rem)+1.5rem)] pt-1">
         {/* 히어로: 제목 · 생성자 · 생성일 · 좋아요 (정보성 데이터 상단 집중) */}
         <div className="space-y-3">
           <div className="flex items-start justify-between gap-2">
