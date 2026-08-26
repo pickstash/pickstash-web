@@ -333,9 +333,12 @@ export function BoxDetailClient({
     )
   }
 
-  // 혼자 상자: 아바타 숨기고 초대 버튼만 (마감된 혼자 상자·읽기 전용 조회자는 초대 버튼 안 보임)
+  // 혼자 상자: 참여자 본인에겐 아바타 숨기고 초대 버튼만. 단 읽기 전용 조회자(공개/서랍 뷰어)에겐
+  // 만든 사람 아바타를 띄워 프로필로 가서 팔로우할 수 있게 한다(마감된 내 혼자 상자는 아무것도 안 띄움).
   const participantsNode = isSolo
-    ? (isDone || !isParticipant ? null : inviteEntry(inviteButton, '친구 초대'))
+    ? (!isParticipant
+        ? inviteEntry(<ParticipantAvatars participants={box.box_participants} />, '만든 사람 보기')
+        : isDone ? null : inviteEntry(inviteButton, '친구 초대'))
     : inviteEntry(
         <ParticipantAvatars participants={box.box_participants} trailing={isDone || !isParticipant ? undefined : inviteButton} />,
         isDone ? '함께한 사람 보기' : '친구 초대',
@@ -835,7 +838,8 @@ export function BoxDetailClient({
         </div>
       )}
 
-      <div className={`flex-1 space-y-4 px-5 pt-1 ${options.length > 0 ? 'pb-28' : 'pb-5'}`}>
+      {/* 하단 고정 CTA 바(탭바 위)가 콘텐츠를 가리지 않도록 탭바 높이 + CTA 바 클리어런스 확보. CTA는 비참여자 또는 옵션>0일 때만 존재. */}
+      <div className={`flex-1 space-y-4 px-5 pt-1 ${!isParticipant || options.length > 0 ? 'pb-[calc(var(--app-nav-h,7rem)+5.5rem)]' : 'pb-5'}`}>
         {/* 히어로: 상태 · 질문 · 메모 · 메타 · 참여 */}
         <div className="space-y-3">
           {/* 모드 라벨이 있던 자리 = 공개 여부·태그. 좌측은 flex-wrap이라 우측 액션에 닿으면 태그가 줄바꿈된다.
@@ -1185,19 +1189,31 @@ export function BoxDetailClient({
               {isDone ? `함께한 사람 ${box.box_participants.length}명` : `참여 중 ${box.box_participants.length}명`}
             </p>
             <div className="mb-4 mt-3 max-h-[50vh] space-y-2.5 overflow-y-auto">
-              {box.box_participants.map(p => (
-                <div key={p.user_id} className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-butter-tint text-[11px] font-bold text-ink">
-                    {p.profiles?.avatar_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={p.profiles.avatar_url} alt={p.profiles?.nickname ?? ''} className="h-full w-full object-cover" />
-                    ) : (
-                      p.profiles?.nickname?.[0] ?? '?'
-                    )}
-                  </div>
-                  <span className="text-sm font-semibold text-ink">{p.profiles?.nickname ?? '알 수 없음'}</span>
-                </div>
-              ))}
+              {box.box_participants.map(p => {
+                // 공개 프로필(핸들)이 있으면 그 사람 프로필로 이동 → 팔로우 가능. 없으면 비클릭 행.
+                const handle = p.profiles?.handle
+                const inner = (
+                  <>
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-butter-tint text-[11px] font-bold text-ink">
+                      {p.profiles?.avatar_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={p.profiles.avatar_url} alt={p.profiles?.nickname ?? ''} className="h-full w-full object-cover" />
+                      ) : (
+                        p.profiles?.nickname?.[0] ?? '?'
+                      )}
+                    </div>
+                    <span className="text-sm font-semibold text-ink">{p.profiles?.nickname ?? '알 수 없음'}</span>
+                    {handle && <Icon name="chevronRight" size={16} className="ml-auto text-ink-faint" />}
+                  </>
+                )
+                return handle ? (
+                  <AppLink key={p.user_id} href={`/u/${handle}`} className="flex items-center gap-3 active:opacity-60">
+                    {inner}
+                  </AppLink>
+                ) : (
+                  <div key={p.user_id} className="flex items-center gap-3">{inner}</div>
+                )
+              })}
             </div>
             {!isDone && isParticipant && (
               <button

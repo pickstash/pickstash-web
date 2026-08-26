@@ -36,7 +36,7 @@ export async function loadBoxDetail(
   const [{ data, error }, { data: optionsData }] = await Promise.all([
     supabase
       .from('boxes')
-      .select(`*, box_participants(user_id, joined_at, last_seen_at, profiles(id, nickname, avatar_url))`)
+      .select(`*, box_participants(user_id, joined_at, last_seen_at, profiles(id, nickname, avatar_url, handle))`)
       .eq('id', boxId)
       .single(),
     supabase.from('options').select('*').eq('box_id', boxId).order('created_at', { ascending: true }),

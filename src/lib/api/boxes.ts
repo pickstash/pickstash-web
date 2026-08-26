@@ -12,6 +12,7 @@ export interface BoxParticipant {
     id: string
     nickname: string
     avatar_url: string | null
+    handle: string | null
   } | null
 }
 
@@ -61,7 +62,7 @@ export async function getBox(id: string): Promise<BoxWithParticipants | null> {
       *,
       box_participants(
         user_id, joined_at, last_seen_at,
-        profiles(id, nickname, avatar_url)
+        profiles(id, nickname, avatar_url, handle)
       )
     `)
     .eq('id', id)
