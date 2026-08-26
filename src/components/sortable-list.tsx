@@ -77,6 +77,8 @@ export function SortableItem({ id, className, children }: { id: string; classNam
       style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 10 : undefined }}
       className={className}
       {...listeners}
+      // 자식 <a>/<img>의 네이티브 HTML5 드래그가 dnd-kit 포인터 드래그를 가로채는 것 방지(포인터/터치 센서엔 무해).
+      onDragStartCapture={e => e.preventDefault()}
       onClickCapture={e => {
         if (draggedRef.current) {
           e.preventDefault()
