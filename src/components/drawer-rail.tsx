@@ -11,7 +11,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { useDragSensors, lockX, lockY } from '@/components/sortable-list'
+import { useDragSensors, useDragClickGuard, lockX, lockY, SortableItem } from '@/components/sortable-list'
 import { createClient } from '@/lib/supabase/client'
 import { loadFolders } from '@/lib/api/folders-list'
 import { useFolderBoxes, useReorderFolders, useReorderFolderBoxes } from '@/hooks/use-folders'
@@ -201,10 +201,12 @@ export function DrawerRail({ brief }: DrawerRailProps) {
 
 function SortableChip({ folder, active, onSelect }: { folder: FolderChip; active: boolean; onSelect: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: folder.id })
+  const onClickCapture = useDragClickGuard(isDragging) // 드래그로 재정렬 후 클릭이 새어 서랍이 선택되는 것 방지
   return (
     <button
       ref={setNodeRef}
       onClick={onSelect}
+      onClickCapture={onClickCapture}
       style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1, zIndex: isDragging ? 10 : undefined }}
       {...attributes}
       {...listeners}
@@ -219,22 +221,17 @@ function SortableChip({ folder, active, onSelect }: { folder: FolderChip; active
   )
 }
 
-// 카드는 AppLink(탭=이동)라 attributes(role=button 등)는 안 붙이고 listeners만 — 중첩 인터랙티브 회피.
-// 키보드 드래그 미지원(마우스/터치 전용). pop 애니메이션은 안쪽 div에 두어 dnd transform과 분리.
+// 카드는 AppLink(탭=이동)라 공용 SortableItem 사용 — 드래그 후 클릭 누수·자식 링크 네이티브 드래그 가드 공유.
+// pop 애니메이션은 안쪽 div에 두어 dnd transform과 분리.
 function SortableBox({ card, index, isPrivate }: { card: BoxCard; index: number; isPrivate: boolean }) {
-  const { listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: card.id })
   return (
-    <div
-      ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 10 : undefined }}
-      {...listeners}
-    >
+    <SortableItem id={card.id}>
       <div
         className="[animation-fill-mode:backwards] animate-[drawerPop_0.4s_cubic-bezier(.16,1,.3,1)]"
         style={{ animationDelay: `${index * 55}ms` }}
       >
         <BoxSummaryCard card={card} isPrivate={isPrivate} />
       </div>
-    </div>
+    </SortableItem>
   )
 }

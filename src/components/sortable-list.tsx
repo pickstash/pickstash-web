@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useRef, type MouseEvent, type ReactNode } from 'react'
 import {
   DndContext,
   MouseSensor,
@@ -64,13 +64,25 @@ export function SortableList<T>({
 
 /** 드래그 가능한 래퍼(div). 자식이 링크·버튼을 포함할 수 있어 listeners만 붙여(attributes 생략)
  *  중첩 인터랙티브를 피한다 — 키보드 드래그 미지원(마우스/터치 전용). */
+// 드래그 직후 브라우저가 흘리는 click 한 번을 캡처 단계에서 삼킨다 — 재정렬 드래그가 자식의 클릭(이동/선택)까지 트리거하는 것 방지.
+// 드래그 가능 요소(래퍼 div·칩 버튼 등)의 onClickCapture에 붙여 쓴다.
+export function useDragClickGuard(isDragging: boolean) {
+  const dragged = useRef(false)
+  useEffect(() => {
+    if (isDragging) dragged.current = true
+  }, [isDragging])
+  return (e: MouseEvent) => {
+    if (dragged.current) {
+      e.preventDefault()
+      e.stopPropagation()
+      dragged.current = false
+    }
+  }
+}
+
 export function SortableItem({ id, className, children }: { id: string; className?: string; children: ReactNode }) {
   const { listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
-  // 드래그 후 mouseup이 자식 링크로 click을 흘려 상세로 들어가는 문제 — 드래그가 있었으면 뒤따르는 click 한 번을 캡처 단계에서 삼킨다.
-  const draggedRef = useRef(false)
-  useEffect(() => {
-    if (isDragging) draggedRef.current = true
-  }, [isDragging])
+  const onClickCapture = useDragClickGuard(isDragging)
   return (
     <div
       ref={setNodeRef}
@@ -79,13 +91,7 @@ export function SortableItem({ id, className, children }: { id: string; classNam
       {...listeners}
       // 자식 <a>/<img>의 네이티브 HTML5 드래그가 dnd-kit 포인터 드래그를 가로채는 것 방지(포인터/터치 센서엔 무해).
       onDragStartCapture={e => e.preventDefault()}
-      onClickCapture={e => {
-        if (draggedRef.current) {
-          e.preventDefault()
-          e.stopPropagation()
-          draggedRef.current = false
-        }
-      }}
+      onClickCapture={onClickCapture}
     >
       {children}
     </div>
