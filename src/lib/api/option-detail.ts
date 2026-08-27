@@ -11,7 +11,7 @@ export type OptionDetailData =
   | {
       status: 'ok'
       option: OptionRow
-      creator: { nickname: string; avatar_url: string | null } | null
+      creator: { nickname: string; avatar_url: string | null; handle: string | null } | null
       round: number
       canVote: boolean
       checklist: boolean
@@ -55,7 +55,7 @@ export async function loadOptionDetail(
   const { data: creator } = option.created_by
     ? await supabase
         .from('profiles')
-        .select('nickname, avatar_url')
+        .select('nickname, avatar_url, handle')
         .eq('id', option.created_by)
         .single()
     : { data: null }

@@ -1203,6 +1203,7 @@ export function BoxDetailClient({
                       )}
                     </div>
                     <span className="text-sm font-semibold text-ink">{p.profiles?.nickname ?? '알 수 없음'}</span>
+                    {handle && <span className="text-[12px] text-ink-faint">@{handle}</span>}
                     {handle && <Icon name="chevronRight" size={16} className="ml-auto text-ink-faint" />}
                   </>
                 )

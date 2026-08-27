@@ -10,7 +10,7 @@ export interface CommentWithProfile {
   parent_comment_id: string | null
   edited_at: string | null
   created_at: string
-  profiles: { id: string; nickname: string; avatar_url: string | null } | null
+  profiles: { id: string; nickname: string; avatar_url: string | null; handle: string | null } | null
 }
 
 export interface CommentLikeCount {
@@ -22,7 +22,7 @@ export async function getComments(optionId: string): Promise<CommentWithProfile[
   const supabase = createClient()
   const { data, error } = await supabase
     .from('comments')
-    .select('*, profiles!comments_user_id_fkey(id, nickname, avatar_url)')
+    .select('*, profiles!comments_user_id_fkey(id, nickname, avatar_url, handle)')
     .eq('option_id', optionId)
     .order('created_at', { ascending: true })
   if (error) throw error

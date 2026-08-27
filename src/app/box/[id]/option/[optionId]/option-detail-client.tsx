@@ -1,7 +1,7 @@
 'use client'
 
 import { AppLink, useNav } from '@/lib/nav/nav'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { VoteButtons } from '@/components/vote-buttons'
 import { PageHeader } from '@/components/page-header'
 import { AppDrawer } from '@/components/app-drawer'
@@ -36,8 +36,17 @@ import { YouTubeEmbed } from '@/components/youtube-embed'
 import type { Option } from '@/lib/api/options'
 import type { CommentWithProfile } from '@/lib/api/comments'
 
-type Creator = { nickname: string; avatar_url: string | null } | null
+type Creator = { nickname: string; avatar_url: string | null; handle: string | null } | null
 type Participant = { id: string; nickname: string; avatar_url: string | null }
+
+// 아바타/이름을 공개 프로필(/u/[handle])로 링크 — handle 없으면(비공개) 링크 없이 같은 레이아웃 유지.
+function withProfileLink(handle: string | null | undefined, className: string, children: ReactNode) {
+  return handle ? (
+    <AppLink href={`/u/${handle}`} className={`${className} active:opacity-60`}>{children}</AppLink>
+  ) : (
+    <div className={className}>{children}</div>
+  )
+}
 
 interface OptionDetailClientProps {
   option: Option
@@ -199,16 +208,18 @@ export function OptionDetailClient({
     }
     return (
       <div key={comment.id} className="flex gap-3">
-        <div className={`shrink-0 overflow-hidden rounded-full bg-butter-tint ${small ? 'h-6 w-6' : 'h-7 w-7'}`}>
-          {comment.profiles?.avatar_url ? (
+        {withProfileLink(
+          comment.profiles?.handle,
+          `shrink-0 overflow-hidden rounded-full bg-butter-tint ${small ? 'h-6 w-6' : 'h-7 w-7'}`,
+          comment.profiles?.avatar_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={comment.profiles.avatar_url} alt={comment.profiles.nickname} className="h-full w-full object-cover" />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-[11px] font-bold text-ink">
               {comment.profiles?.nickname?.[0] ?? '?'}
             </div>
-          )}
-        </div>
+          ),
+        )}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             <span className="text-xs font-bold text-ink">{comment.profiles?.nickname}</span>
@@ -347,17 +358,23 @@ export function OptionDetailClient({
 
           {/* 생성자 · 생성일 */}
           <div className="flex items-center gap-2 text-[12px]">
-            <div className="h-6 w-6 shrink-0 overflow-hidden rounded-full bg-butter-tint">
-              {creator?.avatar_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={creator.avatar_url} alt={creator.nickname} className="h-full w-full object-cover" />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-ink">
-                  {creator?.nickname?.[0] ?? '?'}
+            {withProfileLink(
+              creator?.handle,
+              'flex items-center gap-2',
+              <>
+                <div className="h-6 w-6 shrink-0 overflow-hidden rounded-full bg-butter-tint">
+                  {creator?.avatar_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={creator.avatar_url} alt={creator.nickname} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-ink">
+                      {creator?.nickname?.[0] ?? '?'}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-            <span className="font-bold text-ink-soft">{creator?.nickname ?? '알 수 없음'}</span>
+                <span className="font-bold text-ink-soft">{creator?.nickname ?? '알 수 없음'}</span>
+              </>,
+            )}
             <span className="text-ink-faint">· {formatKoreanDate(option.created_at)}</span>
           </div>
 
