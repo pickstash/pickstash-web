@@ -107,6 +107,14 @@ export function OptionDetailClient({
   const [confirmDeleteComment, setConfirmDeleteComment] = useState<string | null>(null)
   // 등록 성공 시 key를 올려 새 댓글 컴포저를 리마운트(입력 내용 비우기 → 중복 등록 방지)
   const [composerKey, setComposerKey] = useState(0)
+  // 대댓글(답글) 펼침 상태 — 기본 접힘, "답글 N개 보기"로 펼침(topLevel 댓글 id 집합)
+  const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set())
+  const toggleReplies = (id: string) =>
+    setExpandedReplies(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
   const deleteOption = useDeleteOption(boxId)
   const updateOption = useUpdateOption(option.id, boxId)
   const { data: comments = [] } = useComments(option.id)
@@ -483,8 +491,19 @@ export function OptionDetailClient({
                 <div key={comment.id} className="space-y-3">
                   {renderComment(comment, comment.id)}
                   {replies.length > 0 && (
-                    <div className="ml-9 space-y-3 border-l-2 border-cream pl-3">
-                      {replies.map(reply => renderComment(reply, comment.id, true))}
+                    <div className="ml-9 space-y-3">
+                      {expandedReplies.has(comment.id) && (
+                        <div className="space-y-3 border-l-2 border-cream pl-3">
+                          {replies.map(reply => renderComment(reply, comment.id, true))}
+                        </div>
+                      )}
+                      <button
+                        onClick={() => toggleReplies(comment.id)}
+                        className="flex items-center gap-1.5 text-[12px] font-bold text-ink-faint active:opacity-60"
+                      >
+                        <span className="h-px w-4 bg-line" />
+                        {expandedReplies.has(comment.id) ? '답글 숨기기' : `답글 ${replies.length}개 보기`}
+                      </button>
                     </div>
                   )}
                   {replyingTo?.parentId === comment.id && (
@@ -501,7 +520,12 @@ export function OptionDetailClient({
                         onSubmit={body =>
                           createComment.mutate(
                             { body, parentCommentId: comment.id },
-                            { onSuccess: () => setReplyingTo(null) },
+                            {
+                              onSuccess: () => {
+                                setReplyingTo(null)
+                                setExpandedReplies(prev => new Set(prev).add(comment.id)) // 새 답글이 보이도록 펼침
+                              },
+                            },
                           )
                         }
                       />
