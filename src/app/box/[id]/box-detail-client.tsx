@@ -338,8 +338,6 @@ export function BoxDetailClient({
   const soloProfile = box.box_participants[0]?.profiles
   const soloInner = (
     <>
-      <span className="text-[12.5px] font-bold text-ink">{soloProfile?.nickname ?? '알 수 없음'}</span>
-      {soloProfile?.handle && <span className="text-[12px] text-ink-faint">@{soloProfile.handle}</span>}
       <div className="h-7 w-7 shrink-0 overflow-hidden rounded-full border border-paper bg-butter-tint">
         {soloProfile?.avatar_url ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -350,12 +348,14 @@ export function BoxDetailClient({
           </div>
         )}
       </div>
+      <span className="text-[12.5px] font-bold text-ink">{soloProfile?.nickname ?? '알 수 없음'}</span>
+      {soloProfile?.handle && <span className="text-[12px] text-ink-faint">@{soloProfile.handle}</span>}
     </>
   )
   const soloViewerNode = soloProfile?.handle ? (
-    <AppLink href={`/u/${soloProfile.handle}`} className="ml-auto flex items-center gap-1.5 active:opacity-60">{soloInner}</AppLink>
+    <AppLink href={`/u/${soloProfile.handle}`} className="flex items-center gap-1.5 active:opacity-60">{soloInner}</AppLink>
   ) : (
-    <div className="ml-auto flex items-center gap-1.5">{soloInner}</div>
+    <div className="flex items-center gap-1.5">{soloInner}</div>
   )
 
   // 혼자 상자: 참여자 본인에겐 아바타 숨기고 초대 버튼만(마감된 내 혼자 상자는 아무것도 안 띄움).
