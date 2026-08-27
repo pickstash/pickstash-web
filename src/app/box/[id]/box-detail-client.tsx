@@ -333,11 +333,36 @@ export function BoxDetailClient({
     )
   }
 
-  // 혼자 상자: 참여자 본인에겐 아바타 숨기고 초대 버튼만. 단 읽기 전용 조회자(공개/서랍 뷰어)에겐
-  // 만든 사람 아바타를 띄워 프로필로 가서 팔로우할 수 있게 한다(마감된 내 혼자 상자는 아무것도 안 띄움).
+  // 혼자 상자를 읽기 전용 조회자(공개/서랍 뷰어)가 볼 때: 만든 사람 = 유일 참여자를 오른쪽에
+  // 아바타+닉네임+@아이디로 보여주고, 탭하면 시트 없이 바로 그 사람 프로필로 이동(팔로우). handle 없으면 비클릭.
+  const soloProfile = box.box_participants[0]?.profiles
+  const soloInner = (
+    <>
+      <span className="text-[12.5px] font-bold text-ink">{soloProfile?.nickname ?? '알 수 없음'}</span>
+      {soloProfile?.handle && <span className="text-[12px] text-ink-faint">@{soloProfile.handle}</span>}
+      <div className="h-7 w-7 shrink-0 overflow-hidden rounded-full border border-paper bg-butter-tint">
+        {soloProfile?.avatar_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={soloProfile.avatar_url} alt={soloProfile.nickname} className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-ink">
+            {soloProfile?.nickname?.[0] ?? '?'}
+          </div>
+        )}
+      </div>
+    </>
+  )
+  const soloViewerNode = soloProfile?.handle ? (
+    <AppLink href={`/u/${soloProfile.handle}`} className="ml-auto flex items-center gap-1.5 active:opacity-60">{soloInner}</AppLink>
+  ) : (
+    <div className="ml-auto flex items-center gap-1.5">{soloInner}</div>
+  )
+
+  // 혼자 상자: 참여자 본인에겐 아바타 숨기고 초대 버튼만(마감된 내 혼자 상자는 아무것도 안 띄움).
+  // 조회자에겐 위 soloViewerNode(직접 프로필 이동). 여럿 상자는 아바타 스택 → 멤버 시트.
   const participantsNode = isSolo
     ? (!isParticipant
-        ? inviteEntry(<ParticipantAvatars participants={box.box_participants} />, '만든 사람 보기')
+        ? soloViewerNode
         : isDone ? null : inviteEntry(inviteButton, '친구 초대'))
     : inviteEntry(
         <ParticipantAvatars participants={box.box_participants} trailing={isDone || !isParticipant ? undefined : inviteButton} />,
