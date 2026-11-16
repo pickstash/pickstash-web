@@ -31,6 +31,7 @@
 ## 디자인
 
 - 컨셉 "다정한 손그림 창고" — 크림 `#F7F6EA`/잉크 `#2A2A27`/버터 `#FFD84A`. 토큰은 `globals.css`의 Tailwind v4 `@theme`에 정의(예: `bg-paper`·`text-ink`·`border-line`·`butter-tint`). 목업은 `docs/design-system-v1.html`. 공통 `PageHeader` + `max-w-[430px]` 컨테이너.
+- 디자인 시스템(웹·토스앱 공용): https://claude.ai/artifact/PtStFQd3vE4mrsFjDoVJyg — **새 UI 작업 전에 README와 "웹 · 토스앱" 섹션을 읽을 것**(Artifact 도구 `read`로 `project/README.md`, `project/platforms.md`). 단, 실제 값의 기준은 `globals.css`다. 시스템에만 있는 v2 항목(7단계 타입 스케일, `line-soft`·`toss-blue` 등 새 토큰, 다크 테마)은 아직 코드에 없으니, 쓰려면 먼저 `globals.css`에 추가하자고 제안하고 동의받은 뒤 반영한다.
 
 ## 명령어
 
